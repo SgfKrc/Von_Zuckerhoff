@@ -116,8 +116,8 @@ html, body, #root {
 
 .portrait-slot {
   flex: 0 0 auto;
-  width: 144px;
-  height: 144px;
+  width: 192px;
+  height: 192px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -125,9 +125,9 @@ html, body, #root {
 }
 .portrait-slot.empty { display: none; }
 .portrait-canvas {
-  /* 48×48 的方形立绘（1:1，只到头与肩），3 倍放大成 144×144 */
-  width: 144px;
-  height: 144px;
+  /* 96×96 的方形立绘（1:1，只到头与肩），2 倍放大成 192×192 */
+  width: 192px;
+  height: 192px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 14px rgba(0,0,0,.85));
@@ -712,10 +712,10 @@ html, body, #root {
 .inv-keys { font-size: 10px; color: #4a5160; letter-spacing: 1px; }
 
 /* 素材型立绘：以"相片"形式呈现（白底 + 细框 + 轻微内阴影）。
-   素材已裁成 1:1（288×288），object-fit: cover 再兜一层非方形的裁切。 */
+   素材已裁成 1:1（384×384），object-fit: cover 再兜一层非方形的裁切。 */
 .portrait-photo {
-  width: 144px;
-  height: 144px;
+  width: 192px;
+  height: 192px;
   object-fit: cover;
   display: block;
   background: #f2ece0;
@@ -726,4 +726,12 @@ html, body, #root {
     inset 0 0 24px rgba(40, 50, 80, .35);
   image-rendering: auto;
   filter: saturate(.92) contrast(1.03);
+}
+/* 素材立绘（96×96 透明 PNG，2 倍放大）：不加边框，与程序化立绘并列 */
+.portrait-image {
+  width: 192px;
+  height: 192px;
+  image-rendering: pixelated;
+  display: block;
+  filter: drop-shadow(0 0 16px rgba(0, 0, 0, .9));
 }
