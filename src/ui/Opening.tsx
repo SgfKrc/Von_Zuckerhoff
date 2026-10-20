@@ -72,7 +72,7 @@ const T_NARR_B = [12.4, 13.2, 13.8, 14.6] as const
 
 /** 地名卡文案：主标题 + 一行注脚（年代用原作占位 XX，不编具体年份） */
 const CARD_A = { title: '巴伐利亚帝国 · 多特蒙德行省', note: 'ANNO XX' }
-const CARD_B = { title: '东弗里斯兰群山', note: '六月的雨 · 第七天' }
+const CARD_B = { title: '东弗里斯兰群山', note: '黑森林 · 聚斯霍芬堡方向' }
 /** 旁白文案：\n 断行，左对齐落在左下角，不压车头与车身 */
 const NARR_A = '六月的雨\n下了一整个星期。'
 const NARR_B = '列车穿过黑森林，\n往一座不在地图上的庄园去。'
