@@ -9,13 +9,15 @@
 //   10.4–11.4 车头继续逼近，锅炉前脸 + 车灯白光把画面填满
 //   11.4–11.9 纯黑 0.5s —— 「镜头被车头擦过」的标点
 //
-//  镜头 B（横向铁轨、侧视）
-//   11.9–14.4 切侧视：横向铁轨 + 列车从左横穿，车窗逐扇亮起
-//   14.4–16.4 定格在最右那扇窗：轻微放大 + 其余压暗 + 窗内两个剪影
+//  镜头 B（横向铁轨、侧视跟拍）—— 列车全程匀速，从不停车
+//   11.9–13.0 切侧视：固定机位，列车从左横穿，车头先入画再驶出，车窗逐扇亮起
+//   13.0–14.4 镜头摇起来、越摇越快，追上最后一节车厢的那扇窗（车没停）
+//   14.4–16.4 与车同速跟拍：窗锁在画面中右，道砟 / 树 / 雾整幅向左滚，
+//             车厢随铁轨接缝 ±1px 起伏；其余压暗、只留这扇窗在光里
 //
 //  镜头 C（车厢内，16.4–31.6）
-//   16.4–18.6 从定格车窗推进到弗里德里希的侧脸：他望向窗外，
-//             窗外流过的黑与偶发的灯在他脸上一道道闪过
+//   16.4–18.6 从跟拍的窗推进到弗里德里希的侧脸：他望向窗外，
+//             窗外流过的黑与偶发的灯在他脸上一道道闪过（车还在跑）
 //   18.6–21.0 内心独白 ①「列车开了六个小时。」
 //   21.0–23.8 内心独白 ②「对面坐着的叫艾玛。祖克霍夫家派她来接我。」
 //   23.8–26.2 内心独白 ③「我从没听过这个姓。」
@@ -38,22 +40,24 @@ import {
   drawLocoFront,
   drawMist,
   drawNarration,
+  drawSideScene,
   drawSpokenLine,
   drawTitleCard,
-  drawTrain,
   drawVignette,
   drawWatchShot,
   farLayers,
+  heroWindowScreenX,
   preloadPortraits,
+  sideZoom,
 } from '../game/art/farback'
 
 /** 分镜总时长（秒） */
 const TOTAL = 31.6
 /** 跳过时落到的时刻：他说完那句台词的那一帧（台词刚好开始淡出，仍是满亮） */
 const SKIP_AT = 30.4
-/** 车头占满画面 / 擦过镜头时敲一声：当作汽笛 / 站钟 */
+/** 车头占满画面 / 擦过镜头时敲一声：当作汽笛 / 站钟（镜头 B 里车一直在跑） */
 const BELL_AT = 10.4
-/** 16.4s 进车厢内：车厢连接处很轻的一记碰撞 */
+/** 16.4s 进车厢内：车厢连接处很轻的一记碰撞（不是刹车，车一直在跑） */
 const DOOR_AT = 16.4
 /** 跳过时把落点那一帧留一下再进车厢 */
 const SKIP_HOLD_MS = 160
@@ -64,10 +68,9 @@ const T_CAM_END = 6.4
 /** 车头占满画面 → 黑场 → 切侧视 */
 const T_COVER = 11.4
 const T_BLACK_END = 11.9
-/** 镜头 B：停稳后定格 + 压暗 */
-const T_HOLD_START = 14.6
-const T_DIM_END = 15.9
-const T_ZOOM_END = 16.0
+/** 镜头 B：跟拍压暗的时间窗（窗外一圈暗下去，窗留在光里） */
+const T_DIM_START = 14.3
+const T_DIM_END = 15.7
 /** 进车厢：定格车窗继续推进 0.9s，同时新机位淡入 */
 const T_CABIN = 16.4
 const T_CABIN_ZOOM = 17.3
@@ -175,17 +178,16 @@ function shotA(g: CanvasRenderingContext2D, t: number, fade: number): void {
   g.globalAlpha = 1
 }
 
-/** 镜头 B：横向铁轨，列车自左驶过，定格在最后一扇窗 */
+/**
+ * 镜头 B：侧视跟拍。列车从头到尾匀速向右跑 —— 它从不减速、从不停，
+ * 是镜头在 13.0s 摇起来、14.4s 与车同速追上去。
+ * 追上之后窗在画面中右基本定住，道砟 / 树 / 雾整幅向左滚，车厢随铁轨接缝起伏。
+ * 这样「侧视驶过」到「贴近车窗」是一个连续的跟拍，车上的人一直在赶路。
+ */
 function shotB(g: CanvasRenderingContext2D, t: number, alpha: number, extraZoom = 0): void {
-  const L = farLayers()
-  const camY = CAM_END
-  const zoom = 1 + 0.9 * smooth(T_HOLD_START, T_ZOOM_END, t) + extraZoom
-  const dim = smooth(T_HOLD_START, T_DIM_END, t)
-
-  const cSky = camY * 0.5
-  const cFar = camY * 0.68
-  const cMid = camY * 0.86
-  const cForest = camY * 0.94
+  const zoom = sideZoom(t) + extraZoom
+  const dim = smooth(T_DIM_START, T_DIM_END, t)
+  const lockX = heroWindowScreenX(t)
 
   g.globalAlpha = alpha
   g.save()
@@ -193,32 +195,22 @@ function shotB(g: CanvasRenderingContext2D, t: number, alpha: number, extraZoom 
   g.scale(zoom, zoom)
   g.translate(-HERO_X, -HERO_Y)
 
-  g.drawImage(L.sky, 0, -cSky)
-  g.drawImage(L.ridgeFar, 0, -cFar)
-  g.drawImage(L.ridgeMid, 0, -cMid)
-  g.drawImage(L.forest, 0, -cForest)
-  g.drawImage(L.rail, 0, -camY)
-  drawMist(g, t, -camY + 198, 0.26, 3.5) // 谷地薄雾：从山脚漫到轨道
-  drawTrain(g, t, camY)
-  g.drawImage(L.near, 0, -camY)
-  drawMist(g, t, -camY + 292, 0.16, 8)   // 近处低雾，压住画面下缘
+  drawSideScene(g, t)
+
+  // 跟拍压暗：窗四周暗下去、窗留在光里。不整幅压黑 —— 滚动的背景要读得出来，
+  // 那正是「车还在跑」的证据，所以外围只压到 0.6，道砟与树影仍然可见。
+  if (dim > 0.004) {
+    const shade = g.createRadialGradient(lockX, HERO_Y, 14, lockX, HERO_Y, 168)
+    shade.addColorStop(0, 'rgba(0,0,0,0)')
+    shade.addColorStop(0.45, `rgba(0,0,0,${(0.24 * dim).toFixed(3)})`)
+    shade.addColorStop(1, `rgba(0,0,0,${(0.6 * dim).toFixed(3)})`)
+    g.fillStyle = shade
+    g.fillRect(lockX - 230, HERO_Y - 170, 460, 340)
+    drawFocusWindow(g, t, dim)
+  }
   g.restore()
 
-  // 定格：除这扇窗以外整体压暗，再把窗重新点亮一次
-  if (dim > 0.001) {
-    g.globalAlpha = alpha * 0.8 * dim
-    g.fillStyle = '#000000'
-    g.fillRect(0, 0, VIEW_W, VIEW_H)
-    g.globalAlpha = alpha
-    g.save()
-    g.translate(HERO_X, HERO_Y)
-    g.scale(zoom, zoom)
-    g.translate(-HERO_X, -HERO_Y)
-    drawFocusWindow(g, dim)
-    g.restore()
-  }
-
-  drawVignette(g, alpha * (0.42 + 0.5 * dim))
+  drawVignette(g, alpha * (0.42 + 0.28 * dim))
   g.globalAlpha = 1
 }
 
@@ -281,7 +273,7 @@ export function renderFrame(g: CanvasRenderingContext2D, t: number): void {
     } else if (t < T_CABIN) {
       shotB(g, t, fade)
     } else {
-      // 定格车窗继续推进、淡出；同一时刻弗里德里希的机位淡入 —— 一个连续镜头
+      // 跟拍的窗继续推近、淡出；同一时刻弗里德里希的机位淡入 —— 一个连续镜头
       const outA = 1 - smooth(T_CABIN, T_CABIN_ZOOM, t)
       if (outA > 0.004) {
         shotB(g, t, fade * outA, 0.95 * smooth(T_CABIN, T_CABIN_ZOOM, t))

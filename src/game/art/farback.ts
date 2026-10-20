@@ -63,12 +63,33 @@ const HALF_GAUGE = 42
 /** 消失点→近端的纵深 */
 const TRACK_SPAN = TRACK_NEAR_Y - VP_LINE
 
-// ---- 镜头 B 列车运动：11.9s 从左驶入，13.3s 起减速，14.4s 停稳 ----
+// ---- 镜头 B 列车运动：11.9s 从左驶入，此后全程匀速，不减速、不停 ----
 const T_DEPART = 11.9
-const T_CRUISE_END = 13.3
-const T_STOP = 14.4
+/** 车头右端的入画位置（世界 x；列车从车头往左排） */
 const X_SPAWN = 120
-const X_REST = HERO_X + HERO_WIN_OFFSET
+/**
+ * 侧视列车的速度（世界 px/s）。全程恒定 —— 车一直在跑，任何时刻都不停。
+ * 取 300：跟拍时背景（道砟、树、雾）正是以这个速度向左滚，
+ * 与镜头 C 窗外纹理的远景层（300px/s）同速，两个镜头接起来速度感一致。
+ */
+const TRAIN_SPEED = 300
+/**
+ * 跟拍锁定之后，镜头比车慢这一丁点：窗因此仍在画面里缓缓右移（px/s）。
+ * 跟拍不能是「钉死」——留着这 10px/s，窗每帧都还在动，
+ * 加上铁轨接缝的上下起伏，读起来才是车在跑、镜头跟着跑。
+ */
+const FOLLOW_DRIFT = 10
+/**
+ * 跟拍：13.0s 镜头从静止开始摇，14.4s 摇到与车同速。
+ * camX 的速度是一条 smoothstep（0 → TRAIN_SPEED-FOLLOW_DRIFT），
+ * 所以「摇起来」和「稳住」都是平滑的，没有哪一帧突然变快或停住。
+ */
+const T_FOLLOW_0 = 13.0
+const T_FOLLOW_1 = 14.4
+/** 跟拍推近：1 → 1.9（14.2–16.0s）。车没停，镜头只是把取景收近 */
+const T_ZOOM_START = 14.2
+const T_ZOOM_END = 16.0
+const ZOOM_FOLLOW = 1.9
 
 // ---- 镜头 A 迎面车头：6.4s 远处一点 → 10.4s 逼近 → 11.4s 占满画面 ----
 const T_FRONT = 6.4
@@ -537,18 +558,59 @@ export function farLayers(): FarLayers {
 // ============================================================
 // 列车
 // ============================================================
-/** 车头右端的世界 x（也是屏幕 x：画面不横向滚动） */
+/** 车头右端的世界 x：11.9s 从左侧入画，此后全程匀速，绝不减速、绝不停车 */
 export function trainHeadX(t: number): number {
   if (t <= T_DEPART) return X_SPAWN
-  if (t >= T_STOP) return X_REST
-  // 先匀速、再匀减速停稳；速度由总位移反推，取景窗最终正好停在 HERO_X
-  const dist = X_REST - X_SPAWN
-  const cruiseT = T_CRUISE_END - T_DEPART
-  const decelT = T_STOP - T_CRUISE_END
-  const v = dist / (cruiseT + decelT / 2)
-  if (t <= T_CRUISE_END) return X_SPAWN + v * (t - T_DEPART)
-  const tau = t - T_CRUISE_END
-  return X_SPAWN + v * cruiseT + v * tau - 0.5 * (v / decelT) * tau * tau
+  return X_SPAWN + TRAIN_SPEED * (t - T_DEPART)
+}
+
+/** 被镜头锁定的那扇窗（最后一节车厢的最后一扇）的中心世界 x */
+export function heroWindowX(t: number): number {
+  return trainHeadX(t) - HERO_WIN_OFFSET
+}
+
+/**
+ * 摄像机横向世界偏移（侧视段唯一的运镜量）。它就是背景的滚动量：
+ * 道砟、树、雾、铁轨统统按 camX 向左滚，滚多少全看这个数。
+ *
+ *   11.9–13.0s  固定机位（camX = 0）：列车自己从左横穿，车头先入画再驶出；
+ *   13.0–14.4s  镜头开始摇、越摇越快：camX 的导数是一条 smoothstep，
+ *               从 0 平滑升到 TRAIN_SPEED−FOLLOW_DRIFT（窗从画面左侧一路被追上）；
+ *   14.4s 之后  与车同速，只慢 FOLLOW_DRIFT：窗在画面里缓缓右移，
+ *               背景则以 290px/s 持续向左滚 —— 车从来没停。
+ *
+ * camX 的导数在 13.0s 是 0、在 14.4s 恰好接上 290px/s（两侧都连续），
+ * 所以没有哪一帧是「突然开始滚」或「突然停住」。
+ */
+export function sideCamX(t: number): number {
+  if (t <= T_FOLLOW_0) return 0
+  const cruise = TRAIN_SPEED - FOLLOW_DRIFT
+  const span = T_FOLLOW_1 - T_FOLLOW_0
+  if (t < T_FOLLOW_1) {
+    const s = (t - T_FOLLOW_0) / span
+    // smoothstep 的原函数：s³ − s⁴/2（0→0.5），导数正好是 smoothstep
+    return cruise * span * (s * s * s - (s * s * s * s) / 2)
+  }
+  return cruise * span * 0.5 + cruise * (t - T_FOLLOW_1)
+}
+
+/** 跟拍推近倍数：1 → 1.9。车一直在跑，这里只是把取景收近 */
+export function sideZoom(t: number): number {
+  if (t <= T_ZOOM_START) return 1
+  return 1 + (ZOOM_FOLLOW - 1) * smoothstep(T_ZOOM_START, T_ZOOM_END, t)
+}
+
+/** 那扇窗在绘制坐标（zoom 变换前）里的屏幕 x —— 跟拍时它就是锁定点 */
+export function heroWindowScreenX(t: number): number {
+  return heroWindowX(t) - sideCamX(t)
+}
+
+/**
+ * 铁轨接缝：车厢在画面里 ±1px 的上下起伏（只往下，避免车钩处露缝）。
+ * 每节车厢相位错开，整列不会像一块木板那样一起跳。
+ */
+function bogieBob(t: number, c: number): number {
+  return Math.round(Math.sin(t * 11.3 + c * 1.9) * 0.5 + 0.5)
 }
 
 /** 一节车厢的窗：亮起由它进入画面的位置决定，逐扇亮 */
@@ -706,15 +768,70 @@ function drawSteam(g: Ctx, xh: number, sy: number, t: number): void {
   g.globalAlpha = prev
 }
 
+/**
+ * 侧视列车。整列画在「世界横移 camX 之后」的屏幕坐标里：
+ * 车头永远以 TRAIN_SPEED 往右跑，只因为镜头追上来了才在画面里站住；
+ * 车身随铁轨接缝 ±1px 起伏。
+ */
 export function drawTrain(g: Ctx, t: number, camY: number): void {
   if (t < T_DEPART) return
-  const xh = trainHeadX(t)
-  if (xh - TRAIN_LEN > VIEW_W + 8) return
+  const xh = trainHeadX(t) - sideCamX(t)
   const sy = -camY
+  // 整车都在画面外就整段跳过（视口裁剪）
+  if (xh + 14 < -8 || xh - TRAIN_LEN > VIEW_W + 8) return
+  // 从最后一节往前画：车头压在最上层
   for (let c = CARS - 1; c >= 0; c--) {
-    drawCar(g, xh - HEAD_W - c * (CAR_W + CAR_GAP) - CAR_W, sy, c)
+    const x = xh - HEAD_W - c * (CAR_W + CAR_GAP) - CAR_W
+    if (x > VIEW_W + 8 || x + CAR_W < -8) continue
+    drawCar(g, x, sy + bogieBob(t, c), c)
   }
-  drawLoco(g, xh, sy, t)
+  drawLoco(g, xh, sy + bogieBob(t, -1), t)
+}
+
+// ============================================================
+// 镜头 B 的世界：远山 → 森林 → 横向铁轨 → 列车 → 前景，整体向左滚
+// ============================================================
+
+/**
+ * 铺一层可横向循环的背景：整幅图与它的镜像交替平铺（周期 2×VIEW_W）。
+ * 镜像接缝两侧是同一列像素，所以看不出接缝；周期 768 大于取景宽度，
+ * 任何一帧里都不会露出重复的图案。offset 是世界横移量（sideCamX）。
+ */
+function drawLooping(g: Ctx, layer: HTMLCanvasElement, offset: number, y: number): void {
+  const i0 = Math.floor(offset / VIEW_W) - 1
+  for (let i = i0; i <= i0 + 3; i++) {
+    const sx = i * VIEW_W - offset
+    if (sx > VIEW_W || sx + VIEW_W < 0) continue
+    if (((i % 2) + 2) % 2 === 0) {
+      g.drawImage(layer, sx, y)
+      continue
+    }
+    g.save()
+    g.translate(sx + VIEW_W, y)
+    g.scale(-1, 1)
+    g.drawImage(layer, 0, 0)
+    g.restore()
+  }
+}
+
+/**
+ * 镜头 B 的一整幅世界（不含取景缩放与压暗）。
+ * 侧视是正交投影：镜头一横移，远近各层就以同一速度左移，所以所有层都按
+ * sideCamX 滚；雾层也跟同一速度，只是各自另有一点很慢的自身漂移。
+ */
+export function drawSideScene(g: Ctx, t: number): void {
+  const L = farLayers()
+  const camY = CAM_END
+  const cx = sideCamX(t)
+  drawLooping(g, L.sky, cx, -camY * 0.5)
+  drawLooping(g, L.ridgeFar, cx, -camY * 0.68)
+  drawLooping(g, L.ridgeMid, cx, -camY * 0.86)
+  drawLooping(g, L.forest, cx, -camY * 0.94)
+  drawLooping(g, L.rail, cx, -camY)
+  drawMist(g, t, -camY + 198, 0.26, 3.5, cx) // 谷地薄雾：从山脚漫到轨道
+  drawTrain(g, t, camY)
+  drawLooping(g, L.near, cx, -camY)
+  drawMist(g, t, -camY + 292, 0.16, 8, cx)  // 近处低雾，压住画面下缘
 }
 
 // ============================================================
@@ -1018,29 +1135,46 @@ export function drawLocoFront(g: Ctx, t: number): void {
 }
 
 
-/** 雾层：同一张雾片横向循环，两层不同速度 */
-export function drawMist(g: Ctx, t: number, y: number, alpha: number, speed: number): void {
+/**
+ * 雾层：同一张雾片横向循环，两层不同速度。
+ * offset 是世界横移量：镜头跟拍时雾跟背景一起向左滚（各层同速），
+ * 自身的 speed 只是很慢的漂移，免得雾像一块贴纸。
+ */
+export function drawMist(
+  g: Ctx,
+  t: number,
+  y: number,
+  alpha: number,
+  speed: number,
+  offset = 0,
+): void {
   const sheet = farLayers().mist
   const prev = g.globalAlpha
-  const shift = ((t * speed) % MIST_W + MIST_W) % MIST_W
+  const shift = ((t * speed + offset) % MIST_W + MIST_W) % MIST_W
   g.globalAlpha = prev * alpha
   for (let k = -1; k <= 1; k++) g.drawImage(sheet, k * MIST_W - shift, y)
   g.globalAlpha = prev
 }
 
-/** 定格取景窗：镜头 B 停稳后重绘这扇窗（压暗之后再点亮） */
-export function drawFocusWindow(g: Ctx, strength: number): void {
+/**
+ * 定格取景窗：跟拍压暗之后，把这扇窗重新点亮一次。
+ * 位置跟列车一起走（heroWindowScreenX），上下起伏与车厢同相，
+ * 所以重绘的窗永远正压在原来那扇窗上，不会出现两个窗。
+ */
+export function drawFocusWindow(g: Ctx, t: number, strength: number): void {
   const prev = g.globalAlpha
-  const wx = HERO_X - WIN_W / 2
-  const wy = HERO_Y - WIN_H / 2
+  const cx = heroWindowScreenX(t)
+  const cy = HERO_Y + bogieBob(t, HERO_CAR)
+  const wx = cx - WIN_W / 2
+  const wy = cy - WIN_H / 2
 
   // 窗外暖光（雾里的散射）
-  const halo = g.createRadialGradient(HERO_X, HERO_Y, 3, HERO_X, HERO_Y, 34)
+  const halo = g.createRadialGradient(cx, cy, 3, cx, cy, 34)
   halo.addColorStop(0, `rgba(200,160,64,${(0.26 * strength).toFixed(3)})`)
   halo.addColorStop(0.45, `rgba(200,160,64,${(0.09 * strength).toFixed(3)})`)
   halo.addColorStop(1, 'rgba(200,160,64,0)')
   g.fillStyle = halo
-  g.fillRect(HERO_X - 36, HERO_Y - 36, 72, 72)
+  g.fillRect(cx - 36, cy - 36, 72, 72)
 
   // 玻璃暖光
   r(g, wx, wy, WIN_W, WIN_H, C.brass)
