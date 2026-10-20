@@ -1,5 +1,5 @@
 // ============================================================
-// 开场分镜播放器（18.5s）：两个镜头 + 一次遮挡转场
+// 开场分镜播放器（31.6s）：三个镜头 + 一次遮挡转场 + 一段车厢内收尾
 //
 //  镜头 A（纵向铁轨、车头迎面）
 //   0.0–1.0   全黑
@@ -12,9 +12,18 @@
 //  镜头 B（横向铁轨、侧视）
 //   11.9–14.4 切侧视：横向铁轨 + 列车从左横穿，车窗逐扇亮起
 //   14.4–16.4 定格在最右那扇窗：轻微放大 + 其余压暗 + 窗内两个剪影
-//   16.4–18.0 淡出到黑 → finishOpening()（18.0–18.5 留黑）
 //
-// 任意键 / 点击可跳过（直接落到 16.4s 的定格帧）
+//  镜头 C（车厢内，16.4–31.6）
+//   16.4–18.6 从定格车窗推进到弗里德里希的侧脸：他望向窗外，
+//             窗外流过的黑与偶发的灯在他脸上一道道闪过
+//   18.6–21.0 内心独白 ①「列车开了六个小时。」
+//   21.0–23.8 内心独白 ②「对面坐着的叫艾玛。祖克霍夫家派她来接我。」
+//   23.8–26.2 内心独白 ③「我从没听过这个姓。」
+//   26.2–28.4 镜头转向艾玛：只给脸与上半身，不放任何字
+//   28.4–30.4 回到弗里德里希，他说：「我去一趟盥洗室。」
+//   30.4–31.6 淡出到黑 → finishOpening()
+//
+// 任意键 / 点击可跳过（落到 30.4s：他说完那句话的那一帧）
 // ============================================================
 import { useEffect, useRef } from 'react'
 import { finishOpening } from '../game/store'
@@ -24,23 +33,29 @@ import {
   CAM_END,
   HERO_X,
   HERO_Y,
+  drawEmmaShot,
   drawFocusWindow,
   drawLocoFront,
   drawMist,
   drawNarration,
+  drawSpokenLine,
   drawTitleCard,
   drawTrain,
   drawVignette,
+  drawWatchShot,
   farLayers,
+  preloadPortraits,
 } from '../game/art/farback'
 
 /** 分镜总时长（秒） */
-const TOTAL = 18.5
-/** 跳过时落到的时刻：定格车窗那一帧 */
-const SKIP_AT = 16.4
+const TOTAL = 31.6
+/** 跳过时落到的时刻：他说完那句台词的那一帧（台词刚好开始淡出，仍是满亮） */
+const SKIP_AT = 30.4
 /** 车头占满画面 / 擦过镜头时敲一声：当作汽笛 / 站钟 */
 const BELL_AT = 10.4
-/** 跳过时把定格帧留一下再进车厢 */
+/** 16.4s 进车厢内：车厢连接处很轻的一记碰撞 */
+const DOOR_AT = 16.4
+/** 跳过时把落点那一帧留一下再进车厢 */
 const SKIP_HOLD_MS = 160
 
 /** 镜头 A：相机下移 */
@@ -53,13 +68,25 @@ const T_BLACK_END = 11.9
 const T_HOLD_START = 14.6
 const T_DIM_END = 15.9
 const T_ZOOM_END = 16.0
+/** 进车厢：定格车窗继续推进 0.9s，同时新机位淡入 */
+const T_CABIN = 16.4
+const T_CABIN_ZOOM = 17.3
+const T_WATCH_IN = 16.7
+const T_WATCH_FULL = 17.4
+/** 26.2s 镜头转向艾玛：他 0.4s 淡出，她略晚一点淡入（叠影一闪就过）；28.4s 硬切回 */
+const T_EMMA = 26.2
+const T_WATCH_GONE = 26.6
+const T_EMMA_IN = 26.36
+const T_EMMA_FULL = 26.68
+const T_BACK = 28.4
 /** 淡出 */
-const T_FADE_START = 16.4
-const T_FADE_END = 18.0
+const T_FADE_START = 30.4
+const T_FADE_END = 31.6
 
 // ---- 字幕时间轴：[淡入起, 淡入满, 淡出起, 淡出完] ----
 // 全部用 smoothstep，不用线性：进出都要有「电影字幕」的缓起缓收。
-// 任一窗口在 SKIP_AT(16.4s) 之前早已归零，所以跳过落到定格帧时不会带字。
+// 三句独白首尾相接、互不重叠；艾玛那 2 秒一个字都没有。
+// 台词的淡出压在 30.4–30.8：跳过落在 30.4 时它还是满亮的一帧。
 
 /** 地名 ①：巴伐利亚帝国 · 多特蒙德行省（群山渐显 → 镜头开始下移后淡出） */
 const T_CARD_A = [1.6, 2.3, 3.5, 4.2] as const
@@ -69,13 +96,28 @@ const T_CARD_B = [4.6, 5.3, 6.5, 7.2] as const
 const T_NARR_A = [7.6, 8.5, 9.3, 10.2] as const
 /** 旁白 ②：侧视列车横穿时 */
 const T_NARR_B = [12.4, 13.2, 13.8, 14.6] as const
+/** 内心独白 ① / ② / ③：各 0.5s 淡入、0.4s 淡出 */
+const T_MONO_A = [18.6, 19.1, 20.6, 21.0] as const
+const T_MONO_B = [21.0, 21.5, 23.4, 23.8] as const
+const T_MONO_C = [23.8, 24.3, 25.8, 26.2] as const
+/** 台词：28.4s 起，0.5s 淡入、0.4s 淡出（30.4 时仍满亮） */
+const T_SPOKEN = [28.4, 28.9, 30.4, 30.8] as const
 
 /** 地名卡文案：主标题 + 一行注脚（年代用原作占位 XX，不编具体年份） */
 const CARD_A = { title: '巴伐利亚帝国 · 多特蒙德行省', note: 'ANNO XX' }
-const CARD_B = { title: '东弗里斯兰群山', note: '黑森林 · 聚斯霍芬堡方向' }
+const CARD_B = { title: '东弗里斯兰群山', note: '黑森林 · 深处' }
 /** 旁白文案：\n 断行，左对齐落在左下角，不压车头与车身 */
 const NARR_A = '六月的雨\n下了一整个星期。'
-const NARR_B = '列车穿过黑森林，\n往一座不在地图上的庄园去。'
+const NARR_B = '列车穿过黑森林，\n往帝国的东部边境飞驰而去。'
+/**
+ * 车厢内的三句内心独白：括号包裹，沿用旁白的 14px 灰蓝、左下角。
+ * 第二句最长，折成两行，免得顶到画面右缘。
+ */
+const MONO_A = '（列车开了六个小时。）'
+const MONO_B = '（对面坐着的叫艾玛。\n祖克霍夫家派她来接我。）'
+const MONO_C = '（我从没听过这个姓。）'
+/** 说出口的一句：不套括号、居中浅金，视觉上与独白区分开 */
+const SPOKEN = '「我去一趟盥洗室。」'
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v
@@ -134,10 +176,10 @@ function shotA(g: CanvasRenderingContext2D, t: number, fade: number): void {
 }
 
 /** 镜头 B：横向铁轨，列车自左驶过，定格在最后一扇窗 */
-function shotB(g: CanvasRenderingContext2D, t: number, fade: number): void {
+function shotB(g: CanvasRenderingContext2D, t: number, alpha: number, extraZoom = 0): void {
   const L = farLayers()
   const camY = CAM_END
-  const zoom = 1 + 0.9 * smooth(T_HOLD_START, T_ZOOM_END, t)
+  const zoom = 1 + 0.9 * smooth(T_HOLD_START, T_ZOOM_END, t) + extraZoom
   const dim = smooth(T_HOLD_START, T_DIM_END, t)
 
   const cSky = camY * 0.5
@@ -145,7 +187,7 @@ function shotB(g: CanvasRenderingContext2D, t: number, fade: number): void {
   const cMid = camY * 0.86
   const cForest = camY * 0.94
 
-  g.globalAlpha = fade
+  g.globalAlpha = alpha
   g.save()
   g.translate(HERO_X, HERO_Y)
   g.scale(zoom, zoom)
@@ -164,10 +206,10 @@ function shotB(g: CanvasRenderingContext2D, t: number, fade: number): void {
 
   // 定格：除这扇窗以外整体压暗，再把窗重新点亮一次
   if (dim > 0.001) {
-    g.globalAlpha = fade * 0.8 * dim
+    g.globalAlpha = alpha * 0.8 * dim
     g.fillStyle = '#000000'
     g.fillRect(0, 0, VIEW_W, VIEW_H)
-    g.globalAlpha = fade
+    g.globalAlpha = alpha
     g.save()
     g.translate(HERO_X, HERO_Y)
     g.scale(zoom, zoom)
@@ -176,11 +218,24 @@ function shotB(g: CanvasRenderingContext2D, t: number, fade: number): void {
     g.restore()
   }
 
-  drawVignette(g, fade * (0.42 + 0.5 * dim))
+  drawVignette(g, alpha * (0.42 + 0.5 * dim))
   g.globalAlpha = 1
 }
 
-/** 把某一时刻的字幕叠到 canvas 上：地名卡（居中偏下）+ 旁白（左下角） */
+/** 车厢内两个机位的不透明度：26.2–26.6 他淡出、她 26.36 起淡入；28.4 硬切回 */
+function watchAlpha(t: number): number {
+  if (t < T_CABIN) return 0
+  if (t < T_EMMA) return smooth(T_WATCH_IN, T_WATCH_FULL, t)
+  if (t < T_BACK) return 1 - smooth(T_EMMA, T_WATCH_GONE, t)
+  return 1
+}
+
+function emmaAlpha(t: number): number {
+  if (t < T_EMMA_IN || t >= T_BACK) return 0
+  return smooth(T_EMMA_IN, T_EMMA_FULL, t)
+}
+
+/** 把某一时刻的字幕叠到 canvas 上：地名卡（居中偏下）+ 旁白（左下角）+ 车厢内独白 / 台词 */
 function drawCaptions(g: CanvasRenderingContext2D, t: number): void {
   // 两段地名卡互不重叠（① 4.2s 收完，② 4.6s 才起），不会同屏出现两行大字
   const a = envelope(t, T_CARD_A)
@@ -193,6 +248,18 @@ function drawCaptions(g: CanvasRenderingContext2D, t: number): void {
   if (na > 0.004) drawNarration(g, NARR_A, na)
   const nb = envelope(t, T_NARR_B)
   if (nb > 0.004) drawNarration(g, NARR_B, nb)
+
+  // 三句内心独白：括号包住，仍是左下角的灰蓝小字
+  const ma = envelope(t, T_MONO_A)
+  if (ma > 0.004) drawNarration(g, MONO_A, ma)
+  const mb = envelope(t, T_MONO_B)
+  if (mb > 0.004) drawNarration(g, MONO_B, mb)
+  const mc = envelope(t, T_MONO_C)
+  if (mc > 0.004) drawNarration(g, MONO_C, mc)
+
+  // 说出口的那句：居中浅金，与独白分开
+  const sp = envelope(t, T_SPOKEN)
+  if (sp > 0.004) drawSpokenLine(g, SPOKEN, sp)
 }
 
 /** 把某一时刻的整幅画面画到 canvas 上（纯函数：跳过时可直接取任意 t） */
@@ -209,12 +276,38 @@ export function renderFrame(g: CanvasRenderingContext2D, t: number): void {
   g.fillRect(0, 0, VIEW_W, VIEW_H)
 
   if (!blackout && fade > 0.001) {
-    if (t < T_BLACK_END) shotA(g, t, fade)
-    else shotB(g, t, fade)
+    if (t < T_BLACK_END) {
+      shotA(g, t, fade)
+    } else if (t < T_CABIN) {
+      shotB(g, t, fade)
+    } else {
+      // 定格车窗继续推进、淡出；同一时刻弗里德里希的机位淡入 —— 一个连续镜头
+      const outA = 1 - smooth(T_CABIN, T_CABIN_ZOOM, t)
+      if (outA > 0.004) {
+        shotB(g, t, fade * outA, 0.95 * smooth(T_CABIN, T_CABIN_ZOOM, t))
+      }
+      const wa = watchAlpha(t)
+      if (wa > 0.004) drawWatchShot(g, t, fade * wa)
+      const ea = emmaAlpha(t)
+      if (ea > 0.004) drawEmmaShot(g, t, fade * ea)
+    }
   }
   // 字幕画在画面最上层：自己有淡入淡出，不跟 fadeIn / fadeOut 走
   drawCaptions(g, t)
   g.restore()
+}
+
+/**
+ * 验收 / 调试用的定帧入口：URL 里带 ?opening=<秒> 时只渲染那一帧。
+ * 平时（不带参数）返回 null，播放流程完全不受影响。
+ */
+function freezeAt(): number | null {
+  if (typeof window === 'undefined') return null
+  const raw = new URLSearchParams(window.location.search).get('opening')
+  if (raw == null || raw === '') return null
+  const t = Number(raw)
+  if (!Number.isFinite(t)) return null
+  return t < 0 ? 0 : t > TOTAL ? TOTAL : t
 }
 
 export function Opening() {
@@ -228,12 +321,28 @@ export function Opening() {
     g.imageSmoothingEnabled = false
 
     farLayers()          // 首帧之前一次性把远景画好
+    preloadPortraits()   // 车厢内两镜的立绘：先拉，没拉完就用剪影兜底
+
+    // 验收 / 调试：?start=1&opening=17.5 把画面定在任意一帧（不播放、不进车厢）。
+    // 正是靠 renderFrame(g, t) 的纯函数性：给任意 t 都能画出那一帧。
+    const frozen = freezeAt()
+    if (frozen != null) {
+      let raf2 = 0
+      const redraw = (): void => {
+        renderFrame(g, frozen)
+        raf2 = requestAnimationFrame(redraw)
+      }
+      redraw()
+      return () => cancelAnimationFrame(raf2)
+    }
+
     Snd.start()          // 用户已按键 / 点击过，允许发声
     Snd.setScene('silent')
 
     const start = performance.now()
     let raf = 0
     let bellFired = false
+    let doorFired = false
     let stopped = false
     let holdTimer = 0
 
@@ -250,7 +359,7 @@ export function Opening() {
       finishOpening()
     }
 
-    // 跳过：直接落到 16.4s 的定格帧，停一下再进车厢
+    // 跳过：直接落到 30.4s（他说完那句话的那一帧），停一下再进车厢
     const skip = (): void => {
       if (stopped) return
       stopped = true
@@ -273,6 +382,10 @@ export function Opening() {
       if (!bellFired && t >= BELL_AT) {
         bellFired = true
         Snd.sfx('bell')
+      }
+      if (!doorFired && t >= DOOR_AT) {
+        doorFired = true
+        Snd.sfx('door') // 车厢连接处很轻的一记碰撞
       }
       renderFrame(g, Math.min(t, TOTAL))
       if (t >= TOTAL) {

@@ -1235,3 +1235,517 @@ export function drawNarration(g: Ctx, text: string, alpha: number): void {
 
   g.restore()
 }
+
+/**
+ * 台词（说出口的一句话）：与旁白刻意拉开距离 ——
+ * 水平居中、15px、暖浅金 #e8e0d0，比左下角的灰蓝旁白亮一档。
+ * 引号由调用方写进 text 里，这里只负责排版。
+ */
+const SPOKEN_SIZE = 15
+const SPOKEN_GAP = 1
+/** 台词基线中心 y：压在画面下方，离人脸远一点 */
+const SPOKEN_Y = 188
+
+export function drawSpokenLine(g: Ctx, text: string, alpha: number): void {
+  const a = clamp01(alpha)
+  if (a <= 0.004) return
+  const line = text.split('\n').filter(s => s.length > 0)
+  if (line.length === 0) return
+
+  g.save()
+  g.globalAlpha = a
+  g.textAlign = 'left'
+  g.textBaseline = 'middle'
+  g.font = `${SPOKEN_SIZE}px ${SERIF}`
+  g.fillStyle = '#e8e0d0'
+  g.shadowColor = 'rgba(0,0,0,0.85)'
+  g.shadowOffsetX = 0
+  g.shadowOffsetY = 1
+  g.shadowBlur = 2
+
+  const top = SPOKEN_Y - ((line.length - 1) * 20) / 2
+  for (let i = 0; i < line.length; i++) {
+    const w = spacedWidth(g, line[i], SPOKEN_GAP)
+    paintSpaced(
+      g,
+      line[i],
+      Math.round((VIEW_W - w) / 2),
+      Math.round(top + i * 20),
+      SPOKEN_GAP,
+      null,
+    )
+  }
+  g.restore()
+}
+
+// ============================================================
+// 10) 车厢内两镜（16.4–31.6s）
+//
+//   镜头 C1「望向窗外」16.4–26.2（26.2–28.4 让位给艾玛，28.4 切回）
+//     · 弗里德里希的立绘从右下方升入，只入半身；整体水平翻转 → 他朝左看
+//     · 左侧是他望着的窗：暗蓝窗洞，窗外快速掠过的树影 + 偶尔的暖色灯
+//     · 脸上叠横向掠过的明暗条带（车窗外的树影打在脸上）
+//   镜头 C2「对面的艾玛」26.2–28.4
+//     · 弗里德里希淡出，艾玛从左下方升入；木色车厢压暗；这一镜没有任何字
+//
+//   立绘直接用项目已有的 256×256 透明 PNG（./portraits/*.png），
+//   不程序化重画；图像没加载完时画深色剪影兜底，绝不留白。
+//   所有条带的时机 / 宽度 / 明暗都由固定 seed 的 hash 生成：
+//   同一个 t 每次画出来都一样，renderFrame(g, t) 仍是纯函数。
+// ============================================================
+
+/** 立绘在屏上的边长：256 原生 → 200，NEAREST 放大 */
+const PORTRAIT_W = 200
+
+const PORTRAIT_SRC = {
+  ftz: './portraits/ftz.png',
+  emma: './portraits/emma.png',
+} as const
+
+/** 弗里德里希：水平翻转后头中心落在画面右 1/3（x≈256），下半身出画 */
+const FTZ_PX = 156
+const FTZ_PY = 32
+/** 艾玛：坐在对面，居中偏左，同样只入半身 */
+const EMMA_PX = 88
+const EMMA_PY = 26
+
+interface Portrait {
+  img: HTMLImageElement
+  failed: boolean
+}
+
+interface Portraits {
+  ftz: Portrait
+  emma: Portrait
+}
+
+let cachedPortraits: Portraits | null = null
+
+function loadPortrait(src: string): Portrait {
+  const p: Portrait = { img: new Image(), failed: false }
+  p.img.onerror = () => { p.failed = true }
+  p.img.src = src
+  return p
+}
+
+/** 立绘预加载：Opening 首帧之前调用一次（不调用也能工作，只是先画剪影） */
+export function preloadPortraits(): void {
+  if (!cachedPortraits) {
+    cachedPortraits = {
+      ftz: loadPortrait(PORTRAIT_SRC.ftz),
+      emma: loadPortrait(PORTRAIT_SRC.emma),
+    }
+  }
+}
+
+function portraits(): Portraits {
+  preloadPortraits()
+  return cachedPortraits!
+}
+
+function portraitReady(p: Portrait): boolean {
+  return !p.failed && p.img.complete && p.img.naturalWidth > 0
+}
+
+/** 立绘合成缓冲：先在 200×200 离屏画好「立绘 + 脸部条带」，再整块贴到主画布 */
+let portraitBuf: HTMLCanvasElement | null = null
+
+function portraitBuffer(): { c: HTMLCanvasElement; g: Ctx } {
+  if (!portraitBuf) {
+    portraitBuf = document.createElement('canvas')
+    portraitBuf.width = PORTRAIT_W
+    portraitBuf.height = PORTRAIT_W
+  }
+  return { c: portraitBuf, g: portraitBuf.getContext('2d')! }
+}
+
+/** 离屏用实心椭圆：上面的 ellRows 裁到视口高度，这里不能复用 */
+function fillEllipse(g: Ctx, cx: number, cy: number, rx: number, ry: number, col: string): void {
+  g.fillStyle = col
+  const y0 = Math.ceil(cy - ry)
+  const y1 = Math.floor(cy + ry)
+  for (let y = y0; y <= y1; y++) {
+    const dy = (y - cy) / ry
+    const s = 1 - dy * dy
+    if (s <= 0) continue
+    const hw = Math.round(rx * Math.sqrt(s))
+    g.fillRect(Math.round(cx - hw), y, hw * 2, 1)
+  }
+}
+
+/**
+ * 剪影兜底：立绘还没解码完时也要读出「一个人坐在窗边」，
+ * 形状和立绘入画的位置对齐（头在上半、肩压到下缘），不留白。
+ */
+function drawPortraitSilhouette(g: Ctx): void {
+  const cx = 128
+  fillEllipse(g, cx, 206, 96, 74, '#0b0e13')   // 肩
+  g.fillStyle = '#0b0e13'
+  g.fillRect(cx - 17, 116, 34, 46)             // 脖子
+  fillEllipse(g, cx, 76, 44, 50, '#0d1116')    // 头
+  // 一线冷光把轮廓从暗背景里拉出来（与远景月光同色）
+  g.fillStyle = 'rgba(154,166,184,0.22)'
+  g.fillRect(cx - 43, 62, 1, 40)
+  g.fillRect(cx - 30, 34, 1, 22)
+  g.fillRect(cx + 20, 38, 1, 16)
+}
+
+// ---- 脸上的光影条带 ----------------------------------------------------
+// 眼睛与脸颊在离屏坐标里的范围（翻转后）：x 44–164、y 40–110。
+// 条带从右（190）扫到左（22），竖直宽度 3–8px，正好整张脸都掠过。
+
+interface FaceStripe {
+  /** 离屏坐标：条带左缘 */
+  x: number
+  w: number
+  bright: boolean
+  alpha: number
+  seed: number
+  /** 每段横向错开的斜率（−2..2）：整条读起来是微微斜的树影 */
+  tilt: number
+}
+
+const STRIPE_TOP = 32
+const STRIPE_BOT = 132
+const STRIPE_X0 = 190
+const STRIPE_X1 = 22
+/** 第一条条带出现的时刻（16.4s 进车厢之后；相位选在验收帧都能扫在脸上） */
+const STRIPE_T0 = 16.53
+/** 固定 seed：同一时刻的条带永远一样 */
+const STRIPE_SEED = 9271
+
+/**
+ * 生成 t 时刻正在扫过的条带。
+ *
+ * 每 0.6–0.9s 起「一组」：一条亮（+12%）紧挨一条暗（−10%），
+ * 两条各自宽 3–8px、相隔 2–6px —— 读起来是树影的边缘（一道光一道影），
+ * 单条扫过时够亮够暗，不会糊成一根扫描线。
+ * 整组 0.62–0.78s 从右扫到左；时机 / 宽度 / 明暗全部来自 hash(i, seed)，
+ * 同一时刻重画永远一样。
+ */
+function faceStripes(t: number): FaceStripe[] {
+  const out: FaceStripe[] = []
+  let t0 = STRIPE_T0
+  for (let i = 0; i < 64 && t0 < 33; i++) {
+    const gap = 0.6 + hash(i + STRIPE_SEED, 1) * 0.3      // 每 0.6–0.9s 一组
+    const dur = 0.62 + hash(i + STRIPE_SEED, 2) * 0.16    // 扫完整张脸用 0.62–0.78s
+    if (t >= t0 && t <= t0 + dur) {
+      const p = (t - t0) / dur
+      const ease = p * p * (3 - 2 * p)             // 缓起缓收：中段扫得快
+      const edge = Math.min(1, p * 6, (1 - p) * 6) // 进出画面边缘时收掉，不硬切
+      const x = STRIPE_X0 + (STRIPE_X1 - STRIPE_X0) * ease
+      const lightFirst = hash(i + STRIPE_SEED, 3) > 0.5
+      const w1 = 4 + Math.floor(hash(i + STRIPE_SEED, 4) * 5) // 4–8px
+      const w2 = 4 + Math.floor(hash(i + STRIPE_SEED, 5) * 5) // 4–8px
+      const bandGap = Math.floor(hash(i + STRIPE_SEED, 6) * 3) // 0–2px：明暗直接贴在一起
+      out.push({
+        x,
+        w: w1,
+        bright: lightFirst,
+        alpha: (lightFirst ? 0.12 : 0.1) * edge,
+        seed: i,
+        tilt: Math.floor(hash(i + STRIPE_SEED, 7) * 5) - 2,
+      })
+      out.push({
+        x: x + w1 + bandGap,
+        w: w2,
+        bright: !lightFirst,
+        alpha: (lightFirst ? 0.1 : 0.12) * edge,
+        seed: i + 37,
+        tilt: Math.floor(hash(i + STRIPE_SEED, 8) * 5) - 2,
+      })
+    }
+    t0 += gap
+  }
+  return out
+}
+
+/** 一条条带切成三段、每段横向错开 1–2px：像窗外的树影，不是扫描线 */
+function paintStripeRects(g: Ctx, s: FaceStripe): void {
+  for (let k = 0; k < 3; k++) {
+    const y0 = STRIPE_TOP + Math.round(((STRIPE_BOT - STRIPE_TOP) * k) / 3)
+    const y1 = STRIPE_TOP + Math.round(((STRIPE_BOT - STRIPE_TOP) * (k + 1)) / 3)
+    const jx = (k - 1) * s.tilt
+    g.fillRect(Math.round(s.x + jx), y0, s.w, y1 - y0)
+  }
+}
+
+/** 条带用的第二块离屏：只放条带，再用立绘的 alpha 裁掉脸外的部分 */
+let stripeBuf: HTMLCanvasElement | null = null
+
+function stripeBuffer(): { c: HTMLCanvasElement; g: Ctx } {
+  if (!stripeBuf) {
+    stripeBuf = document.createElement('canvas')
+    stripeBuf.width = PORTRAIT_W
+    stripeBuf.height = PORTRAIT_W
+  }
+  return { c: stripeBuf, g: stripeBuf.getContext('2d')! }
+}
+
+/**
+ * 把条带合成回主画布：
+ *   暗条 = 半透明黑，source-over（−10%）
+ *   亮条 = 加性白，lighter（+12%）
+ * 两者都先经 destination-in 裁到立绘的 alpha 上，因此只打在脸/身上，
+ * 不会在背景里留下一条竖线。
+ */
+function paintFaceStripes(
+  g: Ctx,
+  art: HTMLCanvasElement,
+  stripes: FaceStripe[],
+  dx: number,
+  dy: number,
+): void {
+  if (stripes.length === 0) return
+  const { c: sc, g: sg } = stripeBuffer()
+
+  const pass = (list: FaceStripe[], col: (a: number) => string, mode: GlobalCompositeOperation): void => {
+    if (list.length === 0) return
+    sg.setTransform(1, 0, 0, 1, 0, 0)
+    sg.globalCompositeOperation = 'source-over'
+    sg.globalAlpha = 1
+    sg.clearRect(0, 0, PORTRAIT_W, PORTRAIT_W)
+    for (const s of list) {
+      sg.fillStyle = col(s.alpha)
+      paintStripeRects(sg, s)
+    }
+    // 只保留立绘有像素的位置
+    sg.globalCompositeOperation = 'destination-in'
+    sg.drawImage(art, 0, 0)
+    sg.globalCompositeOperation = 'source-over'
+
+    g.globalCompositeOperation = mode
+    g.drawImage(sc, Math.round(dx), Math.round(dy))
+    g.globalCompositeOperation = 'source-over'
+  }
+
+  pass(stripes.filter(s => !s.bright && s.alpha > 0.004), a => `rgba(0,0,0,${a.toFixed(3)})`, 'source-over')
+  pass(stripes.filter(s => s.bright && s.alpha > 0.004), a => `rgba(255,255,255,${a.toFixed(3)})`, 'lighter')
+}
+
+/** 贴一张立绘：翻转 / 剪影兜底 / 脸部条带都在离屏里做完，再整块 drawImage */
+function drawPortrait(
+  g: Ctx,
+  p: Portrait,
+  dx: number,
+  dy: number,
+  flip: boolean,
+  stripes: FaceStripe[] | null,
+): void {
+  const { c, g: pg } = portraitBuffer()
+  pg.setTransform(1, 0, 0, 1, 0, 0)
+  pg.imageSmoothingEnabled = false
+  pg.globalAlpha = 1
+  pg.globalCompositeOperation = 'source-over'
+  pg.clearRect(0, 0, PORTRAIT_W, PORTRAIT_W)
+
+  if (portraitReady(p)) {
+    pg.save()
+    // 水平翻转：他/她因此在画面里「朝另一边看」
+    if (flip) {
+      pg.translate(PORTRAIT_W, 0)
+      pg.scale(-1, 1)
+    }
+    pg.drawImage(p.img, 0, 0, PORTRAIT_W, PORTRAIT_W)
+    pg.restore()
+  } else {
+    drawPortraitSilhouette(pg)
+  }
+
+  g.drawImage(c, Math.round(dx), Math.round(dy))
+  if (stripes) paintFaceStripes(g, c, stripes, dx, dy)
+}
+
+// ---- 车窗：一块暗蓝窗洞 + 横向滚过的树影与灯 -------------------------
+
+const GAP_X = 17
+const GAP_Y = 36
+const GAP_W = 140
+const GAP_H = 130
+const GAP_STRIP_W = 512
+
+/** 窗外纹理：可横向循环（树影首尾各画一遍，滚动时接缝不露） */
+function drawWindowStrip(): HTMLCanvasElement {
+  const { c, g } = canvas(GAP_STRIP_W, GAP_H)
+
+  // 夜空：偏暗蓝，越靠下越暗（暗到近黑，但窗洞本身要能读成一块「暗蓝」）
+  const bands = ['#122132', '#101c2b', '#0d1826', '#0a131e', '#071018']
+  const bh = Math.ceil(GAP_H / bands.length)
+  for (let i = 0; i < bands.length; i++) r(g, 0, i * bh, GAP_STRIP_W, bh + 1, bands[i])
+  r(g, 0, Math.round(GAP_H * 0.62), GAP_STRIP_W, 2, '#050a11')
+
+  // 树影：竖直暗条 —— 车往前走，它们就横向掠过窗口
+  for (let i = 0; i < 64; i++) {
+    const w = 3 + Math.floor(hash(i, 211) * 22)
+    const x = Math.floor(hash(i, 212) * GAP_STRIP_W)
+    const a = 0.4 + hash(i, 213) * 0.45
+    g.fillStyle = `rgba(0,3,7,${a.toFixed(3)})`
+    for (const off of [-GAP_STRIP_W, 0, GAP_STRIP_W]) g.fillRect(x + off, 0, w, GAP_H)
+  }
+  // 近处树冠：上半部更密的暗块，和远景拉开速度差
+  for (let i = 0; i < 40; i++) {
+    const x = Math.floor(hash(i, 221) * GAP_STRIP_W)
+    const y = Math.floor(hash(i, 222) * GAP_H * 0.42)
+    const w = 8 + Math.floor(hash(i, 223) * 26)
+    const h = 3 + Math.floor(hash(i, 224) * 10)
+    g.fillStyle = 'rgba(0,3,7,0.5)'
+    for (const off of [-GAP_STRIP_W, 0, GAP_STRIP_W]) g.fillRect(x + off, y, w, h)
+  }
+  // 远处的灯：隔很远才有一盏暖色光斑
+  for (let i = 0; i < 9; i++) {
+    const x = Math.floor(hash(i, 231) * GAP_STRIP_W)
+    const y = Math.round(GAP_H * (0.34 + hash(i, 232) * 0.42))
+    const rad = 2 + Math.floor(hash(i, 233) * 3)
+    const glow = g.createRadialGradient(x, y, 1, x, y, rad * 5)
+    glow.addColorStop(0, 'rgba(232,176,88,0.5)')
+    glow.addColorStop(0.4, 'rgba(200,150,72,0.18)')
+    glow.addColorStop(1, 'rgba(160,110,40,0)')
+    g.fillStyle = glow
+    g.fillRect(x - rad * 5, y - rad * 5, rad * 10, rad * 10)
+    g.fillStyle = '#e8b058'
+    for (const off of [-GAP_STRIP_W, 0, GAP_STRIP_W]) {
+      g.fillRect(x + off - (rad >> 1), y - (rad >> 1), rad, rad)
+    }
+  }
+  return c
+}
+
+let cachedWindowStrip: HTMLCanvasElement | null = null
+
+function windowStrip(): HTMLCanvasElement {
+  if (!cachedWindowStrip) cachedWindowStrip = drawWindowStrip()
+  return cachedWindowStrip
+}
+
+/** 窗洞：两层不同速度的滚动纹理 + 玻璃冷光 + 木窗框 + 窗台 */
+function drawWindowView(g: Ctx, t: number): void {
+  const strip = windowStrip()
+  const base = g.globalAlpha
+
+  g.save()
+  g.beginPath()
+  g.rect(GAP_X, GAP_Y, GAP_W, GAP_H)
+  g.clip()
+
+  // 远景（慢）与近景（快）：两层一起滚，读出车窗的速度
+  const s1 = ((t * 300) % GAP_STRIP_W + GAP_STRIP_W) % GAP_STRIP_W
+  g.globalAlpha = base * 0.95
+  for (let k = -1; k <= 1; k++) g.drawImage(strip, GAP_X + k * GAP_STRIP_W - s1, GAP_Y)
+  const s2 = ((t * 620) % GAP_STRIP_W + GAP_STRIP_W) % GAP_STRIP_W
+  g.globalAlpha = base * 0.45
+  for (let k = -1; k <= 1; k++) g.drawImage(strip, GAP_X + k * GAP_STRIP_W - s2, GAP_Y + 8)
+  g.globalAlpha = base
+
+  // 玻璃：一层很薄的冷色，让窗外是「透过去的」而不是贴片
+  g.fillStyle = 'rgba(26,48,72,0.16)'
+  g.fillRect(GAP_X, GAP_Y, GAP_W, GAP_H)
+  g.fillStyle = 'rgba(154,196,230,0.045)'
+  g.fillRect(GAP_X + 12, GAP_Y, 24, GAP_H)
+  g.restore()
+
+  // 窗框：木头
+  const frame = '#171009'
+  r(g, GAP_X - 3, GAP_Y - 3, GAP_W + 6, 3, frame)
+  r(g, GAP_X - 3, GAP_Y + GAP_H, GAP_W + 6, 4, frame)
+  r(g, GAP_X - 3, GAP_Y - 3, 3, GAP_H + 6, frame)
+  r(g, GAP_X + GAP_W, GAP_Y - 3, 3, GAP_H + 6, frame)
+  // 竖棂：把窗分成两扇
+  r(g, GAP_X + Math.round(GAP_W / 2) - 1, GAP_Y, 2, GAP_H, frame)
+  // 窗台：被窗外的灯擦亮的一线
+  r(g, GAP_X - 5, GAP_Y + GAP_H + 3, GAP_W + 12, 3, '#1d1409')
+  r(g, GAP_X - 5, GAP_Y + GAP_H + 3, GAP_W + 12, 1, '#3a2a14')
+}
+
+/** 车厢内壁：暖黑，横向木条；右侧更暗（他背对着的那半边） */
+function drawCabinWall(g: Ctx): void {
+  r(g, 0, 0, VIEW_W, VIEW_H, '#0a0806')
+  for (let y = 0; y < VIEW_H; y += 24) {
+    r(g, 0, y, VIEW_W, 1, '#120d08')
+    r(g, 0, y + 1, VIEW_W, 1, '#070504')
+  }
+  // 右侧的暗：他背后的车厢尽头
+  for (let x = VIEW_W - 70; x < VIEW_W; x++) {
+    const a = ((x - (VIEW_W - 70)) / 70) * 0.5
+    r(g, x, 0, 1, VIEW_H, `rgba(0,0,0,${a.toFixed(3)})`)
+  }
+  // 底部座位 / 裙板的暗影
+  r(g, 0, 190, VIEW_W, VIEW_H - 190, '#070504')
+  r(g, 0, 190, VIEW_W, 1, '#100b06')
+}
+
+/**
+ * 镜头 C1：弗里德里希望向窗外。
+ * 立绘从右下方升入（16.55–17.55s 落位），窗外冷光/暖光交替擦过他。
+ */
+export function drawWatchShot(g: Ctx, t: number, alpha: number): void {
+  const a = clamp01(alpha)
+  if (a <= 0.004) return
+  const prev = g.globalAlpha
+  g.globalAlpha = a
+
+  drawCabinWall(g)
+  drawWindowView(g, t)
+
+  // 窗外灯在窗框右缘散开的一点暖光：把他和窗连起来
+  const lampX = GAP_X + GAP_W
+  const lampY = GAP_Y + GAP_H * 0.45
+  const lamp = g.createRadialGradient(lampX, lampY, 4, lampX, lampY, 96)
+  lamp.addColorStop(0, 'rgba(200,160,64,0.11)')
+  lamp.addColorStop(1, 'rgba(200,160,64,0)')
+  g.fillStyle = lamp
+  g.fillRect(0, 0, VIEW_W, VIEW_H)
+
+  // 从右下方升起：只入画半身，头落在画面右 1/3
+  const rise = smoothstep(16.55, 17.55, t)
+  const dy = Math.round(FTZ_PY + (1 - rise) * 62)
+  drawPortrait(g, portraits().ftz, FTZ_PX, dy, true, faceStripes(t))
+
+  // 画面其余部分压暗
+  drawVignette(g, a * 0.55)
+  g.globalAlpha = prev
+}
+
+/**
+ * 镜头 C2：对面的艾玛。
+ * 木色车厢压暗，她从左下方升入；这一镜没有任何文字。
+ */
+export function drawEmmaShot(g: Ctx, t: number, alpha: number): void {
+  const a = clamp01(alpha)
+  if (a <= 0.004) return
+  const prev = g.globalAlpha
+  g.globalAlpha = a
+
+  // 车厢木壁：暖棕竖板 + 腰线，压暗但仍读得出是木头
+  r(g, 0, 0, VIEW_W, VIEW_H, '#26190f')
+  for (let x = 0; x < VIEW_W; x += 26) {
+    r(g, x, 0, 1, VIEW_H, '#1a110a')
+    r(g, x + 1, 0, 1, VIEW_H, '#332315')
+  }
+  for (let y = 0; y < VIEW_H; y += 31) r(g, 0, y, VIEW_W, 1, '#170f08')
+  // 腰线
+  r(g, 0, 150, VIEW_W, 2, '#3d2a18')
+  r(g, 0, 150, VIEW_W, 1, '#52391f')
+  // 座位靠背：底部暗影
+  r(g, 0, 176, VIEW_W, VIEW_H - 176, '#140d07')
+  r(g, 0, 176, VIEW_W, 1, '#2b1e10')
+  // 从车窗透进来的冷光
+  const cold = g.createRadialGradient(40, 40, 8, 40, 40, 210)
+  cold.addColorStop(0, 'rgba(60,84,112,0.14)')
+  cold.addColorStop(1, 'rgba(60,84,112,0)')
+  g.fillStyle = cold
+  g.fillRect(0, 0, VIEW_W, VIEW_H)
+
+  // 从左下方升起，朝向右侧
+  const rise = smoothstep(26.35, 27.15, t)
+  const dx = Math.round(EMMA_PX - (1 - rise) * 34)
+  const dy = Math.round(EMMA_PY + (1 - rise) * 70)
+  drawPortrait(g, portraits().emma, dx, dy, false, null)
+
+  // 只让她的脸亮着：整幅再压一档
+  g.globalAlpha = a * 0.2
+  g.fillStyle = '#000000'
+  g.fillRect(0, 0, VIEW_W, VIEW_H)
+  g.globalAlpha = prev
+
+  drawVignette(g, a * 0.58)
+}
