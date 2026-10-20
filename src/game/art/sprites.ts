@@ -82,7 +82,7 @@ interface CharColors {
   accent?: string
   /** 白围裙与翻领（艾玛、玛尔塔） */
   apron?: string
-  /** 银灰领结（赫尔曼） */
+  /** 领结：银灰（赫尔曼）/ 纯黑（艾玛的黑蝴蝶结） */
   bow?: string
   /** 头巾（玛尔塔） */
   kerchief?: string
@@ -93,52 +93,67 @@ interface CharColors {
   /** 体型壮实（玛尔塔） */
   stout?: boolean
   /**
-   * 剪影专门画法：英雄（窄肩长身 + 蓬松红发）/ 女仆（方领 + 围裙 + 盘发）。
+   * 剪影专门画法：英雄（窄肩长身 + 蓬松红发）/ 女仆（蕾丝帽 + 垂发 + 围裙）。
    * 彩蛋角色的行走图改用 RPG Maker 素材（public/portraits/ds-walk.png），
    * 不再有程序化的剪影画法。
    */
   silhouette?: 'hero' | 'maid'
   /** 裤/靴的第四档：暗裤上的受光纵向高光 */
   pantsHi?: string
-  /** 虹膜高光（行走图里那一个像素的亮心） */
+  /**
+   * 虹膜高光。行走图已经不用了：每只眼睛只有 2×1 像素，
+   * 往里塞一个高光就会把眼睛涨成 3px —— 立绘的眼睛在 16×24 上放不下这一格。
+   */
   eyeHi?: string
-  /** 虹膜下半 / 上眼睑线的深色（与立绘的 eyeDark 同一档） */
+  /** 上眼睑线 / 深虹膜的深色（立绘里那圈最暗的靛） */
   eyeDark?: string
   /** 高领里露出的银灰领口 */
   collar?: string
   /** 唇色（行走图上只有一两个像素） */
   lip?: string
+  /** 眉：不填就沿用发根的暗色 */
+  brow?: string
+  /** 白色蕾丝帽（艾玛）：帽冠与帽檐的最亮一档 */
+  hat?: string
+  /** 蕾丝帽的阴影：偏紫的冷白，和暖白领子分得开 */
+  hatLo?: string
+  /** 蝴蝶结的受光一档（艾玛的黑蝴蝶结也要有型） */
+  bowHi?: string
 }
 
 /**
- * 弗里德里希：明亮的深红发（不是橙红）、深蓝细长眼、暖调苍白有血色的皮肤。
- * 剪影：蓬松的头发比肩宽（10 vs 6），窄肩长身，深黑高领制服；
- * 胸前一条 V 形银饰（从双肩斜下汇到胸口）+ 银灰立领边 —— 一眼可辨的标志。
+ * 弗里德里希：从新立绘 public/portraits/ftz.png 上直接取色 ——
+ * 头发 #cf4449（立绘头部最常出现的那一片红，偏冷、不是橙红）、
+ * 发根 #661829、眼睛 #4b58a2（虹膜那圈靛蓝）、皮肤 #fbe1c3（暖调苍白有血色）、
+ * 制服 #1d1824（深黑里带一点紫）、立领与 V 形胸饰的银灰 #ad9fb2。
+ * 剪影：蓬松的头发 10px 宽（肩只有 6px），窄肩长身，瘦长的脸。
  */
 const HERO: CharColors = {
-  hair: '#b4231d', hairHi: '#e35138', hairDark: '#6f1211',
-  skin: '#dcb49a', skinShade: '#b08a72', skinHi: '#f0d0b8',
-  coat: '#171a20', coatHi: '#2c333f', coatDark: '#0a0c10',
-  pants: '#22272f', shoe: '#30363f', eye: '#3f6db5', eyeHi: '#bcd8f8',
-  eyeDark: '#26467a',
-  hairStyle: 'short', accent: SILVER.mid, collar: SILVER.mid,
-  pantsHi: '#343b46', silhouette: 'hero', lip: '#a8615a',
+  hair: '#cf4449', hairHi: '#e2685f', hairDark: '#661829',
+  skin: '#fbe1c3', skinShade: '#c99a86', skinHi: '#fff2dd',
+  coat: '#1d1824', coatHi: '#3a3342', coatDark: '#0c0a10',
+  pants: '#232130', shoe: '#14121a', pantsHi: '#3a3650',
+  eye: '#4b58a2', eyeDark: '#242b52', lip: '#c0807a',
+  hairStyle: 'short', accent: '#ad9fb2', collar: '#ad9fb2',
+  brow: '#661829', silhouette: 'hero',
 }
 
 /**
- * 艾玛：银紫（不是纯白）中长微卷发、紫蓝眼、眼下略暗。
- * 剪影：头顶白色蕾丝女仆帽 + 两侧垂到肩的鬓发 + 白色荷叶边围裙 + 绿领结。
- * 皮肤比常人白但仍是活人的暖白，且均匀无色差 —— 她是「被造出来的」。
+ * 艾玛：从新立绘 public/portraits/emma.png 上直接取色 ——
+ * 头发 #a99bb2（银白偏淡紫的中调）、发丝高光 #e6e1e9、发根 #6f5f7c、
+ * 眼睛 #5f4c72（紫灰虹膜）、睫毛/上眼睑 #1f1329（立绘上几乎纯黑）、
+ * 服装 #2f233b（深紫黑女仆装）、白蕾丝 #fdfcf4 / 阴影 #cfc8d6、
+ * 黑蝴蝶结 #171020 —— 新素材是黑蝴蝶结，不再是旧行走图上那个绿领结。
  */
 const EMMA: CharColors = {
-  hair: LILAC.mid, hairHi: LILAC.hi, hairDark: LILAC.lo,
-  skin: '#e8cfc0', skinShade: '#bda093', skinHi: '#f6e2d4',
-  coat: '#2a2340', coatHi: '#3d3459', coatDark: '#171226',
-  pants: '#2a2340', shoe: '#1d1830', eye: '#6a5cc0', eyeHi: '#e0d8ff',
-  eyeDark: '#3e3274',
-  hairStyle: 'bun', apron: C.sugar, collar: C.bone,
-  accent: BOW_G.mid, flat: true, silhouette: 'maid', pantsHi: '#332b4a',
-  lip: '#b08080',
+  hair: '#a99bb2', hairHi: '#e6e1e9', hairDark: '#6f5f7c',
+  skin: '#f2ead4', skinShade: '#cbbcc9', skinHi: '#fffdf2',
+  coat: '#2f233b', coatHi: '#453758', coatDark: '#1a1224',
+  pants: '#2f233b', shoe: '#1a1224', pantsHi: '#3a2d48',
+  eye: '#5f4c72', eyeDark: '#1f1329', eyeHi: '#cfc8d6', lip: '#c49aa4',
+  hairStyle: 'bun', apron: '#f9f7ee', collar: '#cfc8d6',
+  bow: '#171020', bowHi: '#3a2d48', hat: '#fdfcf4', hatLo: '#cfc8d6',
+  brow: '#1f1329', flat: true, silhouette: 'maid',
 }
 
 /** 赫尔曼：黑燕尾服、银灰领结、极苍白；比别人高 2 像素 */
@@ -362,29 +377,47 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
 }
 
 // ============================================================
-// 弗里德里希：窄肩长身 + 蓬松红发
-// 16×24。发顶 y1，脸 y4..y10，窄躯干 y11..y17，长腿 y18..20，靴 y21..22。
-// 五官行号与艾玛完全一致（眉 y5 / 眼 y6..y7 / 鼻 y8 / 嘴 y9 / 下巴 y10），
-// 两人在地图上切换时脸不会一高一低。
-// 剪影：头发 10px 宽 > 肩 6px 宽；直筒长腿；深色高领 + 银灰领口 + 铜扣。
+// 弗里德里希：深红蓬松发 + 靛蓝细眼 + 深黑高领制服 + 银灰 V 形胸饰
 // ============================================================
+/**
+ * 16×24，四方向 × 三帧。骨架（三个方向共用，只差头发与五官）：
+ *   发顶 y1..y3，脸 y4..y10，躯干 y11..y17，直腿 y18..y20，靴 y21..y22。
+ *   五官行号与艾玛完全一致（眉 y5 / 眼 y7 / 鼻 y8 / 嘴 y9 / 下巴 y10），
+ *   两人在地图上切换时脸不会一高一低。
+ *
+ * 脸型（修「脸太方」）：上宽下窄，不再是上下等宽的方块 ——
+ *   额/颧 8px（x4..x11）→ 下颌 6px（x5..x10）→ 下巴 4px（x6..x9）。
+ *
+ * 眼睛（修「眼睛太大」）：每只 2px 宽 × 1px 高，纯色、无眼白、无高光 ——
+ *   左眼 x5..x6、右眼 x9..x10，中间 x7..x8 是 2px 鼻梁，
+ *   左右两侧 x4 与 x11 各留 1px 腮。眉在 y5，与眼睛之间空一整行，眼窝才是凹的。
+ *
+ * 三帧：《0 站立》身体在最高点以外的常态；《1》上身抬起 1px、抬左腿、右臂前摆；
+ * 《2》抬右腿、左臂前摆。侧面则换成前腿前伸 / 后腿后撤。
+ */
 function drawHero(cc: CharColors, dir: Dir, frame: number): Sprite {
   const { c, g } = canvas(16, 24)
   const mirror = dir === 'right'
+  /** 形体镜像（朝右时把形体翻过来，颜色仍按屏幕左上光分配） */
   const mx = (x: number, w = 1): number => (mirror ? 16 - x - w : x)
-  const bob = frame === 1 ? -1 : 0        // 身体起伏
+  /** 上身起伏 1px（第 1 帧最高）；腿与下摆钉在地上，不跟着动 */
+  const bob = frame === 1 ? -1 : 0
   const swing = frame === 1 ? 1 : frame === 2 ? -1 : 0
-  const liftL = frame === 1 ? 1 : 0       // 抬左腿
-  const liftR = frame === 2 ? 1 : 0       // 抬右腿
+  const liftL = frame === 1 ? 1 : 0
+  const liftR = frame === 2 ? 1 : 0
   const hi = cc.pantsHi ?? cc.pants
-  const lip = cc.lip ?? '#8b5a52'
+  const brow = cc.brow ?? cc.hairDark
+  const lip = cc.lip ?? '#c0807a'
+  const silver = cc.collar ?? C.pale
+  const silverHi = C.bone
+  const silverLo = C.mist
   const darkShoe = cc.coatDark
 
   // ---- 影子 ----
   r(g, 3, 23, 10, 1, 'rgba(0,0,0,0.42)')
   r(g, 4, 22, 8, 1, 'rgba(0,0,0,0.20)')
 
-  // ---- 腿：细长直腿（裤 3 行 + 靴 2 行）；抬起的腿短 1px 并压暗 ----
+  // ---- 腿：裤 3 行 + 靴 2 行；抬起的腿短 1px 并压暗（读作离地）----
   if (dir === 'down' || dir === 'up') {
     r(g, 5, 18, 2, 3 - liftL, cc.pants)
     r(g, 5, 18, 1, 3 - liftL, hi)
@@ -395,25 +428,27 @@ function drawHero(cc: CharColors, dir: Dir, frame: number): Sprite {
     r(g, 9, 21 - liftR, 2, 2, liftR ? darkShoe : cc.shoe)
     px(g, 9, 21 - liftR, liftR ? cc.pants : hi)
   } else {
-    // 侧面：原型朝左——前腿在屏幕左（x5..6），后腿在右（x9..10）
+    // 侧面：原型朝左，前腿在屏幕左 —— 第 1 帧前伸、第 2 帧后撤
     const lead = frame === 1 ? 1 : 0
     const trail = frame === 2 ? 1 : 0
-    r(g, mx(9, 2), 18, 2, 3 - trail, cc.pants)          // 后腿
-    r(g, mx(9, 2), 18, 1, 3 - trail, hi)
-    r(g, mx(9, 2), 21 - trail, 2, 2, trail ? darkShoe : cc.shoe)
-    r(g, mx(5 + lead, 2), 18, 2, 3, cc.pants)           // 前腿（frame1 前伸）
-    r(g, mx(5 + lead, 2), 18, 1, 3, hi)
-    r(g, mx(5 + lead, 2), 21, 2, 2, cc.shoe)
-    px(g, mx(5 + lead, 2), 21, hi)
+    r(g, mx(9 + trail, 2), 18, 2, 3, cc.pants)        // 后腿
+    r(g, mx(9 + trail, 2), 18, 1, 3, hi)
+    r(g, mx(9 + trail, 2), 21, 2, 2, cc.shoe)
+    r(g, mx(5 - lead, 2), 18, 2, 3, cc.pants)         // 前腿
+    r(g, mx(5 - lead, 2), 18, 1, 3, hi)
+    r(g, mx(5 - lead, 2), 21, 2, 2, cc.shoe)
+    px(g, mx(5 - lead, 2), 21, hi)
   }
 
-  // ---- 躯干：只有 6 宽，窄肩 ----
+  // ---- 躯干：窄肩只有 6 宽；上身高 1px 时补一行，下摆永远落在 y17 ----
   const ty = 11 + bob
-  r(g, 5, ty, 6, 7, cc.coat)
-  r(g, 5, ty, 6, 1, cc.coatHi)               // 肩线
-  r(g, 5, ty, 1, 7, cc.coatHi)               // 屏幕左缘受光
-  r(g, 10, ty, 1, 7, cc.coatDark)            // 屏幕右缘背光
-  r(g, 5, ty + 6, 6, 1, cc.coatDark)         // 下摆
+  const bodyH = 17 - ty
+  r(g, 5, ty, 6, bodyH, cc.coat)
+  r(g, 5, ty, 6, 1, cc.coatHi)              // 肩线受光
+  r(g, 5, ty, 1, bodyH, cc.coatHi)          // 屏幕左缘受光
+  r(g, 10, ty, 1, bodyH, cc.coatDark)       // 屏幕右缘背光
+  r(g, 5, 17, 6, 1, cc.coatDark)            // 下摆
+  px(g, 8, ty + 4, cc.coatDark)             // 一道极轻的衣褶，别让他像一块板
 
   // ---- 手臂：细，摆动 ±1px，末端露一只手 ----
   if (dir === 'down' || dir === 'up') {
@@ -429,163 +464,167 @@ function drawHero(cc: CharColors, dir: Dir, frame: number): Sprite {
     r(g, mx(6, 2), aY, 2, 4, cc.coat)
     px(g, mx(6, 1), aY, cc.coatHi)
     px(g, mx(7, 1), aY + 3, cc.skin)
+    px(g, mx(6, 1), aY + 3, cc.coatDark)
   }
 
   // ---- 头 ----
   if (dir === 'down') {
-    // 脸：8 宽 7 高
-    r(g, 4, 4 + bob, 8, 7, cc.skin)
-    r(g, 4, 4 + bob, 1, 6, cc.skinHi)
-    r(g, 11, 4 + bob, 1, 6, cc.skinShade)
-    r(g, 5, 10 + bob, 6, 1, cc.skin)                  // 下巴
-    px(g, 5, 10 + bob, cc.skinShade)
-    px(g, 10, 10 + bob, cc.skinShade)
-    // 顶发：三层加宽，比肩宽一圈
+    // 脸：8 → 8 → 8 → 8 → 6 → 6 → 4（上宽下窄）
+    r(g, 4, 4 + bob, 8, 4, cc.skin)
+    r(g, 5, 8 + bob, 6, 2, cc.skin)
+    r(g, 6, 10 + bob, 4, 1, cc.skin)
+    // 每行两端各 1px：屏幕左受光、屏幕右背光
+    r(g, 4, 4 + bob, 1, 4, cc.skinHi)
+    r(g, 11, 4 + bob, 1, 4, cc.skinShade)
+    r(g, 5, 8 + bob, 1, 2, cc.skinHi)
+    r(g, 10, 8 + bob, 1, 2, cc.skinShade)
+    px(g, 6, 10 + bob, cc.skinHi)
+    px(g, 9, 10 + bob, cc.skinShade)
+    // 眉 y5：两段 2px，与眼睛之间空一整行
+    r(g, 5, 5 + bob, 2, 1, brow)
+    r(g, 9, 5 + bob, 2, 1, brow)
+    // 眼 y7：每只 2×1，纯色 —— 不画眼白、不画高光
+    r(g, 5, 7 + bob, 2, 1, cc.eye)
+    r(g, 9, 7 + bob, 2, 1, cc.eye)
+    // 鼻：只在 y8 点一下鼻头。y7 那一行留干净 —— 眼睛行里多一个暗点，
+    // 会被读成第三只眼睛，2×1 的两只眼也就白算了
+    px(g, 8, 8 + bob, cc.skinShade)
+    // 嘴：2px，压在下巴上方
+    r(g, 7, 9 + bob, 2, 1, lip)
+    // 顶发：三层加宽到 10px（比脸宽 2px、比肩宽 4px），蓬松
     r(g, 6, 1 + bob, 4, 1, cc.hair)
-    r(g, 7, 1 + bob, 2, 1, cc.hairHi)
+    px(g, 7, 1 + bob, cc.hairHi)
+    px(g, 9, 1 + bob, cc.hairDark)
     r(g, 4, 2 + bob, 8, 1, cc.hair)
     r(g, 4, 2 + bob, 4, 1, cc.hairHi)
     r(g, 10, 2 + bob, 2, 1, cc.hairDark)
-    r(g, 3, 2 + bob, 1, 1, cc.hairHi)                 // 左侧翘起的一绺
-    r(g, 12, 2 + bob, 1, 1, cc.hairDark)
+    px(g, 3, 2 + bob, cc.hairHi)                 // 左侧翘起的一绺
+    px(g, 12, 2 + bob, cc.hairDark)
     r(g, 3, 3 + bob, 10, 1, cc.hair)
     r(g, 3, 3 + bob, 3, 1, cc.hairHi)
     r(g, 11, 3 + bob, 2, 1, cc.hairDark)
-    // 刘海：左绺 x3..5，右绺 x10..12，中间露 4px 额头
-    r(g, 3, 4 + bob, 3, 1, cc.hair)
-    px(g, 5, 4 + bob, cc.hairDark)                    // 左绺尖
-    r(g, 10, 4 + bob, 3, 1, cc.hair)
-    px(g, 10, 4 + bob, cc.hairDark)                   // 右绺尖
+    // 刘海 y4：两侧各 2px，中间露 6px 额头（正好和眼睛那 6px 一样宽）
+    r(g, 3, 4 + bob, 2, 1, cc.hair)
     px(g, 3, 4 + bob, cc.hairHi)
-    // 鬓发：垂到下颌，把脸框住
-    r(g, 3, 5 + bob, 1, 2, cc.hair)
-    r(g, 12, 5 + bob, 1, 2, cc.hairDark)
-    // 眉（y5）：与眼睛之间空出 y6 一整行 —— 眉骨凸起，眼窝凹下去
-    r(g, 5, 5 + bob, 2, 1, cc.hairDark)
-    r(g, 9, 5 + bob, 2, 1, cc.hairDark)
-    // 眼：y7 是一条明确的上眼睑横线，y8 只留 1px 高的虹膜 —— 窄眼，不再是方块
-    const eyeDk = cc.eyeDark ?? cc.eye
-    r(g, 5, 7 + bob, 2, 1, eyeDk)
-    r(g, 9, 7 + bob, 2, 1, eyeDk)
-    px(g, 5, 8 + bob, C.sugar)                        // 眼白：虹膜不占满
-    px(g, 6, 8 + bob, cc.eye)                         // 虹膜只占内侧 1px
-    px(g, 9, 8 + bob, cc.eye)
-    px(g, 10, 8 + bob, C.sugar)
-    // 鼻：y7 鼻梁（两眉之间）+ y8 鼻头，两行，不再是一个孤零零的点
-    px(g, 8, 7 + bob, cc.skinShade)                   // 鼻梁的背光侧
-    px(g, 7, 8 + bob, cc.skinShade)                   // 鼻头底面
-    px(g, 8, 8 + bob, cc.skinShade)
-    // 嘴
-    r(g, 7, 9 + bob, 2, 1, lip)
-    px(g, 6, 9 + bob, cc.skinShade)
-    px(g, 9, 9 + bob, cc.skinShade)
+    px(g, 4, 4 + bob, cc.hairDark)                // 左绺的尖
+    r(g, 11, 4 + bob, 2, 1, cc.hair)
+    px(g, 11, 4 + bob, cc.hairDark)               // 右绺的尖
+    // 鬓发：从太阳穴垂到下颌，一路把收窄的脸框住
+    r(g, 3, 5 + bob, 1, 5, cc.hair)
+    r(g, 12, 5 + bob, 1, 5, cc.hairDark)
+    px(g, 3, 5 + bob, cc.hairHi)
+    // 下颌收到 6 / 4 之后，两侧让出来的那一列用头发补上 ——
+    // 不补的话背景会从脸的两侧漏进来，下巴像断开的一样
+    r(g, 4, 8 + bob, 1, 2, cc.hair)
+    r(g, 11, 8 + bob, 1, 2, cc.hairDark)
+    px(g, 5, 10 + bob, cc.hair)
+    px(g, 10, 10 + bob, cc.hairDark)
   } else if (dir === 'up') {
-    // 后脑：整颗头都是头发 —— 没有脸、没有眼
+    // 后脑：整颗头都是头发 —— 没有脸、没有眼睛，一眼就是背影
     r(g, 6, 1 + bob, 4, 1, cc.hair)
-    r(g, 7, 1 + bob, 2, 1, cc.hairHi)
+    px(g, 7, 1 + bob, cc.hairHi)
+    px(g, 9, 1 + bob, cc.hairDark)
     r(g, 4, 2 + bob, 8, 1, cc.hair)
     r(g, 4, 2 + bob, 4, 1, cc.hairHi)
     r(g, 10, 2 + bob, 2, 1, cc.hairDark)
-    r(g, 3, 2 + bob, 1, 1, cc.hairHi)
-    r(g, 12, 2 + bob, 1, 1, cc.hairDark)
-    r(g, 3, 3 + bob, 10, 6, cc.hair)                  // y3..y8
-    r(g, 3, 3 + bob, 1, 6, cc.hairHi)
-    r(g, 12, 3 + bob, 1, 6, cc.hairDark)
-    r(g, 4, 3 + bob, 3, 1, cc.hairHi)
-    // 发丝：两道深缝 + 两点高光
-    r(g, 6, 4 + bob, 1, 4, cc.hairDark)
-    px(g, 4, 4 + bob, cc.hairHi)
-    px(g, 4, 6 + bob, cc.hairHi)
-    px(g, 9, 5 + bob, cc.hairDark)
-    px(g, 11, 4 + bob, cc.hairDark)
-    // 发尾：收窄一行，压暗
-    r(g, 4, 9 + bob, 8, 1, cc.hair)
-    px(g, 4, 9 + bob, cc.hairHi)
-    r(g, 10, 9 + bob, 2, 1, cc.hairDark)
-    px(g, 5, 9 + bob, cc.hairDark)
-    px(g, 9, 9 + bob, cc.hairDark)
-    // 后颈与后领（银灰立领的后缘，背向观众也认得出这套制服）
+    px(g, 3, 2 + bob, cc.hairHi)
+    px(g, 12, 2 + bob, cc.hairDark)
+    r(g, 3, 3 + bob, 10, 1, cc.hair)
+    r(g, 3, 3 + bob, 3, 1, cc.hairHi)
+    r(g, 11, 3 + bob, 2, 1, cc.hairDark)
+    r(g, 3, 4 + bob, 10, 4, cc.hair)               // y4..y7 后脑
+    r(g, 3, 4 + bob, 1, 4, cc.hairHi)              // 左缘受光
+    r(g, 12, 4 + bob, 1, 4, cc.hairDark)           // 右缘背光
+    // 后脑上只走横向的受光带（两段，错开）。这里既不能打对称的 1px 暗点
+    // （会读成眼睛），也不能拉一条深色横杠（会读成嘴）—— 只有亮部是安全的
+    r(g, 4, 4 + bob, 3, 1, cc.hairHi)
+    r(g, 8, 6 + bob, 3, 1, cc.hairHi)
+    // 发尾：8 → 6 → 4，一路收成圆润的后脑，不是一块方砖
+    r(g, 4, 8 + bob, 8, 1, cc.hair)
+    r(g, 5, 9 + bob, 6, 1, cc.hair)
+    r(g, 6, 10 + bob, 4, 1, cc.hairDark)
+    // 后颈：只露 2px 的皮肤
     r(g, 7, 10 + bob, 2, 1, cc.skinShade)
-    r(g, 5, 10 + bob, 2, 1, cc.collar ?? cc.coatHi)
-    r(g, 9, 10 + bob, 2, 1, cc.collar ?? cc.coatHi)
   } else {
-    // 侧面（原型朝左，朝右时整体镜像）：鼻尖朝屏幕外侧突出 1px
+    // 侧面（原型朝左，朝右时整体镜像）：鼻尖突出 1px，下颌线斜着收
     const f = (x: number, w = 1): number => (mirror ? 16 - x - w : x)
-    // 脸 x4..10
-    r(g, f(4, 7), 4 + bob, 7, 7, cc.skin)
-    r(g, f(4, 1), 4 + bob, 1, 6, cc.skinHi)           // 屏幕左缘受光
-    r(g, f(10, 1), 4 + bob, 1, 6, cc.skinShade)       // 屏幕右缘背光
-    r(g, f(4, 7), 10 + bob, 7, 1, cc.skinShade)       // 下巴
-    const noseX = mirror ? 12 : 3                     // 鼻尖
-    px(g, noseX, 7 + bob, cc.skin)
-    px(g, noseX, 8 + bob, cc.skinShade)
+    // 脸：额到颧 7 宽（x4..x10），下颌收到 6（x5..x10），下巴 4（x6..x9）
+    r(g, f(4, 7), 4 + bob, 7, 4, cc.skin)
+    r(g, f(5, 6), 8 + bob, 6, 2, cc.skin)
+    r(g, f(6, 4), 10 + bob, 4, 1, cc.skin)
+    // 受光 / 背光始终按屏幕走（光源在左上），镜像时不跟着翻
+    const faceL = mirror ? 5 : 4
+    r(g, faceL, 4 + bob, 1, 4, cc.skinHi)
+    r(g, faceL + 6, 4 + bob, 1, 4, cc.skinShade)
+    r(g, faceL + 1, 8 + bob, 1, 2, cc.skinHi)
+    r(g, faceL + 5, 8 + bob, 1, 2, cc.skinShade)
+    // 鼻尖：朝前的一侧突出 1px；鼻底压暗
+    px(g, f(3, 1), 7 + bob, cc.skin)
+    px(g, f(4, 1), 8 + bob, cc.skinShade)
     // 顶发
     r(g, f(5, 6), 1 + bob, 6, 1, cc.hair)
     r(g, f(6, 2), 1 + bob, 2, 1, cc.hairHi)
     r(g, f(3, 10), 2 + bob, 10, 1, cc.hair)
     r(g, f(4, 5), 2 + bob, 5, 1, cc.hairHi)
-    r(g, f(10, 3), 2 + bob, 3, 1, cc.hairDark)
+    r(g, f(11, 2), 2 + bob, 2, 1, cc.hairDark)
     r(g, f(3, 10), 3 + bob, 10, 1, cc.hair)
     r(g, f(3, 3), 3 + bob, 3, 1, cc.hairHi)
     r(g, f(11, 2), 3 + bob, 2, 1, cc.hairDark)
-    // 后脑的头发（朝左时在屏幕右侧）
-    r(g, f(9, 4), 4 + bob, 4, 6, cc.hair)
-    r(g, f(9, 1), 4 + bob, 1, 6, cc.hairHi)
-    r(g, f(12, 1), 4 + bob, 1, 6, cc.hairDark)
-    px(g, f(10, 1), 5 + bob, cc.hairDark)
+    // 后脑：朝左时在屏幕右侧，3px 宽 —— 短发不该把脸挤成一条缝；
+    // 剩下的 5px 全是脸（x5..x9），鼻尖再往外凸 1px
+    r(g, f(10, 3), 4 + bob, 3, 7, cc.hair)          // y4..y10
+    r(g, f(10, 1), 4 + bob, 1, 7, cc.hairDark)      // 内缘：与脸的交界压暗一档
+    r(g, f(12, 1), 4 + bob, 1, 7, mirror ? cc.hairHi : cc.hairDark)
+    r(g, f(10, 2), 5 + bob, 2, 1, cc.hairHi)        // 后脑上的一道横向受光
     px(g, f(11, 1), 7 + bob, cc.hairHi)
-    // 前额的刘海：一绺斜垂
-    r(g, f(4, 3), 4 + bob, 3, 1, cc.hair)
-    r(g, f(5, 2), 5 + bob, 2, 1, cc.hair)
+    // 前额一绺斜垂的刘海 + 鬓角
+    r(g, f(4, 1), 4 + bob, 1, 1, cc.hair)
     px(g, f(4, 1), 4 + bob, cc.hairHi)
-    px(g, f(5, 1), 5 + bob, cc.hairDark)
-    // 后颈发尾
-    r(g, f(9, 4), 10 + bob, 4, 1, cc.hairDark)
-    // 只露一只眼：眉 y5 → 空一行 → y7 上眼睑横线 → y8 只留 1px 高的虹膜
-    const eyeX = mirror ? 9 : 6
-    const eyeDk = cc.eyeDark ?? cc.eye
-    r(g, eyeX, 5 + bob, 2, 1, cc.hairDark)            // 眉
-    r(g, eyeX, 7 + bob, 2, 1, eyeDk)                  // 上眼睑：明确的横线
-    px(g, eyeX, 8 + bob, C.sugar)                     // 眼白
-    px(g, eyeX + 1, 8 + bob, cc.eye)                  // 虹膜
+    r(g, f(3, 1), 5 + bob, 1, 2, cc.hair)
+    // 只露一只眼：眉 y5 → 空一行 → y7 的 2×1 虹膜
+    const eyeX = mirror ? 8 : 6
+    r(g, eyeX, 5 + bob, 2, 1, brow)
+    r(g, eyeX, 7 + bob, 2, 1, cc.eye)
     // 嘴
-    px(g, mirror ? 10 : 5, 9 + bob, lip)
-    px(g, mirror ? 11 : 6, 9 + bob, cc.skinShade)
+    px(g, f(6, 1), 9 + bob, lip)
+    px(g, f(7, 1), 9 + bob, cc.skinShade)
   }
 
-  // ---- 领口与胸饰：银灰立领边 + V 形银饰（压缩到 4 行）----
+  // ---- 领口与胸饰：银灰立领边 + V 形银饰 ----
   // 16×24 上画不下立绘那条完整的 V 形银线，压成一组银点：
   // y13 双肩起点 → y14 内收 → y15 汇到中央 → y16 中央的小银扣。
-  const silver = cc.collar ?? C.pale
   if (dir === 'up') {
-    r(g, 5, ty, 6, 1, silver)                 // 后领一圈银边
+    // 背面：后领一圈银边 —— 背向观众也认得出这套制服
+    r(g, 5, ty, 6, 1, silver)
+    px(g, 5, ty, silverHi)
+    px(g, 10, ty, silverLo)
   } else if (dir === 'down') {
     // 立领：上缘一道亮银，两侧立边，中间是深色领内
     r(g, 6, ty, 4, 1, silver)
-    px(g, 6, ty, C.bone)
-    px(g, 9, ty, C.mist)
+    px(g, 6, ty, silverHi)
+    px(g, 9, ty, silverLo)
     px(g, 6, ty + 1, silver)
     px(g, 9, ty + 1, silver)
     r(g, 7, ty + 1, 2, 1, cc.coatDark)
     // V 形银饰：左亮右暗，八点收成一个尖
-    px(g, 5, ty + 2, C.bone)                  // 左肩起点
+    px(g, 5, ty + 2, silverHi)                // 左肩起点
     px(g, 10, ty + 2, silver)                 // 右肩起点
-    px(g, 6, ty + 3, C.bone)
+    px(g, 6, ty + 3, silverHi)
     px(g, 9, ty + 3, silver)
-    px(g, 7, ty + 4, C.bone)                  // 汇到中央
+    px(g, 7, ty + 4, silverHi)                // 汇到中央
     px(g, 8, ty + 4, silver)
     r(g, 7, ty + 5, 2, 1, silver)             // 中央的小银扣
-    px(g, 7, ty + 5, C.bone)
+    px(g, 7, ty + 5, silverHi)
   } else {
     // 侧面：只画朝向镜头的那半边 V（朝左时在屏幕左侧）
     r(g, mx(6, 4), ty, 4, 1, silver)
-    px(g, mx(6, 1), ty, C.bone)
+    px(g, mx(6, 1), ty, silverHi)
     px(g, mx(6, 1), ty + 1, silver)
     px(g, mx(9, 1), ty + 1, silver)
     r(g, mx(7, 2), ty + 1, 2, 1, cc.coatDark)
-    px(g, mx(5, 1), ty + 2, C.bone)
-    px(g, mx(6, 1), ty + 3, C.bone)
-    px(g, mx(7, 1), ty + 4, C.bone)
+    px(g, mx(5, 1), ty + 2, silverHi)
+    px(g, mx(6, 1), ty + 3, silverHi)
+    px(g, mx(7, 1), ty + 4, silverHi)
     px(g, mx(8, 1), ty + 4, silver)
     px(g, mx(7, 1), ty + 5, silver)
   }
@@ -594,11 +633,19 @@ function drawHero(cc: CharColors, dir: Dir, frame: number): Sprite {
 }
 
 // ============================================================
-// 艾玛：方形白领 + 白围裙前襟 + 盘发轮廓 + 两侧垂发
-// 16×24。发髻 y0..y2，头顶 y3，齐刘海 y4，脸 y5..y10，
-// 躯干 y11..y16，长裙 y17..y20，小鞋 y21..22。
-// 剪影：头顶凸起的发髻、两条笔直的垂发、横平的方领与一条竖白前襟、展开的裙摆。
+// 艾玛：银白淡紫微卷发 + 白蕾丝女仆帽 + 紫灰细眼 + 深紫黑女仆装
+//       + 白圆领 + 黑蝴蝶结 + 只露肩带的白围裙
 // ============================================================
+/**
+ * 16×24，四方向 × 三帧。逐行与弗里德里希对齐（眉 y5 / 眼 y7 / 鼻 y8 / 嘴 y9 /
+ * 下巴 y10），两人在地图上切换时脸不会一高一低。
+ *   蕾丝帽 y0..y2（帽檐的波浪齿在 y2），刘海 y4，脸 y5..y10，
+ *   躯干 y11..y17，长裙 y17..y20，小鞋 y21..y22。
+ *
+ * 脸型同样是上宽下窄：8 → 8 → 8 → 8 → 6 → 6 → 4（额/颧 → 下颌 → 下巴）。
+ * 眼睛同样是每只 2px 宽 × 1px 高、无高光，紫灰；
+ * 上眼睑「重」不靠加高眼睛，而靠 y6 那一行皮肤的淡影 + y5 压得很低的眉。
+ */
 function drawMaid(cc: CharColors, dir: Dir, frame: number): Sprite {
   const { c, g } = canvas(16, 24)
   const mirror = dir === 'right'
@@ -608,29 +655,30 @@ function drawMaid(cc: CharColors, dir: Dir, frame: number): Sprite {
   const liftL = frame === 1 ? 1 : 0
   const liftR = frame === 2 ? 1 : 0
   const apron = cc.apron ?? C.sugar
-  const lip = cc.lip ?? '#a07070'
+  const hat = cc.hat ?? '#fdfcf4'
+  const hatLo = cc.hatLo ?? C.pale
+  const bow = cc.bow ?? C.night
+  const bowHi = cc.bowHi ?? C.graphite
+  const brow = cc.brow ?? cc.eyeDark ?? cc.hairDark
+  const lip = cc.lip ?? '#b87c86'
 
   // ---- 影子 ----
   r(g, 3, 23, 10, 1, 'rgba(0,0,0,0.42)')
   r(g, 4, 22, 8, 1, 'rgba(0,0,0,0.20)')
 
-  // ---- 长裙：上窄下宽；行走时下摆左右摆、鞋交替探出 ----
+  // ---- 长裙：上窄下宽；下摆随行走左右摆，鞋交替探出 ----
   if (dir === 'down' || dir === 'up') {
     const sway = frame === 1 ? 1 : frame === 2 ? -1 : 0
-    r(g, 5, 17 + bob, 6, 1, cc.coat)
-    r(g, 4, 18 + bob, 8, 1, cc.coat)
-    r(g, 4, 19 + bob, 8, 1, cc.coat)
-    r(g, 3 + sway, 20 + bob, 10, 1, cc.coat)
-    r(g, 5, 17 + bob, 1, 1, cc.coatHi)
-    r(g, 4, 18 + bob, 1, 2, cc.coatHi)
-    r(g, 3 + sway, 20 + bob, 1, 1, cc.coatHi)
-    r(g, 11, 18 + bob, 1, 2, cc.coatDark)
-    r(g, 12 + sway, 20 + bob, 1, 1, cc.coatDark)
-    // 围裙前襟一直垂到裙上（白条穿过整条裙子）
-    r(g, 7, 17 + bob, 2, 3, apron)
-    r(g, 7, 17 + bob, 1, 3, C.sugar)
-    r(g, 8, 17 + bob, 1, 3, C.bone)
-    // 小鞋
+    r(g, 5, 17, 6, 1, cc.coat)
+    r(g, 4, 18, 8, 1, cc.coat)
+    r(g, 4, 19, 8, 1, cc.coat)
+    r(g, 3 + sway, 20, 10, 1, cc.coat)
+    r(g, 5, 17, 1, 1, cc.coatHi)
+    r(g, 4, 18, 1, 2, cc.coatHi)
+    r(g, 3 + sway, 20, 1, 1, cc.coatHi)
+    r(g, 11, 18, 1, 2, cc.coatDark)
+    r(g, 12 + sway, 20, 1, 1, cc.coatDark)
+    // 小鞋：抬脚那侧压暗一档
     r(g, 5, 21 - liftL, 2, 2, liftL ? cc.coatDark : cc.shoe)
     px(g, 5, 21 - liftL, liftL ? cc.coatDark : cc.coatHi)
     r(g, 9, 21 - liftR, 2, 2, liftR ? cc.coatDark : cc.shoe)
@@ -638,35 +686,61 @@ function drawMaid(cc: CharColors, dir: Dir, frame: number): Sprite {
   } else {
     const lead = frame === 1 ? 1 : 0
     const back = frame === 2 ? 1 : 0
-    r(g, mx(5, 6), 17 + bob, 6, 2, cc.coat)
-    r(g, mx(4, 8), 19 + bob, 8, 1, cc.coat)
-    r(g, mx(3, 10), 20 + bob, 10, 1, cc.coat)
-    px(g, mx(4, 1), 19 + bob, cc.coatHi)
-    px(g, mx(11, 1), 19 + bob, cc.coatDark)
-    // 前脚探出（frame1 前伸，frame2 收回）
+    r(g, mx(5, 6), 17, 6, 2, cc.coat)
+    r(g, mx(4, 8), 19, 8, 1, cc.coat)
+    r(g, mx(3, 10), 20, 10, 1, cc.coat)
+    px(g, mx(4, 1), 19, cc.coatHi)
+    px(g, mx(11, 1), 19, cc.coatDark)
+    // 前脚从裙下探出（第 1 帧前伸、第 2 帧收回）
     r(g, mx(8 + lead - back, 2), 21, 2, 2, cc.shoe)
     px(g, mx(8 + lead - back, 1), 21, cc.coatHi)
   }
 
-  // ---- 躯干：横平的方领 + 一条笔直的围裙前襟 ----
+  // ---- 躯干：6 宽；上身高 1px 时补一行，下摆落在 y17 ----
   const ty = 11 + bob
-  r(g, 5, ty, 6, 6, cc.coat)
-  r(g, 5, ty, 1, 6, cc.coatHi)
-  r(g, 10, ty, 1, 6, cc.coatDark)
-  // 方正白领：一整行横平的硬挺领子
-  r(g, 5, ty, 6, 1, apron)
-  px(g, 5, ty, C.sugar)
-  // ---- 绿领结：两翼 + 结心 + 垂下的短尾（她最醒目的一点颜色）----
-  r(g, 6, ty + 1, 4, 1, BOW_G.mid)        // 两翼
-  px(g, 6, ty + 1, BOW_G.hi)              // 左翼受光、右翼背光
-  px(g, 9, ty + 1, BOW_G.lo)
-  r(g, 7, ty + 1, 2, 1, BOW_G.hi)         // 结心：最亮的两点
-  px(g, 7, ty + 2, BOW_G.mid)             // 结心垂下的小尾
-  px(g, 8, ty + 2, BOW_G.lo)
-  // 白围裙前襟：一条笔直的竖白条，一丝褶皱都没有
-  r(g, 7, ty + 3, 2, 3, apron)
-  r(g, 7, ty + 3, 1, 3, C.sugar)
-  r(g, 8, ty + 3, 1, 3, C.bone)
+  const bodyH = 17 - ty
+  r(g, 5, ty, 6, bodyH, cc.coat)
+  r(g, 5, ty, 1, bodyH, cc.coatHi)
+  r(g, 10, ty, 1, bodyH, cc.coatDark)
+
+  // ---- 领口：白圆领 + 黑蝴蝶结 + 只露肩带的白围裙 ----
+  if (dir === 'down') {
+    // 白圆领：一整行横平的硬挺领子
+    r(g, 5, ty, 6, 1, apron)
+    px(g, 5, ty, '#ffffff')
+    px(g, 10, ty, hatLo)
+    // 黑蝴蝶结：两翼 + 结心 + 两条短尾（新立绘就是黑的，不再是绿领结）
+    r(g, 5, ty + 1, 2, 1, bow)
+    r(g, 9, ty + 1, 2, 1, bow)
+    r(g, 7, ty + 1, 2, 1, bowHi)
+    px(g, 5, ty + 1, bowHi)
+    px(g, 10, ty + 1, bow)
+    r(g, 7, ty + 2, 2, 1, bow)
+    px(g, 7, ty + 2, bowHi)
+    // 白围裙：只露两条肩带
+    r(g, 5, ty + 2, 1, 4, apron)
+    r(g, 10, ty + 2, 1, 4, apron)
+    px(g, 5, ty + 2, '#ffffff')
+    px(g, 10, ty + 5, hatLo)
+  } else if (dir === 'up') {
+    // 背面：只看得到白领的后缘与两条肩带，蝴蝶结在身前、看不见
+    r(g, 5, ty, 6, 1, apron)
+    px(g, 5, ty, '#ffffff')
+    px(g, 10, ty, hatLo)
+    r(g, 5, ty + 1, 1, 5, apron)
+    r(g, 10, ty + 1, 1, 5, apron)
+    px(g, 5, ty + 1, '#ffffff')
+  } else {
+    // 侧面：白领只露前缘，蝴蝶结只画朝向镜头的那半边
+    r(g, mx(5, 4), ty, 4, 1, apron)
+    px(g, mx(5, 1), ty, '#ffffff')
+    px(g, mx(8, 1), ty, hatLo)
+    r(g, mx(6, 2), ty + 1, 2, 1, bow)
+    px(g, mx(6, 1), ty + 1, bowHi)
+    px(g, mx(7, 1), ty + 2, bow)
+    // 肩带只有一条
+    r(g, mx(6, 1), ty + 2, 1, 4, apron)
+  }
 
   // ---- 手臂：深色袖子 + 一圈白袖口 ----
   if (dir === 'down' || dir === 'up') {
@@ -686,159 +760,138 @@ function drawMaid(cc: CharColors, dir: Dir, frame: number): Sprite {
 
   // ---- 头 ----
   /**
-   * 白色蕾丝女仆帽：帽檐占头顶 2 行（16×24 上能画出的最大幅度），
-   * 比头骨宽一圈，两侧各挂一小簇蕾丝 —— 这是立绘那顶帽子在行走图上的压缩形态。
+   * 白色蕾丝女仆帽：帽冠 1 行 + 帽檐 1 行（比脸宽一圈），
+   * 帽檐下缘在 y2 与头发交错成波浪齿 —— 这是立绘那顶帽子在 16×24 上的压缩形态。
+   * 第 1 帧帽冠会顶到画布外 1px，用 max 夹住，帽子永远完整。
    */
   const capTop = (): void => {
-    r(g, 6, 0 + bob, 4, 1, apron)                    // 帽冠
-    px(g, 6, 0 + bob, C.sugar)                       // 左上受光
-    px(g, 9, 0 + bob, C.pale)                        // 右下压暗
-    r(g, 4, 1 + bob, 8, 1, apron)                    // 帽檐（比脸宽一圈）
-    r(g, 4, 1 + bob, 3, 1, C.sugar)
-    r(g, 10, 1 + bob, 2, 1, C.bone)
-    px(g, 3, 1 + bob, apron)                         // 两侧的蕾丝小簇
-    px(g, 12, 1 + bob, apron)
-    px(g, 3, 2 + bob, C.sugar)
-    px(g, 12, 2 + bob, C.bone)
+    r(g, 5, Math.max(0, bob), 6, 1, hat)          // 帽冠
+    px(g, 5, Math.max(0, bob), '#ffffff')
+    px(g, 10, Math.max(0, bob), hatLo)
+    r(g, 3, 1 + bob, 10, 1, hat)                  // 帽檐（比脸宽一圈）
+    r(g, 3, 1 + bob, 3, 1, '#ffffff')
+    r(g, 11, 1 + bob, 2, 1, hatLo)
+    // 帽檐下缘的波浪齿：白与发根交替 —— 立绘那圈荷叶边在 16×24 上的压缩形态
+    r(g, 3, 2 + bob, 10, 1, cc.hairDark)
+    for (const x of [3, 5, 7, 9, 11]) px(g, x, 2 + bob, hat)
   }
-  /** 两侧的螺旋卷：每侧三卷，从上往下变小，垂到肩膀以下 2px */
-  const sideCurls = (): void => {
+  /** 两侧的垂发：从帽下垂到肩，微卷（y6..y8 向外鼓 1px） */
+  const sideHair = (): void => {
     const both = (x: number, y: number, w: number, h: number, col: string): void => {
       r(g, x, y + bob, w, h, col)
       r(g, 16 - x - w, y + bob, w, h, col)
     }
-    // 卷1（最大，y5..y7）：一列竖干 + 一个向左外翻的钩
-    both(3, 5, 1, 3, cc.hair)
-    both(2, 6, 2, 2, cc.hair)
-    both(2, 6, 1, 2, cc.hairHi)          // 外缘受光
-    both(3, 7, 1, 1, cc.hairDark)        // 内侧贴脸处压暗一档
-    both(2, 7, 1, 1, cc.hairHi)          // 卷底的钩尖
-    // 卷2（y8..y9）
-    both(2, 8, 1, 1, cc.hair)
-    both(2, 8, 1, 1, cc.hairHi)
-    both(3, 8, 1, 2, cc.hair)
-    both(3, 9, 1, 1, cc.hairDark)
-    // 卷3（y10..y11，最小）
-    both(3, 10, 1, 2, cc.hair)
-    both(3, 10, 1, 1, cc.hairHi)
-    both(3, 11, 1, 1, cc.hairDark)
-    // 发梢：垂到肩下
-    both(3, 12, 1, 2, cc.hair)
-    both(3, 13, 1, 1, cc.hairDark)
+    both(3, 3, 1, 8, cc.hair)                     // y3..y10 头侧
+    both(2, 6, 1, 3, cc.hair)                     // 向外鼓出的一卷
+    // 下颌收到 6 / 4 之后两侧让出来的格子也用头发补上 ——
+    // 不补的话背景会从脸的两侧漏进来，下巴像断开的一样
+    both(4, 8, 1, 6, cc.hair)                     // y8..y13：下颌两侧 → 肩侧
+    both(5, 10, 1, 1, cc.hair)                    // 下巴两侧
+    // 受光在屏幕左、背光在屏幕右（镜像不跟着翻）
+    px(g, 2, 6 + bob, cc.hairHi)
+    px(g, 3, 3 + bob, cc.hairHi)
+    px(g, 3, 4 + bob, cc.hairHi)
+    px(g, 13, 6 + bob, cc.hairDark)
+    px(g, 12, 3 + bob, cc.hairDark)
+    // 发梢压暗
+    both(4, 12, 1, 2, cc.hairDark)
   }
 
   if (dir === 'down') {
-    // 脸
-    r(g, 4, 4 + bob, 8, 7, cc.skin)
-    r(g, 4, 4 + bob, 1, 6, cc.skinHi)
-    r(g, 11, 4 + bob, 1, 6, cc.skinShade)
-    r(g, 5, 10 + bob, 6, 1, cc.skin)
-    px(g, 5, 10 + bob, cc.skinShade)
-    px(g, 10, 10 + bob, cc.skinShade)
-    // 白色蕾丝女仆帽（帽檐 2px），帽下才是头发
+    // 脸（上宽下窄）：8 → 8 → 8 → 6 → 6 → 4。
+    // 她的齐刘海比弗里德里希低一行（y4 一整行），所以脸从 y5 才开始露
+    r(g, 4, 5 + bob, 8, 3, cc.skin)               // y5..y7
+    r(g, 5, 8 + bob, 6, 2, cc.skin)               // y8..y9
+    r(g, 6, 10 + bob, 4, 1, cc.skin)              // y10 下巴
+    r(g, 4, 5 + bob, 1, 3, cc.skinHi)
+    r(g, 11, 5 + bob, 1, 3, cc.skinShade)
+    r(g, 5, 8 + bob, 1, 2, cc.skinHi)
+    r(g, 10, 8 + bob, 1, 2, cc.skinShade)
+    px(g, 6, 10 + bob, cc.skinHi)
+    px(g, 9, 10 + bob, cc.skinShade)
+    // 蕾丝帽（帽冠 + 帽檐 + 波浪齿）
     capTop()
-    r(g, 4, 2 + bob, 8, 1, cc.hair)
-    r(g, 4, 2 + bob, 3, 1, cc.hairHi)
-    r(g, 10, 2 + bob, 2, 1, cc.hairDark)
+    // 帽下先一行头发（发丝不能是一块平涂）
     r(g, 4, 3 + bob, 8, 1, cc.hair)
     r(g, 4, 3 + bob, 3, 1, cc.hairHi)
-    r(g, 11, 3 + bob, 2, 1, cc.hairDark)
-    px(g, 6, 3 + bob, cc.hairDark)                    // 一道发丝，帽子下不是一块平涂
-    px(g, 9, 3 + bob, cc.hairDark)
-    // 齐刘海：平直的一行，下缘一丝不乱
+    r(g, 11, 3 + bob, 1, 1, cc.hairDark)
+    px(g, 6, 3 + bob, cc.hairDark)
+    // 齐刘海：平直的一整行，压到眉上
     r(g, 3, 4 + bob, 10, 1, cc.hair)
     r(g, 3, 4 + bob, 3, 1, cc.hairHi)
     r(g, 11, 4 + bob, 2, 1, cc.hairDark)
-    // 两侧的螺旋卷
-    sideCurls()
-    // 眉：平、低、冷静；与眼睛之间留 1px 空隙
-    r(g, 5, 5 + bob, 2, 1, cc.hairDark)
-    r(g, 9, 5 + bob, 2, 1, cc.hairDark)
-    // 眼：灰蓝、窄而平（她不眨眼）—— 上眼睑一条横线，虹膜只有 1px 高
-    const eyeDk = cc.eyeDark ?? cc.eye
-    r(g, 5, 7 + bob, 2, 1, eyeDk)
-    r(g, 9, 7 + bob, 2, 1, eyeDk)
-    px(g, 5, 8 + bob, cc.eyeHi ?? C.sugar)
-    px(g, 6, 8 + bob, cc.eye)
-    px(g, 9, 8 + bob, cc.eye)
-    px(g, 10, 8 + bob, cc.eyeHi ?? C.sugar)
-    // 鼻：鼻梁 + 鼻头两行
-    px(g, 8, 7 + bob, cc.skinShade)
-    px(g, 7, 8 + bob, cc.skinShade)
+    px(g, 7, 4 + bob, cc.hairDark)
+    // 两侧的垂发
+    sideHair()
+    // 眉 y5：短、平、压得很低（颜色比弗里德里希更深，这是她的冷）
+    r(g, 5, 5 + bob, 2, 1, brow)
+    r(g, 9, 5 + bob, 2, 1, brow)
+    // 眼 y7：紫灰，每只 2×1。y6 那一行留纯皮肤 ——
+    // 「上眼睑重」是眉与眼睛只隔一行加眼神沉，不是把眼睛再加高一行
+    r(g, 5, 7 + bob, 2, 1, cc.eye)
+    r(g, 9, 7 + bob, 2, 1, cc.eye)
+    // 鼻
     px(g, 8, 8 + bob, cc.skinShade)
-    // 嘴：平直，只有一点唇色
-    r(g, 7, 9 + bob, 2, 1, lip)
+    // 嘴：只有 1px，压在鼻头正下方
+    px(g, 8, 9 + bob, lip)
   } else if (dir === 'up') {
-    // 背面：女仆帽 + 后脑 + 两侧的螺旋卷
+    // 背面：蕾丝帽 + 后脑 + 两侧垂发 —— 没有脸、没有眼睛
     capTop()
-    r(g, 4, 2 + bob, 8, 1, cc.hair)
-    r(g, 4, 2 + bob, 3, 1, cc.hairHi)
-    r(g, 10, 2 + bob, 2, 1, cc.hairDark)
-    r(g, 3, 3 + bob, 10, 1, cc.hair)
-    r(g, 3, 3 + bob, 3, 1, cc.hairHi)
-    r(g, 11, 3 + bob, 2, 1, cc.hairDark)
-    r(g, 3, 4 + bob, 10, 5, cc.hair)                    // y4..y8 后脑
-    r(g, 3, 4 + bob, 1, 5, cc.hairHi)
-    r(g, 12, 4 + bob, 1, 5, cc.hairDark)
+    r(g, 4, 3 + bob, 8, 1, cc.hair)
+    r(g, 4, 3 + bob, 3, 1, cc.hairHi)
+    r(g, 11, 3 + bob, 1, 1, cc.hairDark)
+    r(g, 3, 4 + bob, 10, 4, cc.hair)              // y4..y7 后脑
+    r(g, 3, 4 + bob, 1, 4, cc.hairHi)
+    r(g, 12, 4 + bob, 1, 4, cc.hairDark)
+    // 背面只走横向的受光带：1px 的孤立点会读成眼睛，深色横杠会读成嘴
     r(g, 4, 4 + bob, 3, 1, cc.hairHi)
-    // 发丝：两道弯的暗线，读起来是卷而不是直
-    r(g, 6, 5 + bob, 1, 2, cc.hairDark)
-    px(g, 7, 7 + bob, cc.hairDark)
-    r(g, 9, 5 + bob, 1, 2, cc.hair)
-    px(g, 10, 7 + bob, cc.hairDark)
-    // 发尾
-    r(g, 4, 9 + bob, 8, 1, cc.hair)
-    px(g, 4, 9 + bob, cc.hairHi)
-    r(g, 10, 9 + bob, 2, 1, cc.hairDark)
-    // 两侧的螺旋卷
-    sideCurls()
-    // 后颈与白领的后缘
+    r(g, 8, 6 + bob, 3, 1, cc.hairHi)
+    // 发尾：8 → 6 → 4，收成圆润的后脑，不是一块方砖
+    r(g, 4, 8 + bob, 8, 1, cc.hair)
+    r(g, 5, 9 + bob, 6, 1, cc.hair)
+    r(g, 6, 10 + bob, 4, 1, cc.hairDark)
+    sideHair()
+    // 后颈
     r(g, 7, 10 + bob, 2, 1, cc.skinShade)
-    r(g, 5, 10 + bob, 6, 1, apron)
-    px(g, 5, 10 + bob, C.sugar)
   } else {
-    // 侧面（原型朝左，朝右时镜像）
+    // 侧面（原型朝左，朝右时镜像）：鼻尖突出 1px，下颌线斜着收
     const f = (x: number, w = 1): number => (mirror ? 16 - x - w : x)
-    // 脸
-    r(g, f(4, 7), 4 + bob, 7, 7, cc.skin)
-    r(g, f(4, 1), 4 + bob, 1, 6, cc.skinHi)
-    r(g, f(10, 1), 4 + bob, 1, 6, cc.skinShade)
-    r(g, f(4, 7), 10 + bob, 7, 1, cc.skinShade)
-    const noseX = mirror ? 12 : 3
-    px(g, noseX, 7 + bob, cc.skin)
-    px(g, noseX, 8 + bob, cc.skinShade)
-    // 女仆帽（侧面也是白帽檐压头顶）
+    r(g, f(4, 7), 5 + bob, 7, 3, cc.skin)         // y5..y7
+    r(g, f(5, 6), 8 + bob, 6, 2, cc.skin)
+    r(g, f(6, 4), 10 + bob, 4, 1, cc.skin)
+    const faceL = mirror ? 5 : 4
+    r(g, faceL, 5 + bob, 1, 3, cc.skinHi)
+    r(g, faceL + 6, 5 + bob, 1, 3, cc.skinShade)
+    r(g, faceL + 1, 8 + bob, 1, 2, cc.skinHi)
+    r(g, faceL + 5, 8 + bob, 1, 2, cc.skinShade)
+    px(g, f(3, 1), 7 + bob, cc.skin)              // 鼻尖
+    px(g, f(4, 1), 8 + bob, cc.skinShade)         // 鼻底
+    // 蕾丝帽（侧面一样是白帽檐压头顶）
     capTop()
-    r(g, f(4, 6), 2 + bob, 6, 1, cc.hair)
-    r(g, f(4, 2), 2 + bob, 2, 1, cc.hairHi)
-    r(g, f(8, 2), 2 + bob, 2, 1, cc.hairDark)
-    r(g, f(4, 7), 3 + bob, 7, 1, cc.hair)
-    r(g, f(4, 3), 3 + bob, 3, 1, cc.hairHi)
-    // 后脑的头发：上宽下窄，一路收成颈后的发尾（垂到肩，不是一块方砖）
-    r(g, f(8, 5), 3 + bob, 5, 4, cc.hair)      // y3..y6
-    r(g, f(9, 4), 7 + bob, 4, 3, cc.hair)      // y7..y9，内缘收 1px
-    r(g, f(10, 3), 10 + bob, 3, 4, cc.hair)    // y10..y13，垂到肩下
-    // 受光/背光始终按屏幕走（左上光源），镜像时不跟着翻
-    r(g, f(8, 1), 3 + bob, 1, 4, mirror ? cc.hairDark : cc.hairHi)
-    r(g, f(12, 1), 3 + bob, 1, 8, mirror ? cc.hairHi : cc.hairDark)
-    px(g, f(10, 1), 4 + bob, cc.hairDark)
+    r(g, f(4, 9), 3 + bob, 9, 1, cc.hair)         // 帽下的一行头发，横跨整个头顶
+    r(g, f(4, 2), 3 + bob, 2, 1, cc.hairHi)
+    r(g, f(10, 3), 3 + bob, 3, 1, cc.hairDark)
+    // 后脑：朝左时在屏幕右侧，3px 宽（脸留 5px），一路垂到肩
+    r(g, f(10, 3), 4 + bob, 3, 6, cc.hair)        // y4..y9
+    r(g, f(10, 3), 10 + bob, 3, 4, cc.hair)       // y10..y13 垂到肩下
+    r(g, f(10, 1), 4 + bob, 1, 10, cc.hairDark)   // 内缘：与脸的交界压暗
+    r(g, f(12, 1), 4 + bob, 1, 10, mirror ? cc.hairHi : cc.hairDark)
     // 卷的一痕：颈后这道暗缝把发尾与后脑分开
     r(g, f(10, 3), 9 + bob, 3, 1, cc.hairDark)
-    px(g, f(10, 1), 12 + bob, cc.hairHi)
-    // 齐刘海只在前额露出一条
-    r(g, f(4, 3), 4 + bob, 3, 1, cc.hair)
-    r(g, f(4, 1), 4 + bob, 1, 1, cc.hairHi)
-    // 鬓边垂下来的一缕
-    r(g, f(5, 1), 5 + bob, 1, 5, cc.hairDark)
-    // 一只眼：眉 y5 → 空一行 → y7 上眼睑横线 → y8 只留 1px 高的虹膜
-    const eyeX = mirror ? 9 : 6
-    r(g, eyeX, 5 + bob, 2, 1, cc.hairDark)
-    r(g, eyeX, 7 + bob, 2, 1, cc.eyeDark ?? cc.eye)
-    px(g, eyeX, 8 + bob, cc.eyeHi ?? C.sugar)
-    px(g, eyeX + 1, 8 + bob, cc.eye)
+    r(g, f(10, 2), 5 + bob, 2, 1, cc.hairHi)
+    px(g, f(11, 1), 12 + bob, cc.hairHi)
+    // 齐刘海：侧面也压满整个前额，脸从 y5 才露
+    r(g, f(4, 6), 4 + bob, 6, 1, cc.hair)
+    px(g, f(4, 1), 4 + bob, cc.hairHi)
+    r(g, f(3, 1), 5 + bob, 1, 2, cc.hair)
+    r(g, f(4, 1), 5 + bob, 1, 5, cc.hairDark)
+    // 一只眼：眉 y5 → 空一行 → y7 的 2×1 紫灰
+    const eyeX = mirror ? 8 : 6
+    r(g, eyeX, 5 + bob, 2, 1, brow)
+    r(g, eyeX, 7 + bob, 2, 1, cc.eye)
     // 嘴
-    px(g, mirror ? 10 : 5, 9 + bob, lip)
-    px(g, mirror ? 11 : 6, 9 + bob, cc.skinShade)
+    px(g, f(6, 1), 9 + bob, lip)
+    px(g, f(7, 1), 9 + bob, cc.skinShade)
   }
 
   return c
