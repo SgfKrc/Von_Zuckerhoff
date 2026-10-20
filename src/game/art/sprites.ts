@@ -86,12 +86,6 @@ interface CharColors {
   bow?: string
   /** 头巾（玛尔塔） */
   kerchief?: string
-  /** 比其他人高 1px（赫尔曼）：发顶从 y0 起，脚底仍在 y30 */
-  tall?: boolean
-  /** 制服一丝褶皱都没有（艾玛） */
-  flat?: boolean
-  /** 体型壮实（玛尔塔） */
-  stout?: boolean
   /**
    * 剪影专门画法：英雄（窄肩长身 + 蓬松红发）/ 女仆（蕾丝帽 + 垂发 + 围裙）。
    * 彩蛋角色的行走图改用 RPG Maker 素材（public/portraits/ds-walk.png），
@@ -153,6 +147,13 @@ interface CharColors {
   hunch?: number
   /** 小女孩：头顶从 y8 起（只占画布下 2/3），脸 8→6→4，红裙 + 两条辫子 */
   child?: boolean
+  /**
+   * 坐在厢座里：只画到腰线，腰线以下整片透明 ——
+   * 实体永远画在座椅瓦片之上，站姿精灵坐在座位格里会读成"站在座位里"；
+   * 下半身留空，座位与桌子就从透明处透出来，读作坐着。
+   * 成人腰线 y21（y22..y31 透明），小女孩腰线 y24（y25..y31 透明）。
+   */
+  seated?: boolean
   /** 辫子的颜色（小女孩），不填沿用发色 */
   braid?: string
   /** 头巾的高光与阴影 */
@@ -202,7 +203,7 @@ const EMMA: CharColors = {
   eye: '#5d4a6b', eyeDark: '#200a21', eyeWhite: '#ffffff', lip: '#c49aa4',
   hairStyle: 'bun', apron: '#f9f7ee', collar: '#cfc8d6',
   bow: '#171020', bowHi: '#53465a', hat: '#fdfcf4', hatLo: '#cfc8d6',
-  brow: '#200a21', flat: true, silhouette: 'maid',
+  brow: '#200a21', silhouette: 'maid',
 }
 
 /**
@@ -216,7 +217,7 @@ const EMMA: CharColors = {
  * 24×32 上固定占 y10..y11 两行，因此颧骨块比别的角色多占两行。
  */
 const HERMANN: CharColors = {
-  hair: '#f8f4e9', hairHi: '#ffffff', hairDark: '#c4bab6',
+  hair: '#f2ecdf', hairHi: '#ffffff', hairDark: '#c9bdb8',
   skin: '#e9c5a6', skinShade: '#d2a184', skinHi: '#f6dcc0',
   coat: '#1a171d', coatHi: '#332f38', coatDark: '#08070a',
   pants: '#121016', shoe: '#08070a', pantsHi: '#2a2731',
@@ -260,7 +261,7 @@ const NPC_SLEEPER: CharColors = {
   coat: '#6f6a60', coatHi: '#8a857a', coatDark: '#4c4840',
   pants: '#4a4640', shoe: '#26231f', pantsHi: '#5c584f',
   eye: '#4a4038', eyeDark: '#3a3129', eyeWhite: '#e8ded0', lip: '#a5766a',
-  hairStyle: 'short', brow: '#8a8278', closedEyes: true, tweed: true, hunch: 1,
+  hairStyle: 'short', brow: '#8a8278', closedEyes: true, tweed: true, hunch: 1, seated: true,
 }
 
 /** 看报的先生：深灰礼帽（y0..y2）+ 黑框眼镜（两片小方框）+ 深棕大衣 */
@@ -270,7 +271,7 @@ const NPC_READER: CharColors = {
   coat: '#4a3527', coatHi: '#63492f', coatDark: '#2c1e13',
   pants: '#3a2a1c', shoe: '#1d1712', pantsHi: '#54402c',
   eye: '#34281f', eyeDark: '#1a1512', eyeWhite: '#f6f1e6', lip: '#a06c5c',
-  hairStyle: 'short', brow: '#2e2723', glasses: true,
+  hairStyle: 'short', brow: '#2e2723', glasses: true, seated: true,
   topHat: '#3a3a40', topHatHi: '#55555e', topHatDark: '#1c1c20',
   collar: '#d8d3c8',
 }
@@ -282,7 +283,7 @@ const NPC_MOTHER: CharColors = {
   coat: '#26344f', coatHi: '#35486b', coatDark: '#182238',
   pants: '#182238', shoe: '#12161f', pantsHi: '#33456a',
   eye: '#4a3520', eyeDark: '#2a1c10', eyeWhite: '#fbf4e6', lip: '#b25a52',
-  hairStyle: 'bun', brow: '#6b4a2f', bun: true,
+  hairStyle: 'bun', brow: '#6b4a2f', bun: true, seated: true,
   skirt: { hi: '#35486b', dark: '#131b2a', bottom: 28 },
   swaddle: '#f2f0e6', swaddleLo: '#cfcbbd',
 }
@@ -294,7 +295,7 @@ const NPC_CHILD: CharColors = {
   coat: '#a83b32', coatHi: '#c4554a', coatDark: '#6e2220',
   pants: '#f0d2b0', shoe: '#3a2a1c', pantsHi: '#c4554a',
   eye: '#3a2a1c', eyeDark: '#241a10', eyeWhite: '#fdf8ee', lip: '#c0625a',
-  hairStyle: 'short', brow: '#52301c', child: true, braid: '#6b3f22',
+  hairStyle: 'short', brow: '#52301c', child: true, braid: '#6b3f22', seated: true,
   skirt: { hi: '#c4554a', dark: '#55201c', bottom: 28 },
 }
 
@@ -334,7 +335,7 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
   const { c, g } = canvas(24, 32)
   const mirror = dir === 'right'
   const mx = (x: number, w = 1): number => (mirror ? 24 - x - w : x)
-  const bob = frame === 1 ? -1 : 0
+  const bob = frame === 1 && !cc.child ? -1 : 0
   const swing = frame === 1 ? 1 : frame === 2 ? -1 : 0
   const liftL = frame === 1 ? 1 : 0
   const liftR = frame === 2 ? 1 : 0
@@ -349,6 +350,9 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
   const hunch = cc.hunch ?? 0
   const skirt = cc.skirt
   const longFace = !!cc.mustache
+  const seated = !!cc.seated
+  /** 坐姿的腰线：成人 y21（y22..y31 透明），小女孩腰线随身高到 y24（y25..y31 透明） */
+  const waistY = isChild ? 24 : 21
 
   // ---- 几何 ----
   const headTop = isChild ? 8 : 1 + hunch
@@ -361,23 +365,31 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
   const faceBot = faceTop + (longFace ? 9 : isChild ? 7 : 9)
   const neckY = faceBot + 1
   const bodyTop = isChild ? neckY + 1 : Math.max(15, neckY + 1)
-  const torsoBot = skirt ? (isChild ? 22 : 19) : 23
+  const torsoBot = seated ? waistY : skirt ? (isChild ? 22 : 19) : 23
   const bodyW = isChild ? 6 : 8
   const bx = 12 - bodyW / 2
   const armTop = bodyTop + 1 + bob
-  const armH = isChild ? 4 : 6
+  /** 手臂不越过腰线：坐姿时只好收短（驼背的老者肩线本来就低 1 行） */
+  const armRoom = torsoBot - (bodyTop + 1) + 1
+  const armH = seated
+    ? Math.max(2, Math.min(isChild ? 4 : 6, armRoom))
+    : isChild ? 4 : 6
   const browY = fy + 1
   const eyeY = fy + 3
   const noseY = fy + 5
   const mouthY = longFace ? fy + 8 : isChild ? fy + 6 : fy + 7
   const skinPink = BLUSH
 
-  // ---- 影子 ----
-  r(g, 5, 31, 14, 1, 'rgba(0,0,0,0.42)')
-  r(g, 6, 30, 12, 1, 'rgba(0,0,0,0.20)')
+  // ---- 影子（坐姿不画：腰线以下整片透明，影子会露在座位前）----
+  if (!seated) {
+    r(g, 5, 31, 14, 1, 'rgba(0,0,0,0.42)')
+    r(g, 6, 30, 12, 1, 'rgba(0,0,0,0.20)')
+  }
 
-  // ---- 腿 / 长裙下的鞋 ----
-  if (skirt) {
+  // ---- 腿 / 长裙下的鞋（坐姿：y22 以下全部留空）----
+  if (seated) {
+    // 不画腿、不画鞋：透明处让座椅与桌子透出来
+  } else if (skirt) {
     const shoeTop = skirt.bottom + 1
     const shoeH = 31 - shoeTop
     if (dir === 'down' || dir === 'up') {
@@ -416,7 +428,7 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
   }
 
   // ---- 长裙（玛尔塔 / 抱孩子的女人 / 小女孩）：上窄下宽，下摆随行走左右摆 ----
-  if (skirt) {
+  if (skirt && !seated) {
     const sTop = torsoBot + 1
     if (dir === 'down' || dir === 'up') {
       const waistW = isChild ? 6 : 8
@@ -435,21 +447,27 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       px(g, 11, sTop + 3, skirt.dark)
       px(g, 12, sTop + 5, skirt.hi)
     } else {
-      r(g, 8, sTop, 8, 1, cc.coat)
-      r(g, 7, sTop + 1, 10, 1, cc.coatHi)
-      r(g, 6, sTop + 2, 12, skirt.bottom - sTop, cc.coat)
-      r(g, 6 + sway, skirt.bottom - 1, 12, 2, cc.coat)
-      r(g, 6 + sway, skirt.bottom, 12, 1, skirt.dark)
-      r(g, 6 + sway, sTop + 2, 1, skirt.bottom - sTop - 1, skirt.hi)
-      r(g, 17 + sway, sTop + 2, 1, skirt.bottom - sTop - 1, skirt.dark)
+      // 侧面：裙摆上窄下宽；小女孩的裙子比成人窄一圈
+      const w0 = isChild ? 6 : 8
+      const w1 = isChild ? 8 : 10
+      const w2 = isChild ? 10 : 12
+      r(g, 12 - w0 / 2, sTop, w0, 1, cc.coat)
+      r(g, 12 - w1 / 2, sTop + 1, w1, 1, cc.coatHi)
+      r(g, 12 - w2 / 2, sTop + 2, w2, skirt.bottom - sTop, cc.coat)
+      r(g, 12 - w2 / 2 + sway, skirt.bottom - 1, w2, 2, cc.coat)
+      r(g, 12 - w2 / 2 + sway, skirt.bottom, w2, 1, skirt.dark)
+      r(g, 12 - w2 / 2 + sway, sTop + 2, 1, skirt.bottom - sTop - 1, skirt.hi)
+      r(g, 12 + w2 / 2 - 1 + sway, sTop + 2, 1, skirt.bottom - sTop - 1, skirt.dark)
     }
   }
 
   // ---- 躯干与手臂 ----
   const ty = bodyTop + bob
+  /** 坐姿：手臂摆动也不许越过腰线；站姿不受限 */
+  const armYMax = seated ? torsoBot - armH + 1 : 99
   if (dir === 'down' || dir === 'up') {
-    const aL = armTop + swing
-    const aR = armTop - swing
+    const aL = Math.min(armTop + swing, armYMax)
+    const aR = Math.min(armTop - swing, armYMax)
     r(g, bx - 2, aL, 2, armH - 1, cc.coat)
     r(g, bx - 2, aL, 1, armH - 1, cc.coatHi)
     r(g, bx - 2, aL + armH - 1, 2, 1, cc.skinShade)
@@ -460,7 +478,11 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
     r(g, bx, ty, bodyW, 1, cc.coatHi)
     r(g, bx, ty, 1, torsoBot - ty + 1, cc.coatHi)
     r(g, bx + bodyW - 1, ty, 1, torsoBot - ty + 1, cc.coatDark)
-    if (!skirt) {
+    if (seated) {
+      // 坐姿：腰线收到 torsoBot，压一道暗边当衣摆，再往下整片透明
+      r(g, bx - 1, torsoBot, bodyW + 2, 1, cc.coatDark)
+      px(g, bx - 1, torsoBot, cc.coatHi)
+    } else if (!skirt) {
       // 下摆：10 宽，钉在 y22..y23
       r(g, bx - 1, 22, bodyW + 2, 1, cc.coat)
       r(g, bx - 1, 23, bodyW + 2, 1, cc.coatDark)
@@ -469,13 +491,13 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
     }
   } else {
     const f = (x: number, w = 1): number => mx(x, w)
-    const aY = armTop + swing
+    const aY = Math.min(armTop + swing, armYMax)
     // 近侧手臂在屏幕左（朝前），远侧在屏幕右（朝后）
     r(g, f(7, 2), aY, 2, armH - 1, cc.coat)
     px(g, mirror ? f(7, 2) : f(7, 1), aY, cc.coatHi)
     r(g, f(7, 2), aY + armH - 1, 2, 1, cc.skinShade)
-    r(g, f(14, 2), armTop - swing, 2, armH - 1, cc.coatDark)
-    if (!skirt) {
+    r(g, f(14, 2), Math.min(armTop - swing, armYMax), 2, armH - 1, cc.coatDark)
+    if (!skirt && !seated) {
       // 燕尾 / 衣摆拖在身后
       r(g, f(13, 4), 20, 4, 4, cc.coat)
       px(g, f(16, 1), 20, cc.coatDark)
@@ -484,7 +506,8 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
     r(g, 9, ty, 6, torsoBot - ty + 1, cc.coat)
     r(g, 9, ty, 1, torsoBot - ty + 1, cc.coatHi)
     r(g, 14, ty, 1, torsoBot - ty + 1, cc.coatDark)
-    if (!skirt) r(g, 9, 23, 6, 1, cc.coatDark)
+    if (seated) r(g, 9, torsoBot, 6, 1, cc.coatDark)
+    else if (!skirt) r(g, 9, 23, 6, 1, cc.coatDark)
   }
 
   // ---- 头 ----
@@ -550,15 +573,18 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       r(g, 16, 2 + hy, 1, 11, hairDark)
       r(g, 8, 1 + hy, 3, 1, hairHi)
       r(g, 14, 1 + hy, 2, 1, hairDark)
-      // 发髻：圆形、左上受光
-      r(g, 10, 5 + hy, 4, 1, hair)
-      r(g, 9, 6 + hy, 6, 4, hair)
-      r(g, 10, 10 + hy, 4, 1, hair)
-      r(g, 9, 6 + hy, 1, 4, hairHi)
-      r(g, 14, 6 + hy, 1, 3, hairDark)
-      px(g, 11, 6 + hy, hairHi)
-      px(g, 12, 9 + hy, hairDark)
-      r(g, 11, 11 + hy, 2, 1, hairDark)
+      // 发髻：一圈暗边包着一块亮面 —— 同色相叠会糊成后脑上的一块补丁
+      r(g, 10, 4 + hy, 4, 1, hairDark)
+      r(g, 9, 5 + hy, 1, 1, hairDark)
+      r(g, 14, 5 + hy, 1, 1, hairDark)
+      r(g, 9, 9 + hy, 1, 1, hairDark)
+      r(g, 14, 9 + hy, 1, 1, hairDark)
+      r(g, 10, 10 + hy, 4, 1, hairDark)
+      r(g, 10, 5 + hy, 4, 5, hairHi)
+      px(g, 10, 5 + hy, '#ffffff')
+      px(g, 12, 8 + hy, hairDark)
+      // 后颈压暗一道
+      r(g, 8, 12 + hy, 6, 1, hairDark)
     } else if (isChild) {
       // 小女孩：后脑短发 + 两条辫子
       r(g, 9, 8 + hy, 6, 1, hair)
@@ -590,20 +616,15 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       r(g, 8, ht + 10, 8, 1, hair)          // y11
       r(g, 9, ht + 11, 6, 1, hair)          // y12 收窄
       r(g, 10, ht + 12, 4, 1, hair)         // y13 发尾
-      // 左上受光、右下背光
-      r(g, 9, ht, 3, 1, hairHi)
-      r(g, 8, ht + 1, 3, 1, hairHi)
-      r(g, 7, ht + 2, 2, 1, hairHi)
-      r(g, 7, ht + 3, 1, 7, hairHi)
+      // 三道横向明暗：银发才不是一块石膏（1px 的孤立暗点会读成眼睛）
+      r(g, 7, ht + 3, 10, 1, hairHi)
+      r(g, 8, ht + 6, 7, 1, hairDark)
+      r(g, 8, ht + 9, 6, 1, hairHi)
+      r(g, 8, ht + 10, 5, 1, hairDark)
+      // 右缘背光、发顶的侧分
       r(g, 16, ht + 3, 1, 6, hairDark)
-      r(g, 14, ht + 1, 2, 1, hairDark)
-      r(g, 15, ht + 2, 2, 1, hairDark)
-      // 后脑的横向受光带与发缝：银发才不是一块石膏
-      r(g, 9, ht + 5, 4, 1, hairHi)
-      r(g, 8, ht + 8, 3, 1, hairHi)
-      r(g, 12, ht + 7, 1, 2, hairDark)
-      px(g, 11, ht + 2, hairDark)
-      px(g, 14, ht + 9, hairDark)
+      r(g, 13, ht + 2, 2, 1, hairDark)
+      r(g, 11, ht + 4, 1, 2, hairDark)
       // 后颈
       r(g, 11, neckY + hy, 2, 1, cc.skinShade)
       if (cc.tweed) r(g, 11, neckY + 1 + hy, 2, 1, cc.skinShade)
@@ -647,11 +668,12 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       r(g, 5, 4 + hy, 14, 1, hair)
       r(g, 5, 4 + hy, 3, 1, hairHi)
       r(g, 16, 4 + hy, 3, 1, hairDark)
-      // 左鬓：y5 2px → y6 2px → y7 2px → y8 收 1px → y9 2px → y10 1px
+      // 左鬓：y5 2px → y6 2px → y7 2px → y8 收 1px → y9 2px → y10 1px → y11 收成发梢
       r(g, 5, 5 + hy, 2, 3, hair)
       px(g, 6, 8 + hy, hair)
       r(g, 5, 9 + hy, 2, 1, hair)
       px(g, 6, 10 + hy, hair)
+      px(g, 7, 11 + hy, hair)
       r(g, 5, 5 + hy, 1, 2, hairHi)
       px(g, 5, 7 + hy, hairHi)
       px(g, 6, 9 + hy, hairDark)
@@ -660,6 +682,7 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       px(g, 17, 8 + hy, hair)
       r(g, 17, 9 + hy, 2, 1, hair)
       px(g, 17, 10 + hy, hair)
+      px(g, 16, 11 + hy, hairDark)
       r(g, 18, 5 + hy, 1, 2, hairDark)
       px(g, 18, 8 + hy, hairDark)
       px(g, 17, 6 + hy, hairHi)
@@ -681,11 +704,13 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       // 两侧鬓发收在耳后
       r(g, 6, 4 + hy, 1, 3, hair)
       r(g, 17, 4 + hy, 1, 3, hairDark)
-      // 脑后的发髻（右上方一团，比头略高）
-      r(g, 16, 4 + hy, 3, 3, hair)
-      r(g, 16, 4 + hy, 1, 3, hairHi)
-      r(g, 18, 5 + hy, 1, 2, hairDark)
-      px(g, 17, 4 + hy, hairHi)
+      // 脑后的发髻：从右侧探出的一团（比头顶略高），与鬓发之间压一道暗
+      r(g, 17, 3 + hy, 3, 1, hair)
+      r(g, 16, 4 + hy, 4, 2, hair)
+      r(g, 17, 6 + hy, 2, 1, hairDark)
+      px(g, 17, 3 + hy, hairHi)
+      px(g, 19, 4 + hy, hairDark)
+      px(g, 18, 5 + hy, hairHi)
     } else if (isChild) {
       // 小女孩：头顶从 y8 起；齐刘海 + 两条辫子
       r(g, 9, 8 + hy, 6, 1, hair)
@@ -877,13 +902,13 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       const bd = cc.braid ?? cc.hairDark
       r(g, f(9, 6), 8 + hy, 6, 1, hair)
       r(g, f(8, 8), 9 + hy, 8, 1, hair)
-      r(g, f(8, 8), 10 + hy, 8, 6, hair)   // y10..y15 后脑（脸盖住前半）
+      r(g, f(8, 7), 10 + hy, 7, 6, hair)   // y10..y15 后脑（脸盖住前半）
       r(g, f(9, 2), 8 + hy, 2, 1, hairHi)
       r(g, f(8, 2), 10 + hy, 2, 1, hair)
-      r(g, f(13, 2), 11 + hy, 2, 6, bd)
-      px(g, f(14, 1), 13 + hy, hairHi)
-      px(g, f(13, 1), 15 + hy, hairDark)
-      r(g, f(13, 2), 17 + hy, 2, 1, C.bloodDark)
+      r(g, f(15, 2), 11 + hy, 2, 6, bd)
+      px(g, f(16, 1), 13 + hy, hairHi)
+      px(g, f(15, 1), 15 + hy, hairDark)
+      r(g, f(15, 2), 17 + hy, 2, 1, C.bloodDark)
     } else {
       // 后梳的白发 / 灰白短发（赫尔曼 / 睡着的老者）：后脑逐行收窄
       r(g, f(9, 7), ht, 7, 1, hair)
@@ -896,7 +921,8 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       r(g, f(14, 2), ht + 9, 2, 1, hair)   // y10
       r(g, f(14, 1), ht + 2, 1, 7, hairDark)
       r(g, f(17, 1), ht + 2, 1, 5, hairDark)
-      r(g, f(15, 2), ht + 3, 2, 1, hairHi)
+      r(g, f(14, 3), ht + 5, 3, 1, hairDark)
+      r(g, f(14, 2), ht + 3, 2, 1, hairHi)
       r(g, f(15, 2), ht + 6, 2, 1, hairHi)
       px(g, f(16, 1), ht + 8, hairDark)
       // 鬓角：只压住太阳穴
@@ -940,24 +966,17 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
     // 嘴 / 八字胡（侧面只露朝向镜头的一半）
     if (cc.mustache) {
       const mu = cc.mustache
-      r(g, f(5, 3), fy + 6, 3, 1, mu)
-      r(g, f(5, 2), fy + 7, 2, 1, mu)
-      px(g, f(5, 1), fy + 6, '#ffffff')
-      px(g, f(7, 2), fy + 7, cc.mustacheDark ?? mu)
-      px(g, f(8, 1), mouthY, cc.lip ?? '#8a5f58')
+      r(g, f(6, 3), fy + 6, 3, 1, mu)     // y10
+      r(g, f(6, 2), fy + 7, 2, 1, mu)     // y11
+      px(g, f(6, 1), fy + 6, '#ffffff')
+      px(g, f(8, 1), fy + 7, cc.mustacheDark ?? mu)
+      px(g, f(9, 1), mouthY, cc.lip ?? '#8a5f58')
     } else if (cc.closedEyes) {
       px(g, f(9, 1), mouthY, cc.lip ?? '#8a5f58')
     } else {
       px(g, f(9, 1), mouthY, cc.lip ?? '#8a5f58')
       px(g, f(10, 1), mouthY, skinShade)
       if (isChild || cc.bun || kerchief) px(g, f(8, 1), eyeY + 2, skinPink)
-    }
-    // 小女孩的辫子在侧面也看得见
-    if (isChild) {
-      const bd = cc.braid ?? cc.hairDark
-      r(g, f(13, 2), 11 + hy, 2, 6, bd)
-      px(g, f(14, 1), 13 + hy, hairHi)
-      r(g, f(13, 2), 17 + hy, 2, 1, C.bloodDark)
     }
     // 额前的刘海画在脸之后：只压住额头一行，不遮眉也不遮眼
     if (kerchief) {
@@ -1064,41 +1083,78 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
       px(g, f(9, 1), 20, apHi)
     }
   } else if (cc.swaddle) {
-    // 抱孩子的女人：怀里一团白（y18..y24），上端露出婴儿的小脑袋
+    // 抱孩子的女人：怀里一团白，上端露出婴儿的小脑袋
     const sw = cc.swaddle
     const swLo = cc.swaddleLo ?? C.pale
     if (dir === 'down') {
-      // 襁褓 y18..y24：一团白，上沿露出婴儿的脑袋
-      r(g, 9, 18, 6, 1, sw)
-      r(g, 10, 18, 3, 1, cc.skin)
-      px(g, 10, 18, hair)
-      px(g, 12, 18, cc.skinShade)
-      r(g, 9, 19, 6, 1, sw)
-      r(g, 8, 20, 8, 4, sw)                // y20..y23
-      r(g, 9, 24, 6, 1, sw)
-      r(g, 8, 20, 1, 4, '#ffffff')
-      r(g, 15, 20, 1, 4, swLo)
-      r(g, 8, 23, 8, 1, swLo)
-      // 襁褓的折
-      px(g, 11, 21, swLo)
-      px(g, 12, 22, swLo)
-      px(g, 13, 20, '#ffffff')
-      // 箍住襁褓的两只手
-      px(g, 8, 21, cc.skinShade)
-      px(g, 15, 22, cc.skinShade)
+      if (seated) {
+        // 坐姿：襁褓压在膝上，只能画到腰线 y21
+        r(g, 10, 17, 3, 1, cc.skin)          // 婴儿的头
+        px(g, 10, 17, hair)
+        px(g, 12, 17, cc.skinShade)
+        r(g, 9, 17, 6, 1, sw)
+        r(g, 8, 18, 8, 3, sw)                // y18..y20
+        r(g, 9, 21, 6, 1, sw)
+        r(g, 8, 18, 1, 3, '#ffffff')
+        r(g, 15, 18, 1, 3, swLo)
+        r(g, 8, 20, 8, 1, swLo)
+        px(g, 11, 19, swLo)
+        px(g, 8, 21, cc.skinShade)           // 箍住襁褓的两只手
+        px(g, 15, 21, cc.skinShade)
+      } else {
+        // 襁褓 y18..y24：一团白，上沿露出婴儿的脑袋
+        r(g, 9, 18, 6, 1, sw)
+        r(g, 10, 18, 3, 1, cc.skin)
+        px(g, 10, 18, hair)
+        px(g, 12, 18, cc.skinShade)
+        r(g, 9, 19, 6, 1, sw)
+        r(g, 8, 20, 8, 4, sw)                // y20..y23
+        r(g, 9, 24, 6, 1, sw)
+        r(g, 8, 20, 1, 4, '#ffffff')
+        r(g, 15, 20, 1, 4, swLo)
+        r(g, 8, 23, 8, 1, swLo)
+        // 襁褓的折
+        px(g, 11, 21, swLo)
+        px(g, 12, 22, swLo)
+        px(g, 13, 20, '#ffffff')
+        // 箍住襁褓的两只手
+        px(g, 8, 21, cc.skinShade)
+        px(g, 15, 22, cc.skinShade)
+      }
     } else if (dir === 'up') {
       // 背面：襁褓被身体挡住，只在身侧露一小截白
-      r(g, 8, 19, 2, 5, sw)
-      r(g, 14, 20, 2, 4, sw)
-      px(g, 8, 19, '#ffffff')
+      if (seated) {
+        r(g, 8, 19, 2, 3, sw)
+        r(g, 14, 20, 2, 2, sw)
+        px(g, 8, 19, '#ffffff')
+      } else {
+        r(g, 8, 19, 2, 5, sw)
+        r(g, 14, 20, 2, 4, sw)
+        px(g, 8, 19, '#ffffff')
+      }
     } else {
       const f = (x: number, w = 1): number => mx(x, w)
-      r(g, f(5, 5), 18, 5, 7, sw)          // 侧面：襁褓抱在身前（屏幕左）
-      r(g, f(5, 1), 18, 1, 7, '#ffffff')
-      r(g, f(9, 1), 19, 1, 5, swLo)
-      r(g, f(5, 5), 24, 5, 1, swLo)
-      px(g, f(6, 2), 18, cc.skin)
-      px(g, f(8, 1), 21, cc.skinShade)
+      if (seated) {
+        // 坐姿侧面：襁褓只到腰线
+        r(g, f(6, 3), 18, 3, 1, sw)
+        px(g, f(7, 1), 18, cc.skin)
+        px(g, f(8, 1), 18, cc.skinShade)
+        r(g, f(5, 5), 19, 5, 3, sw)          // y19..y21
+        r(g, f(5, 1), 19, 1, 3, '#ffffff')
+        r(g, f(9, 1), 19, 1, 3, swLo)
+        r(g, f(5, 5), 21, 5, 1, swLo)
+      } else {
+        // 侧面：襁褓抱在身前（屏幕左），上沿露出婴儿的脑袋
+        r(g, f(6, 3), 18, 3, 1, sw)
+        px(g, f(7, 1), 18, cc.skin)
+        px(g, f(8, 1), 18, cc.skinShade)
+        r(g, f(5, 5), 19, 5, 5, sw)          // y19..y23
+        r(g, f(6, 3), 24, 3, 1, sw)
+        r(g, f(5, 1), 19, 1, 5, '#ffffff')
+        r(g, f(9, 1), 19, 1, 5, swLo)
+        r(g, f(5, 5), 23, 5, 1, swLo)
+        px(g, f(7, 1), 21, swLo)             // 襁褓的折
+      }
     }
   } else if (cc.glasses) {
     // 看报的先生：白衬衣领口的一道亮边（礼帽与眼镜之外的第三块亮色）
@@ -1119,12 +1175,19 @@ function drawPlain(cc: CharColors, dir: Dir, frame: number): Sprite {
     }
   }
 
-  // 粗呢：两三个织点，不是一片噪点
+  // 粗呢：两三个织点，不是一片噪点（坐姿的织点全部落在腰线以上）
   if (cc.tweed) {
-    px(g, 9, ty + 3, cc.coatHi)
-    px(g, 14, ty + 4, cc.coatDark)
-    px(g, 10, ty + 6, cc.coatHi)
-    px(g, 13, ty + 2, cc.coatDark)
+    if (seated) {
+      px(g, 9, ty + 2, cc.coatHi)
+      px(g, 14, ty + 3, cc.coatDark)
+      px(g, 10, ty + 5, cc.coatHi)
+      px(g, 13, ty + 4, cc.coatDark)
+    } else {
+      px(g, 9, ty + 3, cc.coatHi)
+      px(g, 14, ty + 4, cc.coatDark)
+      px(g, 10, ty + 6, cc.coatHi)
+      px(g, 13, ty + 2, cc.coatDark)
+    }
   }
 
   return c
