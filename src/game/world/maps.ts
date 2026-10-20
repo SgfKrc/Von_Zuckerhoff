@@ -69,7 +69,7 @@ const train: GameMap = {
     { id: 'dsCameo', x: 0, y: 4, sprite: 'ds_down', solid: false, showFlag: 'dsOpen', hideFlag: 'dsGone', interact: 'dsCameo' },
   ],
   portals: [
-    { x: 31, y: 4, to: 'station', tx: 3, ty: 6, dir: 'right' },
+    { x: 31, y: 4, to: 'station', tx: 4, ty: 6, dir: 'right' },
   ],
 }
 
@@ -114,7 +114,7 @@ const station: GameMap = {
   ],
   portals: [
     { x: 1, y: 6, to: 'train', tx: 30, ty: 4, dir: 'left' },
-    { x: 25, y: 6, to: 'road', tx: 1, ty: 5, dir: 'right' },
+    { x: 24, y: 6, to: 'road', tx: 1, ty: 5, dir: 'right' },
   ],
 }
 const road: GameMap = {
@@ -214,7 +214,7 @@ const gate: GameMap = {
     { id: 'emma3', x: 14, y: 17, sprite: 'emma_up', solid: true, interact: 'talkEmmaGate' },
   ],
   portals: [
-    { x: 12, y: 18, to: 'road', tx: 45, ty: 5, dir: 'down' },
+    { x: 12, y: 17, to: 'road', tx: 45, ty: 5, dir: 'down' },
     { x: 9, y: 11, to: 'hall', tx: 12, ty: 14, dir: 'up', lockFlag: 'gateOpen', lockMsg: '门闩沉重。' },
   ],
 }
@@ -271,7 +271,7 @@ const hall: GameMap = {
     { id: 'hallArch', x: 13, y: 9, sprite: 'notice', solid: false, interact: 'hallArch' },
   ],
   portals: [
-    { x: 12, y: 14, to: 'gate', tx: 9, ty: 6, dir: 'down' },
+    { x: 12, y: 14, to: 'gate', tx: 9, ty: 16, dir: 'down' },
     { x: 1, y: 10, to: 'cellar', tx: 10, ty: 2, dir: 'left', lockFlag: 'cellarOpen', lockMsg: '铁门锁着。' },
     { x: 24, y: 10, to: 'corridorE', tx: 2, ty: 6, dir: 'right', lockFlag: 'hallOpen' },
   ],
@@ -316,7 +316,7 @@ const corridorE: GameMap = {
   ],
   portals: [
     { x: 1, y: 6, to: 'hall', tx: 20, ty: 12, dir: 'left' },
-    { x: 27, y: 6, to: 'bedroom1', tx: 2, ty: 7, dir: 'right' },
+    { x: 26, y: 6, to: 'bedroom1', tx: 2, ty: 7, dir: 'right' },
   ],
 }
 
@@ -520,8 +520,8 @@ const corridorMain: GameMap = {
   ],
   portals: [
     { x: 20, y: 8, to: 'dining', tx: 1, ty: 12, dir: 'up' },
-    { x: 1, y: 4, to: 'garden', tx: 24, ty: 12, dir: 'left' },
-    { x: 40, y: 4, to: 'bridge', tx: 2, ty: 6, dir: 'right' },
+    { x: 1, y: 4, to: 'garden', tx: 25, ty: 10, dir: 'left' },
+    { x: 38, y: 4, to: 'bridge', tx: 2, ty: 6, dir: 'right' },
   ],
 }
 const bridge: GameMap = {
@@ -567,7 +567,7 @@ const bridge: GameMap = {
     { id: 'wind', x: 16, y: 6, sprite: 'notice', solid: false, interact: 'bridgeWind' },
   ],
   portals: [
-    { x: 1, y: 6, to: 'corridorMain', tx: 39, ty: 4, dir: 'left' },
+    { x: 1, y: 6, to: 'corridorMain', tx: 37, ty: 4, dir: 'left' },
   ],
 }
 const cellar: GameMap = {

@@ -150,9 +150,11 @@ function entitySolidAt(x: number, y: number): boolean {
 }
 
 function blocked(x: number, y: number): boolean {
+  // 24×32 的精灵宽了 8px：脚部碰撞盒同步加宽到 14×6（x±7）。
+  // 高度仍然是 y-3 / y+2 —— 脚部方框不该跟着长高，否则进门洞会卡。
   const pts: [number, number][] = [
-    [x - 5, y - 3], [x + 5, y - 3],
-    [x - 5, y + 2], [x + 5, y + 2],
+    [x - 7, y - 3], [x + 7, y - 3],
+    [x - 7, y + 2], [x + 7, y + 2],
   ]
   return pts.some(([ax, ay]) => solidAt(ax, ay) || entitySolidAt(ax, ay))
 }
@@ -177,7 +179,7 @@ export function visibleEntities(target: EntityDef[] = _visible): EntityDef[] {
 function findInteract(): { ent: EntityDef; sx: number; sy: number } | null {
   let fx = world.px
   let fy = world.py
-  const reach = 18
+  const reach = 20
   if (world.dir === 'up') fy -= reach
   if (world.dir === 'down') fy += reach
   if (world.dir === 'left') fx -= reach
