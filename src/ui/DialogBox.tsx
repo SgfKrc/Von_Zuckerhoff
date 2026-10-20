@@ -13,15 +13,15 @@ import { PORTRAITS } from '../game/art/sprites'
  * 2. 程序化 canvas —— 没有参考图的角色兜底（目前仅剩端口占位用）。
  */
 const PORTRAIT_IMAGES: Record<string, string> = {
-  ftz: './portraits/ftz.png',
-  ftzCold: './portraits/ftz-cold.png',
-  emma: './portraits/emma.png',
-  emmaQuiet: './portraits/emma-quiet.png',
-  hermann: './portraits/hermann.png',
-  hermannVoid: './portraits/hermann-void.png',
-  marta: './portraits/marta.png',
+  ftz: './portraits/ftz.webp',
+  ftzCold: './portraits/ftz-cold.webp',
+  emma: './portraits/emma.webp',
+  emmaQuiet: './portraits/emma-quiet.webp',
+  hermann: './portraits/hermann.webp',
+  hermannVoid: './portraits/hermann-void.webp',
+  marta: './portraits/marta.webp',
   // 彩蛋角色：素材本身带透明通道，走普通立绘路径（不再是白底相片）
-  ds: './portraits/ds.png',
+  ds: './portraits/ds.webp',
 }
 const PORTRAIT_PHOTOS: Record<string, string> = {}
 

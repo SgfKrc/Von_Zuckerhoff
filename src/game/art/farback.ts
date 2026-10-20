@@ -1432,8 +1432,8 @@ export function drawSpokenLine(g: Ctx, text: string, alpha: number): void {
 const PORTRAIT_W = 200
 
 const PORTRAIT_SRC = {
-  ftz: './portraits/ftz.png',
-  emma: './portraits/emma.png',
+  ftz: './portraits/ftz.webp',
+  emma: './portraits/emma.webp',
 } as const
 
 /** 弗里德里希：水平翻转后头中心落在画面右 1/3（x≈256），下半身出画 */

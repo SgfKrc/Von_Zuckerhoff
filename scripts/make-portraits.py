@@ -47,8 +47,8 @@ def process(name: str, src: str) -> None:
     img = Image.open(path).convert("RGBA")
     img = img.resize((NATIVE, NATIVE), Image.NEAREST)
     img = cutout(img)
-    dst = OUT / f"{name}.png"
-    img.save(dst, "PNG", optimize=True)
+    dst = OUT / f"{name}.webp"
+    img.save(dst, "WEBP", quality=92, method=6)
     print(f"{name}: {dst.stat().st_size / 1024:.1f} KB  {NATIVE}x{NATIVE}")
 
 
