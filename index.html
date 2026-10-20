@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>冯·祖克霍夫 · 宝石</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: #05060b; overflow: hidden; height: 100%; }
+      #root { width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <script>
+      window.__vzErr = function (msg, src) {
+        var d = document.createElement('div');
+        d.id = 'vz-error';
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2a0508;color:#f0a0a0;font:12px monospace;padding:8px;z-index:99999;white-space:pre-wrap;';
+        d.textContent = 'ERROR: ' + msg + (src ? ' @ ' + src : '');
+        document.body.appendChild(d);
+      };
+      window.addEventListener('error', function (e) {
+        window.__vzErr(e.message, (e.filename || '') + ':' + (e.lineno || ''));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        window.__vzErr('unhandled: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+      });
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

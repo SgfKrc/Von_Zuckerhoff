@@ -1,0 +1,42 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-electron/
+release/
+*.tsbuildinfo
+
+# 开发临时
+tmp/
+.preview/
+.edge-profile/
+*.~tmp
+*.tmp
+*.tmpdir/
+
+# 编辑器 / 系统
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 大素材图：local_docs 只保留文档与文本，图片走 docs/refs（已入库的副本）或本地自取
+# 这样仓库不会被 10MB+ 的原图撑爆，同时保留可追溯的设计参考
+local_docs/*.png
+local_docs/*.jpg
+local_docs/*.jpeg
+local_docs/*.webp
+
+# 环境变量
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,161 @@
+// ============================================================
+// 交互与入场事件
+// 每个实体的 interact 在这里分派到 script.ts 的脚本
+// ============================================================
+import { startScript, setFlag, hasFlag, useGame, addToast, unlockAch, eatSugar } from '../store'
+import { SCRIPTS } from '../data/script'
+import type { MapId } from '../types'
+
+/** 每个地图首次进入时触发的脚本 */
+const ENTER: Partial<Record<MapId, string>> = {
+  train: 'arriveTrain',
+  station: 'arriveStation',
+  road: 'arriveRoad',
+  gate: 'arriveGate',
+  hall: 'arriveHall',
+  corridorE: 'arriveCorridorE',
+  bedroom1: 'arriveBedroom',
+  dining: 'arriveDining',
+  library: 'arriveLibrary',
+  corridorMain: 'arriveCorridorMain',
+  bridge: 'arriveBridge',
+  cellar: 'arriveCellar',
+  garden: 'arriveGarden',
+  parlor: 'arriveParlor',
+}
+
+export function onEnterMap(map: MapId): void {
+  // 通行权限：进入某地图即解锁对应的门（幂等）
+  if (map === 'hall') setFlag('hallOpen', true)
+  if (map === 'dining') setFlag('cellarOpen', true)
+
+  const key = 'seen_' + map
+  if (hasFlag(key)) return
+  const scriptId = ENTER[map]
+  if (!scriptId || !SCRIPTS[scriptId]) return
+  setFlag(key, true)
+  startScript(scriptId)
+}
+
+/** 需要特殊逻辑（不只是播放剧本）的交互 */
+const SPECIAL: Record<string, () => void> = {
+  hallArch: () => {
+    // 门厅拱肋：教学补图
+    const g = useGame.getState()
+    if (hasFlag('archRepaired')) {
+      speak('archDone')
+      return
+    }
+    if (!g.blueprint) {
+      speak('archNeedBlueprint')
+      return
+    }
+    speak('archRepairStart')
+  },
+  lookVictoria: () => {
+    const g = useGame.getState()
+    if (g.blueprint) unlockAch('portraitBreath')
+    speak('lookVictoria')
+  },
+  eat: () => {
+    eatSugar()
+  },
+  knockGate: () => {
+    if (hasFlag('gateOpen')) { speak('gateAlreadyOpen'); return }
+    speak('knockGate')
+  },
+  enterBedroom: () => {
+    setFlag('nightWalk', true)
+    speak('enterBedroom')
+  },
+  toBridge: () => {
+    speak('toBridge')
+  },
+  lookTower: () => {
+    const g = useGame.getState()
+    if (hasFlag('towerMeasured')) {
+      addToast('（量过了。它比看上去深得多。）', 'info')
+      return
+    }
+    if (!g.blueprint) {
+      speak('lookTower')
+      return
+    }
+    setFlag('towerMeasureActive', true)
+  },
+  lookBed: () => {
+    // 例外：睡觉是推进章节的开关，第二次调查也必须能推进，
+    // 所以这里不走 speak()（否则会被 endPrologue_again 之类吃掉）。
+    const g = useGame.getState()
+    startScript(g.chapter === 1 ? 'endChapter1' : 'endPrologue')
+  },
+}
+
+/**
+ * 播一条脚本，并记下「看过」。
+ * 第二次及以后：如果 script.ts 末尾追加了 <id>_again，就只播那一段短回应；
+ * 没有 _again 的脚本（世界的其它地方）照原样再播一遍。
+ * 特殊交互（SPECIAL）在内部播脚本时也走这里，规则完全一致。
+ */
+function speak(id: string): void {
+  if (SCRIPTS[id + '_again'] && hasFlag('seen_' + id)) {
+    startScript(id + '_again')
+    return
+  }
+  if (!SCRIPTS[id]) return
+  startScript(id)
+  setFlag('seen_' + id, true)
+}
+
+/**
+ * 彩蛋的开门条件：在列车上调查过 4 件不同的东西。
+ * 计的是「不同的东西」而不是次数 —— 同一只猫看十遍也还是只算一件。
+ * 信 / 胸针 / 线图不再占单独的交互点（它们在背包里），
+ * 所以车上的 NPC 与装饰也算「车上的东西」。
+ */
+const TRAIN_LOOKS = [
+  'lookCat', 'talkEmmaTrain',
+  'trainSleeper', 'trainNewspaper', 'trainMother', 'trainCane',
+  'trainRack', 'trainCurtain', 'trainBin', 'trainFootstep', 'trainFrost', 'trainSmoke',
+]
+const CAMEO_LOOKS = 4
+
+/**
+ * 数一件调查过的东西；满 4 件就把左端门洞里的 dsCameo 放出来。
+ * 只动 flag 与一条 toast：不打开对话，也不推进当前对话。
+ * 第二次及以后的同一件东西不计数（_again 的重复触发不算「看过」）。
+ */
+function noteTrainLook(id: string): void {
+  if (!TRAIN_LOOKS.includes(id)) return
+  if (hasFlag('dsOpen') || hasFlag('dsGone')) return
+  const key = 'dsLooked_' + id
+  if (hasFlag(key)) return
+  setFlag(key, true)
+  let n = 0
+  for (const k of TRAIN_LOOKS) if (hasFlag('dsLooked_' + k)) n++
+  setFlag('dsCount', n)
+  if (n >= CAMEO_LOOKS) {
+    setFlag('dsOpen', true)
+    addToast('（车厢尽头好像多了点什么。）', 'info')
+  }
+}
+
+export function handleInteract(id: string): void {
+  const firstTime = !hasFlag('seen_' + id)
+  const special = SPECIAL[id]
+  if (special) {
+    special()
+    setFlag('seen_' + id, true)
+    // 只有第一次调查在这个交互点上算「看过」；再来一次只给 _again 的短回应。
+    if (firstTime) noteTrainLook(id)
+    return
+  }
+  if (SCRIPTS[id]) {
+    speak(id)
+    setFlag('seen_' + id, true)
+    if (firstTime) noteTrainLook(id)
+    return
+  }
+  // 兜底：避免玩家点了没反应
+  addToast('（这里什么也没有。）', 'info')
+}
