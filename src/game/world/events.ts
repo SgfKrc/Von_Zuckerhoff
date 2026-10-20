@@ -140,7 +140,44 @@ function noteTrainLook(id: string): void {
   }
 }
 
+/**
+ * 列车主线任务：只有这 4 件算（npc_* / cat / 装饰物都不算）。
+ * 全部做完 → engine.ts 的 updateTrainSequence 开演到站流程；
+ * 单件完成时给一条「记下了」的 toast，玩家自己数得到进度。
+ *
+ * 车厢尽头没有钟的实体（arriveTrain 里只提了一句「钟停在四点十七分」），
+ * 所以第四件用「车头方向的煤烟味」（trainSmoke）代替：
+ * 它就在车厢左端、车头那一侧，是这条线上最靠「尽头」的一件。
+ */
+const TRAIN_TASKS: Record<string, string> = {
+  talkEmmaTrain: 'taskEmma',    // 与艾玛交谈
+  trainWindow: 'taskWindow',    // 看车窗
+  trainFrost: 'taskWindow',     // 车窗上的霜（同一个窗户）
+  trainRack: 'taskLuggage',     // 看行李架
+  trainSmoke: 'taskClock',      // 车厢尽头的煤烟味
+}
+
+/** 四件主线任务的 flag（顺序即提示里的编号顺序） */
+const TRAIN_TASK_FLAGS = ['taskEmma', 'taskWindow', 'taskLuggage', 'taskClock'] as const
+
+/** 四件都做完了吗（engine 用它决定要不要开演到站） */
+export function trainTasksCleared(): boolean {
+  return TRAIN_TASK_FLAGS.every(f => hasFlag(f))
+}
+
+/** 记一件主线任务；重复调查不算，完成了给一条进度 toast */
+function noteTrainTask(id: string): void {
+  const flag = TRAIN_TASKS[id]
+  if (!flag || hasFlag(flag)) return
+  setFlag(flag, true)
+  let n = 0
+  for (const f of TRAIN_TASK_FLAGS) if (hasFlag(f)) n++
+  if (n >= TRAIN_TASK_FLAGS.length) addToast('（车厢里该看的都看过了。）', 'info')
+  else addToast(`（记下了一件事 · ${n}/4）`, 'info')
+}
+
 export function handleInteract(id: string): void {
+  noteTrainTask(id)
   const firstTime = !hasFlag('seen_' + id)
   const special = SPECIAL[id]
   if (special) {

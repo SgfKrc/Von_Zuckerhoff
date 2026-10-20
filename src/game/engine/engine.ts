@@ -6,9 +6,12 @@ import { SOLID_TILES } from '../art/tiles'
 import { TILE } from '../art/build'
 import type { Dir, EntityDef, GameMap, MapId } from '../types'
 import { Input } from './input'
-import { useGame, addPlayTime, changeConviction, setBlueprint, toggleBlueprint, addToast } from '../store'
+import {
+  useGame, addPlayTime, changeConviction, setBlueprint, toggleBlueprint, addToast,
+  hasFlag, setFlag, startScript,
+} from '../store'
 import { bridge } from '../bridge'
-import { handleInteract, onEnterMap } from '../world/events'
+import { handleInteract, onEnterMap, trainTasksCleared } from '../world/events'
 import { Snd, sceneForMap } from '../audio'
 import { drawScene } from '../render/renderer'
 
@@ -27,6 +30,18 @@ export interface World {
   camX: number
   camY: number
   shakeT: number
+  /** 行进抖动相位（秒，确定性叠加正弦，不逐帧随机） */
+  rumbleT: number
+  /** 行进抖动幅度倍率 0..1：行驶中 1，到站后 0.6 秒内衰减到 0 */
+  rumbleAmp: number
+  /** 画面淡出：0 = 正常，1 = 全黑（到站演出用，renderer 最后叠一层黑） */
+  fade: number
+  /** 列车广播字幕：剩余秒数（<=0 不显示） */
+  broadcastT: number
+  /** 列车广播字幕：总时长（用来算淡入淡出） */
+  broadcastDur: number
+  /** 列车广播字幕文本 */
+  broadcastText: string
   fog: FogP[]
   t: number
   /** 累计秒，用于确信/甜度节流 */
@@ -45,6 +60,12 @@ export const world: World = {
   camX: 0,
   camY: 0,
   shakeT: 0,
+  rumbleT: 0,
+  rumbleAmp: 0,
+  fade: 0,
+  broadcastT: 0,
+  broadcastDur: 0,
+  broadcastText: '',
   fog: [],
   t: 0,
   clock: 0,
@@ -98,6 +119,13 @@ bridge.teleport = (map: MapId, x: number, y: number, dir?: Dir) => {
   world.moving = false
   world.interactTarget = null
   portalCooldown = 16
+  // 换图 / 读档：把上一段演出留下的淡出、抖动与广播字幕清干净，
+  // 免得在任何一张图上卡着一层黑或一条不属于它的广播。
+  world.fade = 0
+  world.rumbleAmp = 0
+  world.broadcastT = 0
+  trainPhase = 'idle'
+  trainPhaseT = 0
   Input.flush()
   seedFog()
   syncCamera()
@@ -117,6 +145,121 @@ bridge.teleport = (map: MapId, x: number, y: number, dir?: Dir) => {
 }
 
 bridge.shake = (frames: number) => { world.shakeT = Math.max(world.shakeT, frames) }
+
+// ============================================================
+// 列车：行进抖动 + 到站任务演出
+// ============================================================
+//
+// 抖动与震屏是两套东西：
+//   world.shakeT  剧情震屏 —— 帧计数、随机、±1.5px；
+//   world.rumble* 行进抖动 —— 秒计数、确定性正弦、±1px、到站后 0.6s 衰减。
+// 两者都只进相机偏移（renderer 的 ox / oy），绝不进 world.px / world.py：
+// 碰撞、传送门、交互距离全都读世界坐标，抖进去会把人抖进墙里。
+
+/** 玩家在车厢里的座位：emmaSeat（20,2）右边那一格，面朝左正对着她 */
+const SEAT_X = 21
+const SEAT_Y = 2
+
+/** 淡出到全黑、抖停、再淡入，各段的秒数 */
+const FADE_OUT_SEC = 0.9
+const RUMBLE_STOP_SEC = 0.6
+const FADE_IN_SEC = 0.9
+/** 广播字幕在屏幕上停留的秒数（横跨淡入，够读完这一句） */
+const BROADCAST_SEC = 5.5
+/** 到站广播词（单条 ≤64 字） */
+const STATION_BROADCAST = '本次列车即将到达——糖堡站。'
+
+type TrainPhase = 'idle' | 'fadeOut' | 'settle' | 'fadeIn'
+let trainPhase: TrainPhase = 'idle'
+let trainPhaseT = 0
+
+/**
+ * 到站序列。4 件主线交互全部做完（见 events.ts 的 TRAIN_TASKS）之后自动开演：
+ *
+ *   淡出 0.9s → 全黑时把玩家搬到艾玛对面的座位、放广播字幕 →
+ *   抖动 0.6s 内衰减到 0（车停稳）→ 淡入 0.9s → 艾玛自动开口（trainArrivalEmma）。
+ *
+ * 只演一次：flag `trainArrived` 守卫，读档重进列车不会再演一遍。
+ * 玩家正在对话 / 图纸 / 背包 / 章节卡里时不动，等它们关掉再开演。
+ * 返回 true 表示本帧由演出接管，玩家操作被冻结（只冻结输入，不动相机坐标）。
+ */
+function updateTrainSequence(dt: number): boolean {
+  // 广播字幕计时与 UI 无关：对话里也在走。
+  if (world.broadcastT > 0) world.broadcastT = Math.max(0, world.broadcastT - dt)
+
+  if (trainPhase === 'idle') {
+    const riding = world.map.id === 'train' && !hasFlag('trainArrived')
+    if (!riding) {
+      world.rumbleAmp = 0
+      return false
+    }
+    // 行驶中：幅度拉满，相位继续走
+    world.rumbleT += dt
+    world.rumbleAmp = 1
+
+    const g = useGame.getState()
+    // 对话 / 图纸 / 背包 / 章节卡 / 非探索模式：等它们关掉再演
+    const busy = g.mode !== 'explore' || !!g.dialog || !!g.chapterCard || !!g.modal || g.blueprint
+    if (busy || !trainTasksCleared()) return false
+
+    trainPhase = 'fadeOut'
+    trainPhaseT = 0
+    Input.flush()
+    return true
+  }
+
+  trainPhaseT += dt
+
+  if (trainPhase === 'fadeOut') {
+    world.rumbleT += dt
+    world.rumbleAmp = 1
+    world.fade = Math.min(1, trainPhaseT / FADE_OUT_SEC)
+    if (trainPhaseT >= FADE_OUT_SEC) {
+      world.fade = 1
+      // 全黑：到站了。先落 flag，抖动从此不再重新起。
+      setFlag('trainArrived', true)
+      world.px = SEAT_X * TILE + 8
+      world.py = SEAT_Y * TILE + 12
+      world.dir = 'left'          // 对着艾玛
+      world.moving = false
+      world.interactTarget = null
+      portalCooldown = 16
+      syncCamera()
+      // 广播
+      world.broadcastText = STATION_BROADCAST
+      world.broadcastDur = BROADCAST_SEC
+      world.broadcastT = BROADCAST_SEC
+      Snd.sfx('bell')
+      trainPhase = 'settle'
+      trainPhaseT = 0
+    }
+    return true
+  }
+
+  if (trainPhase === 'settle') {
+    // 全黑里衰减：0.6 秒从满幅减到 0，不硬切
+    world.rumbleT += dt
+    world.rumbleAmp = Math.max(0, 1 - trainPhaseT / RUMBLE_STOP_SEC)
+    if (trainPhaseT >= RUMBLE_STOP_SEC) {
+      world.rumbleAmp = 0
+      trainPhase = 'fadeIn'
+      trainPhaseT = 0
+    }
+    return true
+  }
+
+  // fadeIn：车已经停稳，抖幅为 0，画面淡回来
+  world.rumbleAmp = 0
+  world.fade = Math.max(0, 1 - trainPhaseT / FADE_IN_SEC)
+  if (trainPhaseT >= FADE_IN_SEC) {
+    world.fade = 0
+    trainPhase = 'idle'
+    trainPhaseT = 0
+    // 艾玛自动开口（不需要玩家按 E），最后一句落 canDisembark
+    startScript('trainArrivalEmma')
+  }
+  return true
+}
 
 // ---- 碰撞 ----
 function solidAt(x: number, y: number): boolean {
@@ -267,6 +410,15 @@ function tick(dt: number): void {
   }
 
   const uiOpen = !!g.dialog || !!g.chapterCard || !!g.modal
+
+  // 到站演出（列车）：这段由内向外接管画面，只冻结输入。
+  // 放在 uiOpen 判定之前 —— 淡出与广播字幕在对话里也要继续走完。
+  if (updateTrainSequence(dt)) {
+    Input.flush()
+    world.moving = false
+    syncCamera()
+    return
+  }
 
   if (g.mode !== 'explore' || uiOpen) {
     if (uiOpen) {

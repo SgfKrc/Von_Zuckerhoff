@@ -1342,3 +1342,26 @@ const EXTRA_SCRIPTS: Record<string, Step[]> = {
 
 // 并进 SCRIPTS：上面的对象字面量一个字都不动。
 Object.assign(SCRIPTS, EXTRA_SCRIPTS)
+
+// ============================================================
+// 追加区 2：列车到站（engine.ts 的到站序列在淡入结束后自动播这一段）
+// 艾玛的口吻：≤12 字、只陈述、不劝阻（NARRATIVE_DESIGN §7）。
+// 她说三句短的：该下车了 / 行李她拿 / 让主角自己走。
+// 最后一句落 canDisembark —— 右端车门的锁这才打开。
+// ============================================================
+
+const ARRIVAL_SCRIPTS: Record<string, Step[]> = {
+  trainArrivalEmma: [
+    { t: 'line', sp: 'emma', text: '糖堡到了。' },
+    { t: 'line', sp: 'emma', text: '行李我先拿下去。' },
+    { t: 'line', sp: 'none', text: '她从架上提起箱子，箱角在桌沿擦了一下，没有出声。' },
+    { t: 'line', sp: 'emma', text: '您自己走。' },
+    { t: 'do', do: [
+      { flag: ['canDisembark', true] },
+      { sound: 'bell' },
+      { toast: '车门开了。向右走，下车。' },
+    ] },
+  ],
+}
+
+Object.assign(SCRIPTS, ARRIVAL_SCRIPTS)

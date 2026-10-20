@@ -20,12 +20,26 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = C.night
   ctx.fillRect(0, 0, VIEW_W, VIEW_H)
 
-  // 震屏
+  // 震屏（剧情）：帧计数 + 随机，幅度大
   let ox = 0
   let oy = 0
   if (world.shakeT > 0) {
     ox = (Math.random() - 0.5) * 3
     oy = (Math.random() - 0.5) * 3
+  }
+
+  // 行进抖动（列车）：确定性、±1px、约 10Hz。
+  // 只加到下面这两行相机偏移上 —— 绝不进 world.px / world.py，
+  // 否则碰撞盒、传送门与交互距离会跟着一起抖。
+  const rum = world.rumbleAmp
+  if (rum > 0) {
+    const t = world.rumbleT
+    // 两组不成倍数的正弦叠加：不会读出「每 7 帧抖一次」的机械感，
+    // 又不是每帧 Math.random 那种故障噪点。
+    const rx = Math.sin(t * 61.0) * 0.74 + Math.sin(t * 27.0 + 1.7) * 0.26
+    const ry = Math.sin(t * 73.0 + 2.1) * 0.68 + Math.sin(t * 33.0 + 0.4) * 0.32
+    ox += Math.round(rx * rum)
+    oy += Math.round(ry * rum)
   }
 
   const camX = Math.round(world.camX + ox)
@@ -52,6 +66,76 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
   if (g.blueprint) drawBlueprint(ctx, camX, camY)
   drawInteractHint(ctx, camX, camY)
   drawVignette(ctx)
+  // 淡出层在最后：全黑时连暗角一起吃掉。
+  // 广播字幕压在淡出层之上 —— 车停稳前那一句要在黑里也能读到。
+  drawFade(ctx)
+  drawBroadcast(ctx)
+}
+
+/**
+ * 画面淡出：world.fade 0 = 正常，1 = 全黑。
+ * 到站演出由 engine.ts 用 tween 推这个数（0.9s 推到 1，再 0.9s 推回 0）。
+ */
+function drawFade(ctx: CanvasRenderingContext2D): void {
+  const f = world.fade
+  if (f <= 0) return
+  ctx.fillStyle = `rgba(5,6,11,${Math.min(1, f)})`
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H)
+}
+
+// ---------------- 列车广播字幕 ----------------
+
+/**
+ * 列车广播：一条居中横条，深灰底 + 米白字 + 方括号。
+ * 与所有 UI 都不同 —— HUD / toast / 对话框都是 DOM，这一条画在画布上，
+ * 所以它压得住淡出层，也在图纸模式与对话之上。
+ */
+function drawBroadcast(ctx: CanvasRenderingContext2D): void {
+  const remain = world.broadcastT
+  if (remain <= 0 || !world.broadcastText) return
+  const dur = Math.max(0.2, world.broadcastDur)
+  const age = dur - remain
+  // 0.15s 淡入、0.55s 淡出
+  const alpha = Math.max(0, Math.min(1, age / 0.15, remain / 0.55))
+  if (alpha <= 0) return
+
+  const label = `[ ${world.broadcastText} ]`
+  const FONT = '"Songti SC", "SimSun", "Noto Serif SC", serif'
+
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `10px ${FONT}`
+  const tw = ctx.measureText(label).width
+  const w = Math.round(Math.max(196, Math.min(VIEW_W - 24, tw + 40)))
+  const h = 26
+  const x = Math.round((VIEW_W - w) / 2)
+  // 放在画面下半部的过道上：不挡到站后坐回座位的那个位置（座位行在 y≈80）
+  const y = 104
+
+  ctx.globalAlpha = alpha
+  // 面板：深灰铁牌
+  ctx.fillStyle = 'rgba(18,20,25,0.92)'
+  ctx.fillRect(x, y, w, h)
+  // 上下两道黄铜线 + 两端各一道短竖线 —— 像车厢里挂的铁牌，不是对话框
+  ctx.fillStyle = 'rgba(122,106,58,0.95)'
+  ctx.fillRect(x, y, w, 1)
+  ctx.fillRect(x, y + h - 1, w, 1)
+  ctx.fillStyle = 'rgba(111,122,140,0.55)'
+  ctx.fillRect(x, y, 1, h)
+  ctx.fillRect(x + w - 1, y, 1, h)
+  // 两端各一枚黄铜小菱形（广播牌的花头；不用小字，10px 以下的中文会糊）
+  ctx.fillStyle = 'rgba(200,160,64,0.85)'
+  const dy = y + Math.floor(h / 2)
+  ctx.fillRect(x + 8, dy - 1, 1, 2)
+  ctx.fillRect(x + 9, dy, 1, 1)
+  ctx.fillRect(x + w - 9, dy - 1, 1, 2)
+  ctx.fillRect(x + w - 10, dy, 1, 1)
+  // 广播词
+  ctx.fillStyle = '#f2ece0'
+  ctx.font = `10px ${FONT}`
+  ctx.fillText(label, VIEW_W / 2, dy + 1)
+  ctx.restore()
 }
 
 function drawTiles(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {

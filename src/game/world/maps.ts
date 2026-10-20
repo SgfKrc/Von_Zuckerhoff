@@ -58,8 +58,10 @@ const train: GameMap = {
     { id: 'sleeper', x: 6, y: 1, sprite: 'npc_sleeper_down', solid: true, interact: 'trainSleeper' },
     // 看报的先生：第 4 个厢座
     { id: 'newspaper', x: 14, y: 1, sprite: 'npc_reader_down', solid: true, interact: 'trainNewspaper' },
-    // 行李架：第 7 与第 8 个厢座之间的空格，靠窗（tall：向上占一格，挂在窗下）
-    { id: 'rack', x: 29, y: 1, sprite: 'bookshelf', solid: true, tall: true, interact: 'trainRack' },
+    // 行李架：第 7 与第 8 个厢座之间的车壁（y0 = 车壁那一行），
+    // 32×16 的横长精灵：一根金属杆 + 三件挂在杆下的行李，杆下留空露出车壁。
+    // 不复用 bookshelf —— 那是书架，车厢里的行李架不长那样。
+    { id: 'rack', x: 29, y: 0, sprite: 'luggageRack', solid: true, interact: 'trainRack' },
 
     // ---- 下排厢座（y7，与上排同一套 x）----
     // 抱孩子的女人：第 6 个厢座的靠窗椅。（同上：isChar 已底对齐，不写 tall）
@@ -90,7 +92,12 @@ const train: GameMap = {
     { id: 'dsCameo', x: 0, y: 4, sprite: 'ds_down', solid: false, showFlag: 'dsOpen', hideFlag: 'dsGone', interact: 'dsCameo' },
   ],
   portals: [
-    { x: 35, y: 4, to: 'station', tx: 4, ty: 6, dir: 'right' },
+    // 右端车门：列车还在走的时候锁着。
+    // 到站演出（engine.ts 的到站序列）最后一句落下 canDisembark，门才开。
+    {
+      x: 35, y: 4, to: 'station', tx: 4, ty: 6, dir: 'right',
+      lockFlag: 'canDisembark', lockMsg: '车门锁着。列车还在走。',
+    },
   ],
 }
 
