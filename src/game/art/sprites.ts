@@ -1473,7 +1473,7 @@ interface PortraitPal {
   kerchief?: string
   /** 领口的小饰物（艾玛的铜结） */
   pin?: string
-  /** 虹膜两侧各留 1px 眼白（少女的眼睛要有神；男性角色不要，会读成眼镜） */
+  /** 虹膜两侧各留 1px 眼白用骨白（默认；填 false 则改用受光的皮肤色） */
   eyeWhite?: boolean
   /** 两眼之间的空隙：艾玛 3px（显年轻），默认 2px */
   eyeGap?: number
@@ -1489,7 +1489,7 @@ const PH = 48
 const SKULL_TOP = 10       // 发际线：以上 10 行是头发/帽子，以下是脸
 const NECK_TOP = 32        // 颈：y32 下颌阴影，y33..y35 颈干
 const SHOULDER_TOP = 36    // 肩从 y36 展开到 y47（被画布底边裁断，到上臂为止）
-const BROW_Y = 16          // 眉（与眼睑之间留 1 行空隙，贴着会凶）
+const BROW_Y = 15          // 眉（与眼睑之间留 2 行空隙，贴着会凶、会显老）
 const EYE_TOP = 18         // 上眼睑：一道 3px 横线
 const IRIS_Y = 19          // 虹膜：只占中间 1px，左右各 1px 眼白
 const NOSE_Y = 23          // 鼻梁 + 鼻头 = 2 行（1 行平、3 行长）
@@ -1573,15 +1573,15 @@ function portraitBody(g: Ctx, p: PortraitPal): void {
 
 /** 颈：下颌一道宽阴影 + 4 行颈干（大半会被领子吃掉） */
 function portraitNeck(g: Ctx, p: PortraitPal): void {
-  r(g, 20, NECK_TOP, 8, 1, p.skinShade)        // 下颌投在颈上的阴影
-  r(g, 21, NECK_TOP + 1, 6, 3, p.skinShade)    // 颈干 y33..y35
-  r(g, 21, NECK_TOP + 1, 3, 3, p.skin)         // 颈前受光柱
-  px(g, 21, NECK_TOP + 1, p.skinHi)
+  r(g, 19, NECK_TOP, 10, 1, p.skinShade)       // 下颌投在颈上的阴影（比下巴窄 1px）
+  r(g, 20, NECK_TOP + 1, 8, 3, p.skin)         // 颈干 y33..y35：与脸同色，否则像接了个灰方块
+  px(g, 20, NECK_TOP + 1, p.skinHi)            // 左侧受光
+  r(g, 27, NECK_TOP + 1, 1, 3, p.skinShade)    // 右侧背光
 }
 
 /**
- * 头骨 + 耳：逐行给宽度，22 行（y10..y31）。
- * 左缘 1px 受光；颧骨以下右缘内侧 1px 是一道竖高光（脸颊饱满）。
+ * 头骨：逐行给宽度，22 行（y10..y31）。
+ * 左上受光：左缘第 2 列 1px 高光、右缘内侧 1px 高光，都只在颧骨以下的"脸颊"段。
  * 两侧都不许出现竖暗部 —— 那是"显老"的第二元凶，脸会读成两颊凹陷。
  */
 function portraitSkull(g: Ctx, p: PortraitPal, rows: number[]): void {
@@ -1590,31 +1590,24 @@ function portraitSkull(g: Ctx, p: PortraitPal, rows: number[]): void {
     const y = SKULL_TOP + i
     const x0 = skullLeft(w)
     r(g, x0, y, w, 1, p.skin)
-    px(g, x0, y, p.skinHi)                     // 左缘受光
-    if (y >= 19) px(g, x0 + w - 2, y, p.skinHi) // 颧骨到下颌：脸颊高光 1px
+    if (y <= 18) px(g, x0, y, p.skinHi)          // 额头：左缘受光
+    else if (y <= 28) {
+      px(g, x0, y, p.skinHi)                     // 脸颊：两侧轮廓各 1px 高光，脸才饱满
+      px(g, x0 + w - 1, y, p.skinHi)
+    }
   }
   // 下巴底面：只压最后一行中间的两三个像素，末端收住但不成为尖
   const lastW = rows[rows.length - 1]
   r(g, skullLeft(lastW) + 3, SKULL_TOP + rows.length - 1, lastW - 6, 1, p.skinShade)
-  // 耳：被鬓发压住大半，只在眼到鼻之间露 5 行
-  const maxW = Math.max(...rows)
-  const fx0 = skullLeft(maxW)
-  r(g, fx0 - 2, 19, 2, 5, p.skin)
-  px(g, fx0 - 2, 19, p.skinHi)
-  r(g, fx0 + maxW, 19, 2, 5, p.skin)
-  px(g, fx0 + maxW + 1, 23, p.skinShade)
 }
 
-/** 眉：y17 一道 4px 横线，外端抬 1px；cold 时笔直（"冷"靠眉，不靠眼下暗部） */
+/** 眉：y15 一道 4px 横线；cold 时更浓（"冷"靠眉，不靠眼下暗部） */
 function portraitBrows(g: Ctx, p: PortraitPal, mood: Mood): void {
   const { ex0, ex1 } = eyeLayout(p)
   const lx = ex0 - 1
   const rx = ex1                                // 右眉起笔：与右眼左端齐平
-  for (const x of [lx, rx]) r(g, x, BROW_Y, 4, 1, p.hairDark)
-  if (mood !== 'cold') {
-    px(g, lx, BROW_Y - 1, p.hairDark)           // 眉梢上挑一像素
-    px(g, rx + 3, BROW_Y - 1, p.hairDark)
-  }
+  const bw = mood === 'cold' ? 5 : 4
+  for (const x of [lx, rx]) r(g, x, BROW_Y, bw, 1, p.hairDark)
 }
 
 /**
@@ -1625,7 +1618,7 @@ function portraitBrows(g: Ctx, p: PortraitPal, mood: Mood): void {
  */
 function portraitEyes(g: Ctx, p: PortraitPal, mood: Mood): void {
   const eyeDark = p.eyeDark ?? p.eye
-  const white = p.eyeWhite ? C.bone : p.skinHi
+  const white = p.eyeWhite === false ? p.skinHi : C.bone
   const lidded = mood === 'cold' || mood === 'quiet'
   const { ex0, ex1 } = eyeLayout(p)
   for (const ex of [ex0, ex1]) {
@@ -1656,16 +1649,16 @@ function portraitNose(g: Ctx, p: PortraitPal): void {
 
 /**
  * 嘴：y27 一道 6px 平直唇线。
- * 嘴角只汇聚、不下压（下压是"显老"的第三元凶）；
- * smile / softMouth 让最外端抬 1px —— 艾玛的"0.5px 上扬"落地成这一像素。
+ * 嘴角只许向上（smile / softMouth）或持平，绝不许下压 ——
+ * 下压的嘴角 + 嘴角的暗点会立刻读成"撇嘴生气"，是"显老"的第三个元凶。
  */
 function portraitMouth(g: Ctx, p: PortraitPal, mood: Mood): void {
   const x0 = 21
   if (mood === 'grin') {
-    r(g, x0, MOUTH_Y, 6, 2, '#3a2024')
-    r(g, x0 + 1, MOUTH_Y, 4, 1, C.bone)          // 牙
-    px(g, x0 - 1, MOUTH_Y, p.lip)
-    px(g, x0 + 6, MOUTH_Y, p.lip)
+    r(g, x0 + 1, MOUTH_Y, 4, 2, '#3a2024')       // 口腔收窄到 4px，别画成血盆大口
+    r(g, x0 + 2, MOUTH_Y, 2, 1, C.bone)          // 牙
+    px(g, x0, MOUTH_Y, p.lip)
+    px(g, x0 + 5, MOUTH_Y, p.lip)
     return
   }
   if (mood === 'cold') {
@@ -1673,10 +1666,8 @@ function portraitMouth(g: Ctx, p: PortraitPal, mood: Mood): void {
     return
   }
   r(g, x0, MOUTH_Y, 6, 1, p.lip)
-  px(g, x0 - 1, MOUTH_Y, p.skinShade)            // 嘴角收敛（只收，不下压）
-  px(g, x0 + 6, MOUTH_Y, p.skinShade)
   if (mood === 'smile' || p.softMouth) {
-    px(g, x0 - 1, MOUTH_Y - 1, p.lip)            // 外端抬 1px（不是下压）
+    px(g, x0 - 1, MOUTH_Y - 1, p.lip)            // 嘴角抬 1px（不是下压）
     px(g, x0 + 6, MOUTH_Y - 1, p.lip)
   }
 }
@@ -2011,17 +2002,16 @@ function portrait(p: PortraitPal): Sprite {
     r(g, 13, 11, 1, 8, p.hairHi)
     r(g, 34, 11, 1, 8, p.hairDark)
   } else if (p.hairStyle === 'slick') {
-    // 后梳：发际线高、露出额头。顶部只比头骨宽 6px ——
-    // 22px 的大方块会把他的头读成一个"桶"，剪影贴着 14px 的头骨才像人的后脑。
+    // 后梳：发际线高、露出额头。顶部贴着头骨收，别做成直上直下的"桶"。
     r(g, 18, 1, 12, 1, p.hair)                 // y1 x18..29
     r(g, 16, 2, 16, 1, p.hair)                 // y2 x16..31
     r(g, 15, 3, 18, 1, p.hair)                 // y3 x15..32
     r(g, 14, 4, 20, 1, p.hair)                 // y4 x14..33
     r(g, 14, 5, 20, 1, p.hair)                 // y5
     r(g, 14, 6, 20, 1, p.hair)
-    r(g, 14, 7, 20, 1, p.hair)
-    r(g, 14, 8, 20, 1, p.hair)
-    r(g, 14, 9, 20, 1, p.hair)                 // y9 发际线
+    r(g, 15, 7, 18, 1, p.hair)                 // y7 开始收，后脑才有弧度
+    r(g, 15, 8, 18, 1, p.hair)
+    r(g, 16, 9, 16, 1, p.hair)                 // y9 发际线
     // 受光 / 背光
     r(g, 18, 1, 5, 1, p.hairHi)
     r(g, 16, 2, 6, 1, p.hairHi)
@@ -2035,7 +2025,7 @@ function portrait(p: PortraitPal): Sprite {
     r(g, 23, 2, 1, 6, p.hairDark)
     r(g, 27, 2, 1, 6, p.hairDark)
     // 发际线：一条横过额头的暗线，后梳的高额头才立得住
-    r(g, 17, 9, 14, 1, p.hairDark)
+    r(g, 18, 9, 12, 1, p.hairDark)
     // 鬓角：细、短，只到颧骨
     r(g, 15, 10, 3, 1, p.hair)                 // y10 补住头骨的窄顶
     r(g, 30, 10, 3, 1, p.hair)
@@ -2046,17 +2036,19 @@ function portrait(p: PortraitPal): Sprite {
   } else if (p.hairStyle === 'kerchief') {
     // 头巾：亚麻布包住头顶（圆顶，不是方盒），两侧垂到肩
     const kc = p.kerchief ?? C.sugar
-    r(g, 16, 0, 16, 1, kc)                     // y0 圆顶
-    r(g, 14, 1, 20, 1, kc)                     // y1
+    r(g, 17, 0, 14, 1, kc)                     // y0 圆顶
+    r(g, 15, 1, 18, 1, kc)                     // y1
     r(g, 13, 2, 22, 1, kc)                     // y2 x13..34
-    r(g, 12, 3, 24, 7, kc)                     // y3..y9 x12..35
+    r(g, 12, 3, 24, 5, kc)                     // y3..y7 x12..35
+    r(g, 12, 8, 24, 1, kc)                     // y8
+    r(g, 13, 9, 22, 1, kc)                     // y9 下缘（略收，包住头骨）
     r(g, 12, 3, 1, 7, C.sugar)
-    r(g, 34, 3, 1, 7, kc)
-    r(g, 14, 1, 6, 1, C.sugar)                  // 布面的受光
-    r(g, 16, 0, 5, 1, C.sugar)
+    r(g, 35, 3, 1, 7, kc)
+    r(g, 15, 1, 6, 1, C.sugar)                  // 布面的受光
+    r(g, 17, 0, 5, 1, C.sugar)
     r(g, 30, 2, 4, 1, C.bone)                   // 右下压暗
     // 头巾下缘的一道暗线，布与额头分得开
-    r(g, 17, 9, 14, 1, C.bone)
+    r(g, 15, 9, 16, 1, C.bone)
     // 额前垂下的一缕头发（头巾下缘压着）
     r(g, 15, 10, 3, 1, p.hair)                  // y10 补住头骨的窄顶
     r(g, 30, 10, 3, 1, p.hair)
@@ -2067,8 +2059,8 @@ function portrait(p: PortraitPal): Sprite {
     r(g, 14, 12, 1, 6, p.hairHi)
     r(g, 33, 12, 1, 6, p.hairDark)
     // 两侧垂到肩的布尾
-    r(g, 11, 10, 3, 13, kc)                     // y10..y22 左
-    r(g, 34, 10, 3, 13, kc)                     // 右
+    r(g, 11, 10, 4, 13, kc)                     // y10..y22 左
+    r(g, 33, 10, 4, 13, kc)                     // 右
     r(g, 11, 10, 1, 13, C.sugar)
     r(g, 36, 10, 1, 13, kc)
     px(g, 13, 23, kc)
