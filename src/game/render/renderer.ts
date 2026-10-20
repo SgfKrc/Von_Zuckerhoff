@@ -88,12 +88,12 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
     const w = single.width
     const h = single.height
     const dx = e.x * TILE + (TILE - w) / 2
-    // 角色精灵（24×32）比旧的 16×24 高 8px：若仍按格子顶部对齐，脚底会从
-    // 格子顶 +22 掉到 +30，角色整体陷进下一格。这里只对角色名（hero_/emma_/
-    // hermann_/marta_/ds_/npc_）把多出来的高度抬回上方，脚底保持旧的 y22；
-    // 32 高的家具（如 easel）与 h ≤ 24 的精灵完全不受影响。
+    // 角色精灵（24×32）比格子（16）高：精灵的脚画在它自己画布的最底部，
+    // 所以必须"底对齐"到格子底边（dy = y*TILE + TILE - h），否则会下沉一格。
+    // 注意：不能用 Math.max(0, 24 - h) —— h = 32 时那恒为 0，分支永远不生效。
+    // 角色一并在这里处理，地图实体就不需要各自写 tall 了。
     const isChar = /^(hero|emma|hermann|marta|ds|npc)_/.test(e.sprite)
-    const dy = e.tall ? e.y * TILE + TILE - h : e.y * TILE + (isChar ? Math.max(0, 24 - h) : 0)
+    const dy = e.tall || isChar ? e.y * TILE + TILE - h : e.y * TILE
     if (dx + w < camX - 32 || dx > camX + VIEW_W + 32) continue
     if (dy + h < camY - 32 || dy > camY + VIEW_H + 32) continue
     ctx.drawImage(single, Math.round(dx), Math.round(dy))
@@ -361,6 +361,17 @@ function drawStructGlyph(
       for (let i = 0; i < 4; i++) {
         ctx.moveTo(sx, sy + 3 + i * 4); ctx.lineTo(sx + TILE, sy + 3 + i * 4)
       }
+      ctx.stroke()
+      break
+    case 'seat':
+      // 座椅：一条靠背横线 + 一个 U 形坐垫（俯视的椅子）
+      ctx.beginPath()
+      ctx.moveTo(sx + 4, sy + 3)
+      ctx.lineTo(sx + 12, sy + 3)
+      ctx.moveTo(sx + 4, sy + 6)
+      ctx.lineTo(sx + 4, sy + 12)
+      ctx.lineTo(sx + 12, sy + 12)
+      ctx.lineTo(sx + 12, sy + 6)
       ctx.stroke()
       break
     default:

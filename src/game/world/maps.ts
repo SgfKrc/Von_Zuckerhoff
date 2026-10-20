@@ -17,29 +17,31 @@ const train: GameMap = {
   // 上下两排厢座：每个厢座 = 两把单人椅夹一张小桌（J K J，两座相对），
   // 厢座之间空一格；上下两排在 x 上对齐 —— 上排椅 'J' 靠背朝上、下排椅 'j' 靠背朝下，
   // 同一 x 的上下两把椅子隔着地毯相对，中间是过道。
-  // 中间三行铺地毯 C 当过道，两侧各一行木地板 -（座椅搁脚的空当）。
+  // 中间三行是过道地毯：最上一行 c（上包边 + 流苏）、中间 C（纯毯面）、最下一行 d（下包边 + 流苏），
+  // 这样整条毯子只有最外两行带边，不会每一行都带边而读成三条地毯。
+  // 两侧各一行木地板 -（座椅搁脚的空当）。
   // 车窗 N 开在两侧车壁上、每 4 格一扇，正好落在厢座小桌的正上方/正下方。
   // 两端是车门洞 D（左端通下一节车厢，右端下车去糖堡站）。
   tiles: [
     '===N===N===N===N===N===N===N===N====',
     '=-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ--=',
     '=----------------------------------=',
+    'DccccccccccccccccccccccccccccccccccD',
     'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
-    'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
-    'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
+    'DddddddddddddddddddddddddddddddddddD',
     '=----------------------------------=',
     '=-jKj-jKj-jKj-jKj-jKj-jKj-jKj-jKj--=',
     '===N===N===N===N===N===N===N===N====',
   ],
   struct: [
     'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
-    'SFBBBFBBBFBBBFBBBFBBBFBBBFBBBFBBBFFS',
+    'SFJFJFJFJFJFJFJFJFJFJFJFJFJFJFJFJFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
     'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
     'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
     'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
     'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFBBBFBBBFBBBFBBBFBBBFBBBFBBBFBBBFFS',
+    'SFJFJFJFJFJFJFJFJFJFJFJFJFJFJFJFJFFS',
     'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
   ],
   entities: [
@@ -51,20 +53,19 @@ const train: GameMap = {
 
     // ---- 上排厢座（y1，窗在桌子正上方的 x3/7/11/15/19/23/27/31）----
     // 睡着的老人：第 2 个厢座，坐在靠窗那把椅子上
-    // （tall：24×32 的行走图向上抬一格，脚落在座位格底部，读作"坐着"）
-    { id: 'sleeper', x: 6, y: 1, sprite: 'npc_sleeper_down', solid: true, tall: true, interact: 'trainSleeper' },
+    // （24×32 的角色精灵由 renderer 的 isChar 统一底对齐到格子底边，
+    //   地图实体不要再写 tall —— 叠上会双重上抬一格）
+    { id: 'sleeper', x: 6, y: 1, sprite: 'npc_sleeper_down', solid: true, interact: 'trainSleeper' },
     // 看报的先生：第 4 个厢座
-    { id: 'newspaper', x: 14, y: 1, sprite: 'npc_reader_down', solid: true, tall: true, interact: 'trainNewspaper' },
+    { id: 'newspaper', x: 14, y: 1, sprite: 'npc_reader_down', solid: true, interact: 'trainNewspaper' },
     // 行李架：第 7 与第 8 个厢座之间的空格，靠窗（tall：向上占一格，挂在窗下）
     { id: 'rack', x: 29, y: 1, sprite: 'bookshelf', solid: true, tall: true, interact: 'trainRack' },
 
     // ---- 下排厢座（y7，与上排同一套 x）----
-    // 抱孩子的女人：第 6 个厢座的靠窗椅。
-    // tall：行走图是 24×32，默认按格顶向下画会溢出到下侧车壁里；
-    // 向上抬一格后，脚落在座位格底部，读作"坐在座位上"。
-    { id: 'mother', x: 22, y: 7, sprite: 'npc_mother_down', solid: true, tall: true, interact: 'trainMother' },
+    // 抱孩子的女人：第 6 个厢座的靠窗椅。（同上：isChar 已底对齐，不写 tall）
+    { id: 'mother', x: 22, y: 7, sprite: 'npc_mother_down', solid: true, interact: 'trainMother' },
     // 孩子：同一个厢座里、母亲对面那把椅子（新增实体，纯装饰，没有交互脚本）
-    { id: 'child', x: 24, y: 7, sprite: 'npc_child_down', solid: true, tall: true },
+    { id: 'child', x: 24, y: 7, sprite: 'npc_child_down', solid: true },
     // 空座与手杖：第 7 个厢座靠窗那把椅子（座位空着，手杖靠在座垫上）
     { id: 'cane', x: 28, y: 7, sprite: 'tableSmall', solid: true, interact: 'trainCane' },
 
