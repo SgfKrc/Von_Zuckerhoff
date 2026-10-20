@@ -13,63 +13,83 @@ const train: GameMap = {
   name: '南下黑森林的列车',
   ambient: 'indoor',
   dark: 0.34,
-  // 一节车厢的横截面：32×9，中间 3 行过道，上下各一排丝绒长椅，
-  // 壁上是每 5 格一扇的小车窗，两端各一个门洞（右端下车去糖堡站）。
+  // 一节老式车厢的俯视：36×9。
+  // 上下两排厢座：每个厢座 = 两把单人椅夹一张小桌（J K J，两座相对），
+  // 厢座之间空一格；上下两排在 x 上对齐 —— 上排椅 'J' 靠背朝上、下排椅 'j' 靠背朝下，
+  // 同一 x 的上下两把椅子隔着地毯相对，中间是过道。
+  // 中间三行铺地毯 C 当过道，两侧各一行木地板 -（座椅搁脚的空当）。
+  // 车窗 N 开在两侧车壁上、每 4 格一扇，正好落在厢座小桌的正上方/正下方。
+  // 两端是车门洞 D（左端通下一节车厢，右端下车去糖堡站）。
   tiles: [
-    '================================',
-    '===INI==INI==INI==INI==INI==INI=',
-    '=--UU---UU---UU---UU---UU---UU-=',
-    '=------------------------------=',
-    'D------------------------------D',
-    '=------------------------------=',
-    '=--UU---UU---UU---UU---UU---UU-=',
-    '===INI==INI==INI==INI==INI==INI=',
-    '================================',
+    '===N===N===N===N===N===N===N===N====',
+    '=-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ-JKJ--=',
+    '=----------------------------------=',
+    'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
+    'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
+    'DCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCD',
+    '=----------------------------------=',
+    '=-jKj-jKj-jKj-jKj-jKj-jKj-jKj-jKj--=',
+    '===N===N===N===N===N===N===N===N====',
   ],
   struct: [
-    'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
-    'MMMMSMMMMSMMMMSMMMMSMMMMSMMMMSMM',
-    'MFFBBFFFBBFFFBBFFFBBFFFBBFFFBBFM',
-    'MFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFM',
-    'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
-    'MFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFM',
-    'MFFBBFFFBBFFFBBFFFBBFFFBBFFFBBFM',
-    'MMMMSMMMMSMMMMSMMMMSMMMMSMMMMSMM',
-    'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
+    'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
+    'SFBBBFBBBFBBBFBBBFBBBFBBBFBBBFBBBFFS',
+    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
+    'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
+    'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
+    'TFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFT',
+    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
+    'SFBBBFBBBFBBBFBBBFBBBFBBBFBBBFBBBFFS',
+    'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
   ],
   entities: [
     // 主线：猫与艾玛。信、胸针、线图不在场景里 —— 开局就在背包中（见 store.ts）。
-    { id: 'cat', x: 10, y: 3, sprite: 'cat', interact: 'lookCat' },
-    { id: 'emmaSeat', x: 23, y: 6, sprite: 'emma_down', solid: true, interact: 'talkEmmaTrain' },
+    // 猫趴在过道地毯上。
+    { id: 'cat', x: 9, y: 4, sprite: 'cat', interact: 'lookCat' },
+    // 艾玛坐在第 5 个厢座里：坐标取该厢座靠过道那把 J 椅子旁的可走格（座椅前的木地板）。
+    { id: 'emmaSeat', x: 20, y: 2, sprite: 'emma_down', solid: true, interact: 'talkEmmaTrain' },
 
-    // ---- 上排座位（y2，每两格一个座位）----
-    { id: 'sleeper', x: 8, y: 2, sprite: 'marta_down', solid: true, interact: 'trainSleeper' },
-    { id: 'newspaper', x: 13, y: 2, sprite: 'hermann_down', solid: true, interact: 'trainNewspaper' },
-    // 窗帘（窗下）、霜（窗上结的霜）、煤烟味（车头方向）
-    { id: 'curtain', x: 21, y: 2, sprite: 'notice', solid: false, interact: 'trainCurtain' },
-    { id: 'frost', x: 16, y: 2, sprite: 'notice', solid: false, interact: 'trainFrost' },
-    { id: 'smoke', x: 2, y: 2, sprite: 'notice', solid: false, interact: 'trainSmoke' },
-    // 行李架：竖在窗上方的架子上（tall 向上占两格）
-    { id: 'rack', x: 27, y: 2, sprite: 'bookshelf', solid: true, tall: true, interact: 'trainRack' },
+    // ---- 上排厢座（y1，窗在桌子正上方的 x3/7/11/15/19/23/27/31）----
+    // 睡着的老人：第 2 个厢座，坐在靠窗那把椅子上
+    // （tall：24×32 的行走图向上抬一格，脚落在座位格底部，读作"坐着"）
+    { id: 'sleeper', x: 6, y: 1, sprite: 'npc_sleeper_down', solid: true, tall: true, interact: 'trainSleeper' },
+    // 看报的先生：第 4 个厢座
+    { id: 'newspaper', x: 14, y: 1, sprite: 'npc_reader_down', solid: true, tall: true, interact: 'trainNewspaper' },
+    // 行李架：第 7 与第 8 个厢座之间的空格，靠窗（tall：向上占一格，挂在窗下）
+    { id: 'rack', x: 29, y: 1, sprite: 'bookshelf', solid: true, tall: true, interact: 'trainRack' },
 
-    // ---- 下排座位（y6）----
-    { id: 'mother', x: 19, y: 6, sprite: 'emma_left', solid: true, interact: 'trainMother' },
-    { id: 'cane', x: 14, y: 6, sprite: 'tableSmall', solid: true, interact: 'trainCane' },
-    { id: 'bin', x: 25, y: 6, sprite: 'tableSmall', solid: true, interact: 'trainBin' },
+    // ---- 下排厢座（y7，与上排同一套 x）----
+    // 抱孩子的女人：第 6 个厢座的靠窗椅。
+    // tall：行走图是 24×32，默认按格顶向下画会溢出到下侧车壁里；
+    // 向上抬一格后，脚落在座位格底部，读作"坐在座位上"。
+    { id: 'mother', x: 22, y: 7, sprite: 'npc_mother_down', solid: true, tall: true, interact: 'trainMother' },
+    // 孩子：同一个厢座里、母亲对面那把椅子（新增实体，纯装饰，没有交互脚本）
+    { id: 'child', x: 24, y: 7, sprite: 'npc_child_down', solid: true, tall: true },
+    // 空座与手杖：第 7 个厢座靠窗那把椅子（座位空着，手杖靠在座垫上）
+    { id: 'cane', x: 28, y: 7, sprite: 'tableSmall', solid: true, interact: 'trainCane' },
 
-    // ---- 过道（y3~y5）----
-    { id: 'footstep', x: 4, y: 3, sprite: 'notice', solid: false, interact: 'trainFootstep' },
+    // ---- 氛围：沿车身均匀分布 ----
+    // 煤烟味：车头方向，左端地毯上（味从地板下面来）
+    { id: 'smoke', x: 2, y: 3, sprite: 'notice', solid: false, interact: 'trainSmoke' },
+    // 湿脚印：过道地毯上
+    { id: 'footstep', x: 5, y: 5, sprite: 'notice', solid: false, interact: 'trainFootstep' },
+    // 窗帘：x15 那扇窗正下方的座椅前木地板
+    { id: 'curtain', x: 15, y: 2, sprite: 'notice', solid: false, interact: 'trainCurtain' },
+    // 结霜：x23 那扇窗（窗户下半截落在座椅前）
+    { id: 'frost', x: 23, y: 2, sprite: 'notice', solid: false, interact: 'trainFrost' },
+    // 垃圾桶：右端最后一个厢座的座位底下
+    { id: 'bin', x: 33, y: 7, sprite: 'tableSmall', solid: true, interact: 'trainBin' },
 
     // ---- 不可交互的装饰：毛毯 / 挂在窗边的大衣 / 地上的一只手套 ----
-    { id: 'blanket', x: 6, y: 6, sprite: 'notice', solid: false },
-    { id: 'coat', x: 11, y: 2, sprite: 'bookshelf', solid: false, tall: true },
-    { id: 'glove', x: 24, y: 4, sprite: 'notice', solid: false },
+    { id: 'blanket', x: 10, y: 2, sprite: 'notice', solid: false },
+    { id: 'coat', x: 17, y: 1, sprite: 'bookshelf', solid: false, tall: true },
+    { id: 'glove', x: 26, y: 5, sprite: 'notice', solid: false },
     // 彩蛋：车厢左端的门洞里多出的人。默认不可见，调查满 4 件东西后 dsOpen 才为真；
     // 说过一次话就 dsGone，永远不再出现（见 events.ts 的 noteTrainLook）。
     { id: 'dsCameo', x: 0, y: 4, sprite: 'ds_down', solid: false, showFlag: 'dsOpen', hideFlag: 'dsGone', interact: 'dsCameo' },
   ],
   portals: [
-    { x: 31, y: 4, to: 'station', tx: 4, ty: 6, dir: 'right' },
+    { x: 35, y: 4, to: 'station', tx: 4, ty: 6, dir: 'right' },
   ],
 }
 
@@ -113,7 +133,8 @@ const station: GameMap = {
     { id: 'lampR', x: 22, y: 6, sprite: 'candelabra', solid: true, tall: true },
   ],
   portals: [
-    { x: 1, y: 6, to: 'train', tx: 30, ty: 4, dir: 'left' },
+    // 回到列车：落点改到车厢右端过道（x34），正好在车门内侧，不再是旧图的中段
+    { x: 1, y: 6, to: 'train', tx: 34, ty: 4, dir: 'left' },
     { x: 24, y: 6, to: 'road', tx: 1, ty: 5, dir: 'right' },
   ],
 }

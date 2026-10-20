@@ -93,7 +93,7 @@ export interface GameMap {
 export type SpeakerId =
   | 'none' | 'ftz' | 'ftzCold'          // 旁白 / 主角 / 主角（冷）
   | 'emma' | 'emmaQuiet'                 // 艾玛 / 艾玛（极轻）
-  | 'hermann' | 'marta' | 'voice'        // 赫尔曼 / 玛尔塔 / 无形之声
+  | 'hermann' | 'hermannVoid' | 'marta' | 'voice'  // 赫尔曼 / 赫尔曼（无面，里线） / 玛尔塔 / 无形之声
   | 'ds'                                 // 彩蛋角色（立绘 key 同为 ds）
 
 export interface DialogChoice {
@@ -212,6 +212,7 @@ export const SPEAKER_NAMES: Record<SpeakerId, string> = {
   emma: '艾玛',
   emmaQuiet: '艾玛',
   hermann: '赫尔曼',
+  hermannVoid: '赫尔曼',
   marta: '玛尔塔',
   voice: '',
   ds: '？？？',

@@ -90,9 +90,9 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
     const dx = e.x * TILE + (TILE - w) / 2
     // 角色精灵（24×32）比旧的 16×24 高 8px：若仍按格子顶部对齐，脚底会从
     // 格子顶 +22 掉到 +30，角色整体陷进下一格。这里只对角色名（hero_/emma_/
-    // hermann_/marta_/ds_）把多出来的高度抬回上方，脚底保持旧的 y22；
+    // hermann_/marta_/ds_/npc_）把多出来的高度抬回上方，脚底保持旧的 y22；
     // 32 高的家具（如 easel）与 h ≤ 24 的精灵完全不受影响。
-    const isChar = /^(hero|emma|hermann|marta|ds)_/.test(e.sprite)
+    const isChar = /^(hero|emma|hermann|marta|ds|npc)_/.test(e.sprite)
     const dy = e.tall ? e.y * TILE + TILE - h : e.y * TILE + (isChar ? Math.max(0, 24 - h) : 0)
     if (dx + w < camX - 32 || dx > camX + VIEW_W + 32) continue
     if (dy + h < camY - 32 || dy > camY + VIEW_H + 32) continue

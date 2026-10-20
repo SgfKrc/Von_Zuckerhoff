@@ -4,26 +4,26 @@ import { SPEAKER_NAMES } from '../game/types'
 import { PORTRAITS } from '../game/art/sprites'
 
 /**
- * 立绘分三类：
+ * 立绘分两类：
  *
- * 1. 素材立绘 —— 由参考图经 scripts/make-portraits.py 处理成 96×96 透明 PNG，
- *    离线生成好表情变体。主角与艾玛走这条。显示 192×192（2 倍整数放大）。
- *    为什么这么做：程序化 fillRect 在 96×96 上画不出参考图的神态，
- *    连续五轮返工都失败了，最终改用「参考图 → 像素化」的管线。
+ * 1. 素材立绘 —— 参考图经 scripts/make-portraits.py 用 NEAREST 还原到 256×256
+ *    原生尺度（素材本身就是像素画，不能做任何平滑），四角 flood fill 抠背景，
+ *    保留 alpha。显示 192×192。所有有参考图的角色都走这条。
  *
- * 2. 素材相片 —— 白底 jpg 加相框，彩蛋角色专用，刻意的异物感。
- *
- * 3. 程序化 canvas —— 赫尔曼、玛尔塔等没有参考图的角色，仍由 sprites.ts 生成。
+ * 2. 程序化 canvas —— 没有参考图的角色兜底（目前仅剩端口占位用）。
  */
 const PORTRAIT_IMAGES: Record<string, string> = {
   ftz: './portraits/ftz.png',
   ftzCold: './portraits/ftz-cold.png',
   emma: './portraits/emma.png',
   emmaQuiet: './portraits/emma-quiet.png',
+  hermann: './portraits/hermann.png',
+  hermannVoid: './portraits/hermann-void.png',
+  marta: './portraits/marta.png',
+  // 彩蛋角色：素材本身带透明通道，走普通立绘路径（不再是白底相片）
+  ds: './portraits/ds.png',
 }
-const PORTRAIT_PHOTOS: Record<string, string> = {
-  ds: './portraits/ds.jpg',
-}
+const PORTRAIT_PHOTOS: Record<string, string> = {}
 
 export function DialogBox() {
   const dialog = useGame(s => s.dialog)

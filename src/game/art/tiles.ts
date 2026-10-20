@@ -993,6 +993,122 @@ function drawCoachSeat(g: Ctx): void {
   px(g, 6, 12, '#9a3038')
 }
 
+/**
+ * 单人座椅（J / j）：与长椅 'U' 同一套丝绒，但只有一个坐垫，比 U 窄一圈。
+ * 靠背朝车壁、坐垫朝过道：上排用 'J'（靠背在上），下排用镜像的 'j'（靠背在下），
+ * 这样上下两排同一 x 的椅子隔着地毯相对。两侧各一道黄铜扶手。
+ * 座位左右各留 2px 暗底：密排成 J K J 时，椅子之间仍读得出缝隙。
+ */
+function drawCoachSeatSingle(g: Ctx, down: boolean): void {
+  // 下排：整格上下翻转（靠背贴下侧车壁，坐垫朝向上方的过道）
+  if (down) {
+    g.save()
+    g.translate(0, TILE)
+    g.scale(1, -1)
+  }
+  // 座位之间的暗底：让椅子比格子窄一圈，一眼区分"单人椅"与"双人长椅"
+  r(g, 0, 0, TILE, TILE, '#2a080d')
+  // 靠背：顶沿受光、右缘压暗（椅子本体只占 x3..x12，左右各留 2px 暗底）
+  r(g, 3, 0, 10, 8, '#4e1219')
+  r(g, 4, 0, 8, 1, '#9a3038')        // 顶沿受光
+  r(g, 3, 1, 1, 7, '#6e1a24')        // 左缘受光
+  r(g, 12, 1, 1, 7, '#3a0b12')       // 右缘背光
+  // 绒面竖光
+  for (const x of [5, 7, 10]) r(g, x, 2, 1, 6, '#5c161f')
+  r(g, 6, 2, 1, 5, '#7d1e27')
+  // 靠背与坐垫之间的深缝
+  r(g, 3, 8, 10, 1, '#2a080d')
+  // 坐垫：单座，没有 U 的中间分缝
+  r(g, 3, 9, 10, 6, '#6e1a24')
+  r(g, 3, 9, 10, 1, '#9a3038')       // 前沿受光
+  r(g, 3, 10, 1, 5, '#8c2a30')
+  r(g, 12, 10, 1, 5, '#4e1219')
+  r(g, 3, 14, 10, 1, '#4e1219')      // 前缘压暗
+  // 单座鼓包高光：一条横向的软垫起伏
+  r(g, 5, 10, 5, 1, '#8c2a30')
+  r(g, 6, 11, 3, 1, '#7d1e27')
+  // 黄铜扶手：窄条，只占坐垫两侧
+  r(g, 2, 8, 1, 7, C.brass)
+  r(g, 2, 7, 1, 1, C.gold)
+  r(g, 13, 8, 1, 7, C.brass)
+  r(g, 13, 7, 1, 1, C.gold)
+  // 丝绒反光
+  px(g, 6, 3, '#b0343c')
+  px(g, 8, 12, '#9a3038')
+  if (down) g.restore()
+}
+
+/**
+ * 厢座小桌（K）：白色小圆桌俯视。
+ * 底是车厢木地板（与 '-' 同调），桌子才不会浮空；
+ * 桌面白瓷灰、左上受光右下背光，一圈黄铜桌沿；
+ * 桌面上横铺一条白桌旗（两道褶、下缘锯齿垂边），桌面上半摆一碟一杯，
+ * 杯沿一点瓷器反光。阻挡：玩家只能绕到过道上，不能从桌面上穿过去。
+ */
+function drawCoachTable(g: Ctx): void {
+  // 底：横木地板，和过道地面同一块料
+  drawCoachFloor(g)
+  const cx = 7.5
+  const cy = 7.5
+  // 桌面三层：地板上的一圈宽投影 → 黄铜桌沿 → 白瓷桌面（左上亮、右下灰）
+  for (let y = 0; y < TILE; y++) {
+    for (let x = 0; x < TILE; x++) {
+      const dx = x - cx
+      const dy = y - cy
+      const d = Math.sqrt(dx * dx + dy * dy)
+      if (d <= 6.8) px(g, x, y, d <= 6.1 ? '#2e2214' : '#241a10')
+      if (d <= 5.3) px(g, x, y, dx + dy < 0 ? C.brass : '#5f5430')
+      if (d <= 4.5) px(g, x, y, dx + dy < -1 ? C.bone : C.pale)
+    }
+  }
+  // 桌旗：横铺的一条白布，两端垂到桌沿外；两侧压一道灰边，白布才从白桌面上跳出来
+  r(g, 3, 6, 10, 1, C.pale)
+  r(g, 3, 7, 10, 3, C.sugar)
+  r(g, 3, 7, 10, 1, '#f7f2e8')     // 布面受光
+  r(g, 3, 9, 10, 1, C.pale)        // 布边阴影
+  // 垂边：下缘锯齿，读作布垂下来
+  for (const x of [4, 6, 8, 10, 12]) px(g, x, 10, C.bone)
+  // 布褶
+  r(g, 6, 7, 1, 3, C.pale)
+  r(g, 9, 7, 1, 3, C.pale)
+  // 桌上：碟、杯与一点瓷器反光（放在桌面上半，避开桌旗）
+  r(g, 6, 3, 4, 1, C.pale)
+  r(g, 5, 4, 6, 1, C.bone)
+  r(g, 6, 5, 4, 1, C.pale)
+  r(g, 7, 2, 2, 1, C.bone)
+  r(g, 8, 1, 1, 1, C.sugar)
+  px(g, 8, 1, '#ffffff')           // 杯口反光
+  // 碟边的小铜勺
+  px(g, 9, 4, '#5f5430')
+  px(g, 10, 4, C.gold)
+}
+
+/**
+ * 厢座地毯（C）：过道中间铺的一条窄长毯。
+ * 与门厅地毯 ',' 同色系（深红绒面），但更暗、纹样更细：
+ * 毯心一列黄铜小菱形，纵向串成一条断续的织纹带（三行 C 叠起来才成整条），
+ * 其余是细密的绒面织点，横向平铺不会拼成硬条纹。
+ */
+function drawAisleCarpet(g: Ctx): void {
+  // 绒面底：比 ',' 的暗血红再暗一档，和两侧木地板拉得开
+  r(g, 0, 0, TILE, TILE, '#7d1a24')
+  // 绒面织点：隔行错位、短针，读作绒而不是噪点
+  for (let y = 0; y < TILE; y += 3) {
+    const x0 = y % 6 === 0 ? 1 : 3
+    for (let x = x0; x < TILE; x += 4) px(g, x, y, '#5e1219')
+  }
+  // 毯心黄铜织纹：每格一个 8px 高的小菱形，纵向串成稀疏的织纹带
+  const dia: [number, number][] = [
+    [7, 4], [8, 4], [6, 5], [9, 5], [6, 6], [9, 6], [7, 7], [8, 7],
+  ]
+  for (const [x, y] of dia) px(g, x, y, C.brass)
+  // 两针甜金，几点暗影
+  px(g, 7, 5, C.gold)
+  px(g, 8, 6, '#5e1219')
+  px(g, 4, 2, '#5e1219')
+  px(g, 11, 12, '#5e1219')
+}
+
 /** 虚空：不画任何像素，让底层夜色或远景透出来；空白字符 ' ' 用 */
 function drawVoid(g: Ctx): void {
   void g
@@ -1030,11 +1146,15 @@ export const TILES: Record<string, HTMLCanvasElement> = {
   'N': make(drawCoachWindow),    // 车窗：小方窗，窗外暗青夜色与一点雾（阻挡）
   'I': make(drawCoachPanel),     // 车厢内饰板：窄木板 + 铜挂钩（可走）
   'U': make(drawCoachSeat),      // 座椅：暗红丝绒长椅 + 铜扶手（阻挡）
+  'J': make(g => drawCoachSeatSingle(g, false)), // 单人座椅·上排：靠背朝上（车壁），坐垫朝过道（阻挡）
+  'j': make(g => drawCoachSeatSingle(g, true)),  // 单人座椅·下排：镜像，靠背朝下，与上排同一 x 的椅子相对（阻挡）
+  'K': make(drawCoachTable),     // 车厢小桌：白瓷圆桌 + 桌旗 + 碟与杯（阻挡）
+  'C': make(drawAisleCarpet),    // 厢座地毯：过道中间的深红窄毯 + 黄铜织纹（可走）
   ' ': make(drawVoid),           // 虚空：透明，露出底层夜色 / 远景
 }
 
-/** 阻挡通行的瓦片（'r' 铁轨与 'q' 雾可走；车窗 'W'/'N'、座椅 'U'、虚空 ' ' 阻挡） */
-export const SOLID_TILES = new Set(['#', 'W', 'L', 'E', 'f', 'b', 'p', 'B', '^', '=', 'o', '+', 'T', 'v', 'h', 'n', 'N', 'U', ' '])
+/** 阻挡通行的瓦片（'r' 铁轨与 'q' 雾可走；车窗 'W'/'N'、座椅 'U'/'J'/'j'、小桌 'K'、虚空 ' ' 阻挡） */
+export const SOLID_TILES = new Set(['#', 'W', 'L', 'E', 'f', 'b', 'p', 'B', '^', '=', 'o', '+', 'T', 'v', 'h', 'n', 'N', 'U', 'J', 'j', 'K', ' '])
 
 /** 图纸层符号（供 renderer 使用） */
 export const STRUCT_SYMBOL: Record<string, { color: string; kind: string }> = {
@@ -1051,9 +1171,12 @@ export const STRUCT_SYMBOL: Record<string, { color: string; kind: string }> = {
   W: { color: '#7a7a8a', kind: 'weight' },
   H: { color: '#5a7a6a', kind: 'shaft' },
   T: { color: '#8a8f96', kind: 'stair' },
+  // 注意：'C' 与 'K' 在 struct 层已被 cavity / fake 占用（地窖、池塘的图纸要它），
+  // tiles 层与 struct 层是两套字符表，同名键不能有两个含义，故此处只新增 'J'。
   C: { color: '#5a7a6a', kind: 'cavity' },
   I: { color: '#b04040', kind: 'inkblot' },
   X: { color: '#e8e0d0', kind: 'torn' },
+  J: { color: '#8c1f28', kind: 'seat' },
 }
 
 export { GEM, make }
