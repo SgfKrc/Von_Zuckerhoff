@@ -8,6 +8,8 @@ import { TILE } from '../art/build'
 import { useGame } from '../store'
 import { SPRITES } from '../art/sprites'
 import { drawBackdrop } from './backdrop'
+import { drawBridgeBackdrop } from './bridgeBackdrop'
+import type { Dir, EntityDef } from '../types'
 
 const paper = document.createElement('canvas')
 paper.width = VIEW_W
@@ -48,6 +50,8 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
   // 远景放在 translate 之前：用屏幕坐标绘制，自己处理视差，
   // 且必须早于 drawTiles —— 它要垫在瓦片下面。
   drawBackdrop(ctx, world.map.id, camX, camY)
+  // 石桥：四层程序化视差远景（远山 / 雾 / 对岸崖壁 / 谷底），垫在瓦片下面。
+  if (world.map.id === 'bridge') drawBridgeBackdrop(ctx, camX, camY, world.t)
 
   ctx.save()
   ctx.translate(-camX, -camY)
@@ -154,13 +158,43 @@ function drawTiles(ctx: CanvasRenderingContext2D, camX: number, camY: number): v
   }
 }
 
+/** 精灵名末尾的方向后缀：`ds_down` → 基名 `ds` */
+const DIR_SUFFIX = /_(?:down|up|left|right)$/
+
+/**
+ * facePlayer 实体该用的方向：玩家站在它的哪一侧，它就朝哪一侧转身。
+ * 用节点坐标差（玩家 vs 实体格子中心）比较，取绝对值大的轴；
+ * 相等时优先水平 —— 左右转身比上下更能读出「她在看你」。
+ */
+function facingToPlayer(e: EntityDef): Dir {
+  const cx = e.x * TILE + TILE / 2
+  const cy = e.y * TILE + TILE / 2
+  const dx = world.px - cx
+  const dy = world.py - cy
+  // 正好站在她格子里（两个差都是 0，她不是 solid 实体，玩家能走进去）：
+  // 别硬选左右，退回正面。
+  if (dx === 0 && dy === 0) return 'down'
+  if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? 'left' : 'right'
+  return dy < 0 ? 'up' : 'down'
+}
+
+/**
+ * facePlayer 实体的精灵：把 e.sprite 的基名取出（如 ds），
+ * 按玩家方位取 `<基名>_<dir>`；该变体不存在时退回 e.sprite（通常是 _down）。
+ * 每帧重算 —— 对话中世界冻结、玩家不动，所以对话时她同样一直看着玩家。
+ */
+function facePlayerSprite(e: EntityDef): HTMLCanvasElement | HTMLCanvasElement[] | undefined {
+  const base = e.sprite.replace(DIR_SUFFIX, '')
+  return SPRITES[`${base}_${facingToPlayer(e)}`] ?? SPRITES[e.sprite]
+}
+
 function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
   const g = useGame.getState()
   const list = visibleEntities()
   for (const e of list) {
     // 图纸模式下现实实体不显示；只显示 blueprintOnly 的结构标记
     if (g.blueprint && !e.blueprintOnly) continue
-    const img = SPRITES[e.sprite]
+    const img = e.facePlayer ? facePlayerSprite(e) : SPRITES[e.sprite]
     if (!img) {
       // 没有精灵的实体画一个占位方块，便于关卡调试
       ctx.fillStyle = '#c0392b'
@@ -172,8 +206,10 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
     const w = single.width
     const h = single.height
     const dx = e.x * TILE + (TILE - w) / 2
-    // 角色精灵（24×32）比格子（16）高：精灵的脚画在它自己画布的最底部，
-    // 所以必须"底对齐"到格子底边（dy = y*TILE + TILE - h），否则会下沉一格。
+    // 角色精灵（主角/配角 24×32，彩蛋角色 24×24）比格子（16）高：
+    // 精灵的脚画在它自己画布的最底部，所以必须"底对齐"到格子底边
+    // （dy = y*TILE + TILE - h），否则会下沉一格。
+    // 24×24 的彩蛋角色照样底对齐：她比主角矮 8px，脚落在同一基线。
     // 注意：不能用 Math.max(0, 24 - h) —— h = 32 时那恒为 0，分支永远不生效。
     // 角色一并在这里处理，地图实体就不需要各自写 tall 了。
     const isChar = /^(hero|emma|hermann|marta|ds|npc)_/.test(e.sprite)

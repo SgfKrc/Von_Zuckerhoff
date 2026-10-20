@@ -89,7 +89,8 @@ const train: GameMap = {
     { id: 'glove', x: 26, y: 5, sprite: 'notice', solid: false },
     // 彩蛋：车厢左端的门洞里多出的人。默认不可见，调查满 4 件东西后 dsOpen 才为真；
     // 说过一次话就 dsGone，永远不再出现（见 events.ts 的 noteTrainLook）。
-    { id: 'dsCameo', x: 0, y: 4, sprite: 'ds_down', solid: false, showFlag: 'dsOpen', hideFlag: 'dsGone', interact: 'dsCameo' },
+    // facePlayer：她是四方向角色，玩家站到哪一侧她就转向哪一侧（renderer 的 facingToPlayer）。
+    { id: 'dsCameo', x: 0, y: 4, sprite: 'ds_down', solid: false, showFlag: 'dsOpen', hideFlag: 'dsGone', interact: 'dsCameo', facePlayer: true },
   ],
   portals: [
     // 右端车门：列车还在走的时候锁着。
@@ -550,53 +551,102 @@ const corridorMain: GameMap = {
   portals: [
     { x: 20, y: 8, to: 'dining', tx: 1, ty: 12, dir: 'up' },
     { x: 1, y: 4, to: 'garden', tx: 25, ty: 10, dir: 'left' },
-    { x: 38, y: 4, to: 'bridge', tx: 2, ty: 6, dir: 'right' },
+    { x: 38, y: 4, to: 'bridge', tx: 7, ty: 22, dir: 'up' },
   ],
 }
 const bridge: GameMap = {
   id: 'bridge',
   name: '峡谷石桥',
   ambient: 'night',
-  dark: 0.66,
+  // 桥上几乎没有环境光：桥面自己亮，两侧的远景靠四层视差撑起来。
+  // dark 压到 0.34 —— 暗角太重会把两侧远景压成纯黑，深谷就看不见了。
+  dark: 0.34,
+  // 镜头上抬 16px：桥上玩家略偏画面下方，头顶多露出一点夜空与远山，
+  // 让人先看见「桥是往上走的」。gate 用 -72 是同一套机制，这里只要一点。
+  camBiasY: -16,
+  // 12×24 的纵向窄桥。以前它是 24×14 的「石砌房间」：四边全是悬崖瓦片、
+  // 中间一块空地，玩家看不到自己站在高处。现在反过来 —— 窄、高、两侧全是深渊。
+  //
+  // 宽 12 格 = 192px，比视口（384px）窄一半：相机横向居中，
+  // 屏幕左右各露出 96px 的远景（见 render/bridgeBackdrop.ts 的四层视差）。
+  // 高 24 格 = 384px，相机纵向行程 384−216 = 168px —— 这 168px 就是纵深感。
+  //
+  //   y0..1    虚空（天空）：相机顶到最上方时，屏幕顶端露出 32px 夜空
+  //   y2..4    北端平台（8 格宽，比桥面两侧各宽出 1 格），塔就在平台外
+  //   y5..20   桥面：中间 4 格可走，两侧各 1 格栏杆
+  //   y21..23  南端平台（同上），回大走廊的拱门在这一头
+  //
+  // 桥面占 x3..8：'[' ']' 是桥缘 + 栏杆（阻挡），'(' ')' 是栏杆断口（也当平台石沿），
+  // 中间 x4..7 的 '_' 可走。'H' 是横向石板接缝，每 5 格一道 —— 栏杆断口与接缝错开两格，
+  // 两者不会在同一行叠成一条横贯的黑带。两侧 ' ' 是深渊（在 SOLID_TILES 里，掉不下去）。
   tiles: [
-    '########################',
-    '#hhhhhhhhhhhhhhhhhhhhhh#',
-    '#hhhhhhhhhhhhhhhhhhhhhh#',
-    '#hhhhhhhhhhhhhhhhhhhhhh#',
-    '#......................#',
-    '#......................#',
-    '#......................#',
-    '#......................#',
-    '#hhhhhhhhhhhhhhhhhhhhhh#',
-    '#hhhhhhhhhhhhhhhhhhhhhh#',
-    '#hh....................#',
-    '#hh....................#',
-    '#hh....................#',
-    '########################',
+    '            ',
+    '            ',
+    ' (________) ',
+    ' (________) ',
+    ' (________) ',
+    '   [____]   ',
+    '   [____]   ',
+    '   (____)   ',
+    '   [____]   ',
+    '   [HHHH]   ',
+    '   [____]   ',
+    '   [____]   ',
+    '   (____)   ',
+    '   [____]   ',
+    '   [HHHH]   ',
+    '   [____]   ',
+    '   [____]   ',
+    '   (____)   ',
+    '   [____]   ',
+    '   [HHHH]   ',
+    '   [____]   ',
+    ' (________) ',
+    ' (________) ',
+    ' (________) ',
   ],
   struct: [
-    'SSSSSSSSSSSSSSSSSSSSSSSS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFAAAAAAAAAAAAAAAAAAFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFAAAAAAAAAAAAAAAAAAFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFS',
-    'SSSSSSSSSSSSSSSSSSSSSSSS',
+    'VVVVVVVVVVVV',
+    'VVVVVVVVVVVV',
+    'CSSSSSSSSSSC',
+    'CSSSSSSSSSSC',
+    'CSSSSSSSSSSC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CCCSSSSSSCCC',
+    'CSSSSSSSSSSC',
+    'CSSSSSSSSSSC',
+    'CSSSSSSSSSSC',
   ],
   entities: [
-    { id: 'towerView', x: 20, y: 6, sprite: 'notice', solid: false, interact: 'lookTower' },
-    { id: 'emmaBridge', x: 6, y: 6, sprite: 'emma_left', solid: true, interact: 'talkEmmaBridge' },
-    { id: 'wind', x: 16, y: 6, sprite: 'notice', solid: false, interact: 'bridgeWind' },
+    // 看塔：站在桥面中段正对北岸 —— 塔的剪影在第 3 层远景上（render/bridgeBackdrop.ts）
+    { id: 'towerView', x: 5, y: 10, sprite: 'notice', solid: false, interact: 'lookTower' },
+    // 艾玛：桥面靠左栏杆。桥面只有 4 格宽，她一站，路就窄了一半
+    { id: 'emmaBridge', x: 5, y: 15, sprite: 'emma_left', solid: true, interact: 'talkEmmaBridge' },
+    // 风：靠右栏杆，从桥洞里上来的那股风
+    { id: 'wind', x: 7, y: 17, sprite: 'notice', solid: false, interact: 'bridgeWind' },
   ],
   portals: [
-    { x: 1, y: 6, to: 'corridorMain', tx: 37, ty: 4, dir: 'left' },
+    // 南端平台：回大走廊（从走廊右端的拱门出来，落点在南平台右侧、朝北看桥）
+    { x: 4, y: 22, to: 'corridorMain', tx: 37, ty: 4, dir: 'left' },
+    // 北端平台：塔的方向。桥到这里就到头了 —— 这一头封着，暂时过不去
+    {
+      x: 6, y: 3, to: 'bridge', tx: 6, ty: 8, dir: 'down',
+      neverOpen: true, lockMsg: '桥的尽头塌了。石阶断在雾里，没有落脚的边。',
+    },
   ],
 }
 const cellar: GameMap = {

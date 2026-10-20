@@ -1144,6 +1144,114 @@ function drawAisleCarpetBottom(g: Ctx): void {
   paintAisleHem(g, TILE - 1)
 }
 
+// ============================================================
+// 峡谷石桥（bridge）：桥面板 / 横向石板接缝 / 桥缘栏杆
+// ============================================================
+//
+// 桥要读成「一块架在空中的板」，不是「铺在地上的一条地毯」：
+//   桥缘外侧必须看得见厚度 —— 侧壁的 2px 近黑只画在栏杆格的最外缘
+//   （'[' / '(' 画左缘、']' / ')' 画右缘）；桥面中段 '_' / 'H' 不带侧壁，
+//   否则每一格都有一道竖边，桥面会读成一条条木板。
+// 栏杆也不是「走廊的墙」：只有一道 3px 的扶手条 + 柱头 + 投在桥面上的 1px 影；
+// 每 5 格换成 '(' / ')' 的断口（平台的石沿也用这两个字符），
+// 这样两侧是「能扶的栏杆」，断口处人还能凑到桥边上。
+const DK = {
+  face: '#333a45',    // 桥面板面
+  faceHi: '#47515f',  // 受光
+  faceLo: '#232830',  // 背光
+  seam: '#13171d',    // 板缝 / 凿痕
+  edge: '#525e6e',    // 桥缘顶棱（最亮的一条边）
+  edgeLo: '#343c48',  // 桥缘石面
+  side: '#04060a',    // 桥体外轮廓（和背景切开）
+  sideHi: '#1c2430',  // 桥体侧面：真的受一点月光，厚度才看得见
+  rail: '#48535f',    // 扶手
+  railHi: '#7b8899',  // 扶手受光顶边
+  railLo: '#252c35',  // 扶手背光
+  post: '#6b7889',    // 柱头顶面
+  shade: '#171c23',   // 栏杆投在桥面上的影
+}
+
+/**
+ * 画一条横向的桥面板（从 x0 起、宽 w）。
+ * 桥面格与栏杆格共用它 —— 两格拼接时板纹在同一条 y 上，接缝不歪。
+ */
+function paintDeck(g: Ctx, x0: number, w: number): void {
+  r(g, x0, 0, w, TILE, DK.face)
+  // 石面：不画任何贯穿的横线 —— 每格一条会连成「一条条木条」。
+  // 只有两笔凿痕与一点反光，大块面才读作石板。
+  const marks: [number, number, number][] = [
+    [2, 5, 4], [9, 11, 3],
+  ]
+  for (const [mx, my, mw] of marks) {
+    if (mx + mw > w) continue
+    r(g, x0 + mx, my, mw, 1, DK.seam)
+    r(g, x0 + mx, my + 1, mw, 1, '#3b4450')
+  }
+  // 湿石板上的一点冷反光
+  px(g, x0 + Math.min(w - 1, 6), 8, DK.faceHi)
+  px(g, x0 + Math.min(w - 1, 13), 3, DK.faceLo)
+}
+
+/** 桥面中段：一整块板，没有侧壁、没有栏杆，只有石面 */
+function drawBridgeDeck(g: Ctx): void {
+  paintDeck(g, 0, TILE)
+}
+
+/** 桥面接缝：横贯的 2px 深缝 + 缝上受光边 + 缝下的影；可走 */
+function drawBridgeSeam(g: Ctx): void {
+  paintDeck(g, 0, TILE)
+  r(g, 0, 6, TILE, 1, DK.faceHi)   // 石板断面的受光边
+  r(g, 0, 7, TILE, 2, DK.seam)     // 2px 深缝
+  r(g, 0, 9, TILE, 1, '#232930')   // 缝下的影
+  // 缝里积的一点冷光：夜里的水汽，不是苔
+  px(g, 3, 7, '#2f3a49')
+  px(g, 7, 8, '#26303c')
+  px(g, 11, 8, '#2f3a49')
+}
+
+/**
+ * 桥缘：外侧 2px 是桥体的厚度（侧壁），内侧是桥缘石 → 扶手 → 影 → 桥面。
+ * gap = true 时没有扶手，只留桥缘石和一个矮的断柱础（栏杆在此断开）。
+ */
+function drawBridgeRail(g: Ctx, side: 'left' | 'right', gap: boolean): void {
+  if (side === 'right') {
+    g.save()
+    g.translate(TILE, 0)
+    g.scale(-1, 1)
+  }
+  // ---- 以下按「深渊在左、桥面在右」的左手侧画 ----
+  // 桥体的厚度：外轮廓 1px 纯黑 → 侧面 1px 受月光 → 桥缘顶棱 1px 最亮。
+  // 这三条竖线在暗背景上把桥「切」出来：桥是一块有厚度的板，不是贴图。
+  r(g, 0, 0, 1, TILE, DK.side)
+  r(g, 1, 0, 1, TILE, DK.sideHi)
+  r(g, 2, 0, 1, TILE, DK.edge)
+  // 桥缘石面
+  r(g, 3, 0, 3, TILE, DK.edgeLo)
+  if (gap) {
+    // 断口：桥缘石完整，栏杆只剩一个矮柱础 —— 一眼看得出「这里断了」
+    r(g, 6, 0, 3, TILE, DK.edgeLo)
+    r(g, 6, 6, 3, 4, DK.railLo)
+    r(g, 6, 6, 3, 1, DK.rail)
+    r(g, 6, 9, 3, 1, '#10141a')
+  } else {
+    // 扶手：俯视下是一条 3px 窄条，外侧受光、内侧背光
+    r(g, 6, 0, 1, TILE, DK.railHi)
+    r(g, 7, 0, 1, TILE, DK.rail)
+    r(g, 8, 0, 1, TILE, DK.railLo)
+    // 柱头：每 8px 一个方头，读作「一根一根的立柱」而不是一道墙
+    for (const py of [0, 8]) {
+      r(g, 6, py, 3, 3, DK.post)
+      r(g, 6, py, 3, 1, DK.railHi)
+      r(g, 6, py + 2, 3, 1, DK.railLo)
+    }
+  }
+  // 栏杆投在桥面上的影：桥面与栏杆因此有前后，不是同一张纸上画的
+  r(g, 9, 0, 1, TILE, DK.shade)
+  // 桥面板（栏杆格内侧的那一截）
+  paintDeck(g, 10, 6)
+  if (side === 'right') g.restore()
+}
+
 /** 虚空：不画任何像素，让底层夜色或远景透出来；空白字符 ' ' 用 */
 function drawVoid(g: Ctx): void {
   void g
@@ -1187,11 +1295,18 @@ export const TILES: Record<string, HTMLCanvasElement> = {
   'C': make(drawAisleCarpet),    // 厢座地毯·中间行：暗红绒面 + 一枚黄铜菱形（可走）
   'c': make(drawAisleCarpetTop), // 厢座地毯·最上行：毯面 + 上包边与短流苏（可走）
   'd': make(drawAisleCarpetBottom), // 厢座地毯·最下行：毯面 + 下包边与短流苏（可走）
+  // ---- 峡谷石桥 ----
+  '_': make(drawBridgeDeck),     // 桥面中段：一整块石板，无侧壁（可走）
+  'H': make(drawBridgeSeam),     // 桥面接缝：横贯的 2px 深缝，每 5 格一道（可走）
+  '[': make(g => drawBridgeRail(g, 'left', false)),  // 左桥缘 + 栏杆：外侧 2px 是桥体厚度（阻挡）
+  ']': make(g => drawBridgeRail(g, 'right', false)), // 右桥缘 + 栏杆（阻挡）
+  '(': make(g => drawBridgeRail(g, 'left', true)),   // 左桥缘·栏杆断口 / 平台石沿（阻挡）
+  ')': make(g => drawBridgeRail(g, 'right', true)),  // 右桥缘·栏杆断口 / 平台石沿（阻挡）
   ' ': make(drawVoid),           // 虚空：透明，露出底层夜色 / 远景
 }
 
 /** 阻挡通行的瓦片（'r' 铁轨与 'q' 雾可走；车窗 'W'/'N'、座椅 'U'/'J'/'j'、小桌 'K'、虚空 ' ' 阻挡） */
-export const SOLID_TILES = new Set(['#', 'W', 'L', 'E', 'f', 'b', 'p', 'B', '^', '=', 'o', '+', 'T', 'v', 'h', 'n', 'N', 'U', 'J', 'j', 'K', ' '])
+export const SOLID_TILES = new Set(['#', 'W', 'L', 'E', 'f', 'b', 'p', 'B', '^', '=', 'o', '+', 'T', 'v', 'h', 'n', 'N', 'U', 'J', 'j', 'K', ' ', '[', ']', '(', ')'])
 
 /** 图纸层符号（供 renderer 使用） */
 export const STRUCT_SYMBOL: Record<string, { color: string; kind: string }> = {

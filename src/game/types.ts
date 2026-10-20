@@ -51,6 +51,13 @@ export interface EntityDef {
   interact?: string
   face?: Dir
   tall?: boolean
+  /**
+   * 精灵是否为四方向角色，且应随时面朝玩家
+   * （walk 图必须有 _down/_up/_left/_right 四个变体）。
+   * e.sprite 仍写 _down 作为兜底；渲染器每帧按玩家相对位置覆盖方向，
+   * 所以玩家走近 / 对话期间她都会转身看着玩家。
+   */
+  facePlayer?: boolean
 }
 
 export interface Portal {
