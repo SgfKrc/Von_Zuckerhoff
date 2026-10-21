@@ -471,10 +471,10 @@ function paintTrees(g: Ctx, t: number): void {
         (118 + hash(jagTop * (sideIsLeft ? 7 : 11) + (sideIsLeft ? 3 : 9)) * 30)
       const lim = edgeAt(sideIsLeft ? -1 : 1, yy) + (sideIsLeft ? -openUp : openUp)
       if (sideIsLeft ? xx > lim : xx < lim) continue
-      g.fillStyle = '#0b1116'
+      g.fillStyle = '#151e27'
       fill(g, xx - ww / 2, yy, ww, 1)
       // 左上受光的一道窄边：树是湿的，反一点雨光
-      g.fillStyle = 'rgba(40,54,68,0.55)'
+      g.fillStyle = 'rgba(58,78,98,0.70)'
       fill(g, xx - ww / 2, yy, 1, 1)
       // 每隔几行一道树皮的暗裂
       if (k % 9 === 0) {
@@ -574,8 +574,9 @@ function castleAt(t: number): CastleFrame | null {
   if (alpha <= 0.01) return null
   return {
     alpha,
-    // 0.46 → 0.98 → 1.42
-    scale: 0.46 + rise * 0.52 + tilt * 0.44,
+    // 0.46 → 0.66 → 1.42：13s 之前不能让塔尖冲出画面 ——
+    // 尖顶被上缘切平，整座城堡就读成「几根平顶的柱子」了。
+    scale: 0.46 + rise * 0.20 + tilt * 0.76,
     // 底边：骑在地平线上，仰视时整座城堡沉下去，塔尖冲向上缘
     baseY: horizonAt(t) + 8 + tilt * 92,
   }
