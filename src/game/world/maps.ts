@@ -513,7 +513,7 @@ const bedroom1: GameMap = {
     { id: 'shelf2', x: 17, y: 2, sprite: 'bookshelf', solid: true, tall: true },
     // 场景 12：那一本。白天它只是书架上的第五本，晚上才翻得开。
     // 刻意避开 (16,2)/(17,2)：书架排成一行，交互取最近目标。
-    { id: 'grimmShelf', x: 19, y: 2, sprite: 'bookshelf', solid: true, tall: true, interact: 'readGrimm' },
+    { id: 'grimmShelf', x: 19, y: 2, sprite: 'bookshelf', solid: true, tall: true, showFlag: 'chapter1', interact: 'readGrimm' },
     { id: 'lamp', x: 11, y: 11, sprite: 'candelabra', solid: true, tall: true },
     { id: 'mirror', x: 8, y: 2, sprite: 'bigPainting', solid: false, tall: true, interact: 'lookMirror' },
     { id: 'shelfLow', x: 3, y: 8, sprite: 'bookshelf', solid: true, tall: true },
