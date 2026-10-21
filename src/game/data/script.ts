@@ -1716,3 +1716,185 @@ const FRANKFURT_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, FRANKFURT_SCRIPTS)
+
+// ============================================================
+// 追加区 7 · 第一夜：「睡不着」
+// 原作里他第一次躺下并没有睡着（枕头太高、被褥太软、薰衣草味太浓），
+// 起身不点灯，借月光出门，才走进东走廊遇到赫尔曼。
+// 这一段是 nightWalk 的入口，也让「夜游」成为他主动的选择，而不是被剧情推着走。
+// 口吻照 NARRATIVE_DESIGN §7：独白全角括号，感叹号零个。
+// ============================================================
+
+const NIGHT_SCRIPTS: Record<string, Step[]> = {
+  cannotSleep: [
+    { t: 'line', sp: 'none', text: '我躺下。床很软，软得像陷进去。枕头顶着后颈，太高。' },
+    { t: 'line', sp: 'ftz', text: '（薰衣草的味道太浓了。像有人把一整年的花晒干了塞在枕头里。）' },
+    { t: 'line', sp: 'none', text: '我翻身。被子滑下去。我又拉上来。' },
+    { t: 'line', sp: 'ftz', text: '（四天。十三顿饭。我吃了九顿。睡了几个小时，我数不清。）' },
+    { t: 'line', sp: 'none', text: '天花板上的星形肋架在黑暗里慢慢浮出来。' },
+    { t: 'line', sp: 'ftz', text: '（这个图案和楼下大厅的一模一样。只是小了很多。）' },
+    { t: 'line', sp: 'none', text: '我坐起来。没有点灯。月光从窗帘缝里漏进来，落在床脚，像一把很窄的尺。' },
+    { t: 'line', sp: 'ftz', text: '（就走到走廊口看一眼。看一眼就回来。）' },
+    { t: 'do', do: [
+      { toast: '（门开着。走廊很黑。）' },
+    ] },
+  ],
+}
+
+Object.assign(SCRIPTS, NIGHT_SCRIPTS)
+
+// ============================================================
+// 追加区 9：聚斯霍芬堡内部 · 新加杂物的一点字
+// ------------------------------------------------------------
+// 这一批只写「看见什么」：不给物品、不立 flag、不推剧情。
+// 玩家查过一次，就知道这几间屋子里有人在住；但拿不到任何东西。
+// 口吻照 NARRATIVE_DESIGN §7：主角独白全角括号，单条 ≤64 字，不用感叹号。
+// 每条后面跟一句 _again：第二遍调查不再重播三段，只给一句短回应。
+// 本区只在文件末尾追加，上面的字一个都不动。
+// ============================================================
+
+const INTERIOR_CLUTTER_SCRIPTS: Record<string, Step[]> = {
+  // ---------------- 门厅 ----------------
+  hallLetters: [
+    { t: 'line', sp: 'none', text: '三封信散在门厅的石板上。封蜡都还是整的，没人拆过。' },
+    { t: 'line', sp: 'ftz', text: '（地址写的是这座堡。收信人那一行被雨水洇开了。）' },
+    { t: 'line', sp: 'none', text: '最上面那封的火漆压着一只秃鹫。' },
+  ],
+  hallLetters_again: [
+    { t: 'line', sp: 'ftz', text: '（信还在原地。没有人来取。）' },
+  ],
+  hallGlove: [
+    { t: 'line', sp: 'none', text: '一只手套翻着掌心躺在地板上，小指的位置磨穿了一个洞。' },
+    { t: 'line', sp: 'ftz', text: '（女人的手套。不是艾玛的 —— 她的袖口永远扣到最上一颗。）' },
+  ],
+  hallGlove_again: [
+    { t: 'line', sp: 'ftz', text: '（一只没人认领的手套。）' },
+  ],
+  hallTippedCandle: [
+    { t: 'line', sp: 'none', text: '烛台倒在地板上，三枝蜡烛断了两枝，蜡在石缝里凝成一片。' },
+    { t: 'line', sp: 'ftz', text: '（倒下去的时候没人扶。也许就在昨天，也许已经十年。）' },
+  ],
+  hallTippedCandle_again: [
+    { t: 'line', sp: 'ftz', text: '（蜡还凝在缝里。）' },
+  ],
+  hallAntlers: [
+    { t: 'line', sp: 'none', text: '一副鹿角钉在墙上，木托板比角还旧。角尖被摩挲得发亮。' },
+    { t: 'line', sp: 'ftz', text: '（狩猎的战利品。祖克霍夫家的男人大概都摸过它。除了我。）' },
+  ],
+  hallAntlers_again: [
+    { t: 'line', sp: 'ftz', text: '（角上的灰被谁擦过了。）' },
+  ],
+  hallClock: [
+    { t: 'line', sp: 'none', text: '墙上的小挂钟还在走。摆锤偏了一指宽，摆起来有点瘸。' },
+    { t: 'line', sp: 'ftz', text: '（整座堡里只有它还准。列车上的钟停在四点十七分。）' },
+  ],
+  hallClock_again: [
+    { t: 'line', sp: 'ftz', text: '（它还在走。很慢，但没有停。）' },
+  ],
+
+  // ---------------- 大走廊与画廊 ----------------
+  corridorAntlers: [
+    { t: 'line', sp: 'none', text: '鹿角挂在这条走廊正中，正对着窗。角上积了一层灰。' },
+    { t: 'line', sp: 'ftz', text: '（挂得这么正，像是给每个经过的人看的。）' },
+  ],
+  corridorAntlers_again: [
+    { t: 'line', sp: 'ftz', text: '（灰没动过。）' },
+  ],
+  corridorClock: [
+    { t: 'line', sp: 'none', text: '挂钟的玻璃门缺了一角。指针停着，停在差一刻十二点。' },
+    { t: 'line', sp: 'ftz', text: '（不是坏了。是有人把它停下来的。）' },
+  ],
+  corridorClock_again: [
+    { t: 'line', sp: 'ftz', text: '（差一刻十二点。）' },
+  ],
+  corridorChina: [
+    { t: 'line', sp: 'none', text: '一只杯子碎在走廊中间，白瓷片散开有一臂远。' },
+    { t: 'line', sp: 'ftz', text: '（摔得很重。碎片朝外飞 —— 有人在这里站了一会儿才松手。）' },
+  ],
+  corridorChina_again: [
+    { t: 'line', sp: 'ftz', text: '（碎片还在。没有人扫。）' },
+  ],
+  corridorShoe: [
+    { t: 'line', sp: 'none', text: '一只女式皮鞋侧躺在墙脚。鞋跟完好，鞋底几乎没磨。' },
+    { t: 'line', sp: 'ftz', text: '（只差一只。她总不能光着一只脚走出这座堡。）' },
+  ],
+  corridorShoe_again: [
+    { t: 'line', sp: 'ftz', text: '（还是那一只。）' },
+  ],
+  corridorBook: [
+    { t: 'line', sp: 'none', text: '一本硬壳书摊在地板上，书脊朝上鼓着。' },
+    { t: 'line', sp: 'ftz', text: '（《纹章学》。翻到的那一页是祖克霍夫家的秃鹫。）' },
+  ],
+  corridorBook_again: [
+    { t: 'line', sp: 'ftz', text: '（还是那一页。）' },
+  ],
+
+  // ---------------- 图书室 ----------------
+  libraryClock: [
+    { t: 'line', sp: 'none', text: '挂钟的钟摆卸下来了，摆在钟壳顶上，像一件放错地方的工具。' },
+    { t: 'line', sp: 'ftz', text: '（有人打算修它。修到一半就走开了。）' },
+  ],
+  libraryClock_again: [
+    { t: 'line', sp: 'ftz', text: '（钟摆还在钟顶上。）' },
+  ],
+  libraryLamp: [
+    { t: 'line', sp: 'none', text: '地图桌旁的烛台上，三枝蜡烛只剩一枝，蜡油顺着铜臂淌到桌面。' },
+    { t: 'line', sp: 'ftz', text: '（在这里看书的人，从来不肯再点第二枝。）' },
+  ],
+  libraryLamp_again: [
+    { t: 'line', sp: 'ftz', text: '（火苗很稳。这间屋子没有风。）' },
+  ],
+  libraryBooks: [
+    { t: 'line', sp: 'none', text: '地板上码着一摞书，四本，最上面那本歪了。' },
+    { t: 'line', sp: 'ftz', text: '（压着一张借书条。名字是赫尔曼，日期是三十年前。）' },
+  ],
+  libraryBooks_again: [
+    { t: 'line', sp: 'ftz', text: '（那摞书没人再动过。）' },
+  ],
+  libraryLadder: [
+    { t: 'line', sp: 'none', text: '梯子倒在书架前，一头卡在两排书之间，另一头压着一本摊开的书。' },
+    { t: 'line', sp: 'ftz', text: '（从这么高的地方摔下来，整座堡都该听得见。）' },
+  ],
+  libraryLadder_again: [
+    { t: 'line', sp: 'ftz', text: '（梯子还倒着。）' },
+  ],
+  libraryOpenBook: [
+    { t: 'line', sp: 'none', text: '一本书摊在地板上，页角被反复折过。' },
+    { t: 'line', sp: 'ftz', text: '（不是书签，是折角。读到一半就放下了，很多次。）' },
+  ],
+  libraryOpenBook_again: [
+    { t: 'line', sp: 'ftz', text: '（页角还折在那儿。）' },
+  ],
+
+  // ---------------- 餐厅 ----------------
+  diningClock: [
+    { t: 'line', sp: 'none', text: '餐厅的挂钟比别的钟都快。指针已经走到十二点过七分。' },
+    { t: 'line', sp: 'ftz', text: '（没有人校它。也许这屋子里的人都希望饭早点开始。）' },
+  ],
+  diningClock_again: [
+    { t: 'line', sp: 'ftz', text: '（又快了。）' },
+  ],
+  diningChair: [
+    { t: 'line', sp: 'none', text: '一把椅子翻倒在地上，四条腿朝天。座面的丝绒磨掉了一块。' },
+    { t: 'line', sp: 'ftz', text: '（有人从这上面站起来的时候带倒了它。走得很急。）' },
+  ],
+  diningChair_again: [
+    { t: 'line', sp: 'ftz', text: '（椅子还倒着。）' },
+  ],
+  diningNapkin: [
+    { t: 'line', sp: 'none', text: '一块白餐巾揉成一团，旁边躺着一只倒下的酒杯。酒干成了褐色。' },
+    { t: 'line', sp: 'ftz', text: '（酒洒了没人擦。这桌饭散得很突然。）' },
+  ],
+  diningNapkin_again: [
+    { t: 'line', sp: 'ftz', text: '（酒渍已经干了。）' },
+  ],
+  diningAsh: [
+    { t: 'line', sp: 'none', text: '壁炉前堆着一摊灰，冷透了。灰里有一截没烧完的柴，还有半只烧黑的面包。' },
+    { t: 'line', sp: 'ftz', text: '（面包。有人把早餐掉进了火里，或者扔了进去。）' },
+  ],
+  diningAsh_again: [
+    { t: 'line', sp: 'ftz', text: '（灰是冷的。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, INTERIOR_CLUTTER_SCRIPTS)

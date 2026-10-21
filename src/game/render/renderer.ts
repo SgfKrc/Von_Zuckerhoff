@@ -12,6 +12,7 @@ import { useGame } from '../store'
 import { SPRITES } from '../art/sprites'
 import { drawBackdrop } from './backdrop'
 import { drawBridgeBackdrop } from './bridgeBackdrop'
+import { drawPortals } from './portals'
 import {
   drawStationBackdrop, drawStationFore, drawRoadBackdrop, drawRoadFore,
   type LampPos,
@@ -103,6 +104,10 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
 
   drawTiles(ctx, camX, camY)
   drawEntities(ctx, camX, camY)
+  // 传送点标注：压在瓦片与实体之上（不然门洞、长椅会把标记盖掉），
+  // 但在光照 / 雾 / 暗角之前 —— 它们会把标记压暗到看不见。
+  // 玩家精灵最后画：站在门口时人是压在标记上的，标记不该穿透人。
+  drawPortals(ctx, camX, camY)
   drawPlayer(ctx)
 
   ctx.restore()

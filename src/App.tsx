@@ -67,7 +67,9 @@ export default function App() {
         setFlag('gateOpen', true)
         setFlag('hallOpen', true)
         setFlag('cellarOpen', true)
-        setFlag('nightWalk', true)
+        // nightWalk 现在有剧情含义（第一夜睡不着才开放东走廊），
+        // 不再无条件预设；要验证夜游请加 &night=1
+        if (q.has('night')) setFlag('nightWalk', true)
         bridge.teleport(map as MapId, Number(q.get('x') ?? 12), Number(q.get('y') ?? 8), 'down')
         if (q.has('bp')) setBlueprint(true)
         if (q.has('repair')) setFlag('archRepairActive', true)

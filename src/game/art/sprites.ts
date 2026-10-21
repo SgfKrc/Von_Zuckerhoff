@@ -4194,6 +4194,602 @@ function decorBanner(g: Ctx): void {
 }
 
 // ============================================================
+// 装饰精灵：聚斯霍芬堡内部（墙面与地上的杂物）
+// ============================================================
+//
+// 内部地图原来的问题不是"没有装饰"，而是"墙只有一种高度、地上只有一种东西"。
+// 这一批分两类：
+//
+//   墙面（16×32，tall 底对齐，压在墙脚那一行上）——
+//     壁灯（自带一圈暖光晕）/ 鹿角 / 挂钟 / 窗帘 / 墙上水痕。
+//     它们让墙从一条 16px 的石带变成"有东西挂着"的两段。
+//
+//   地上（16×16 为主的杂物）——
+//     信、手套、碎瓷、鞋、书、梯子、翻倒的椅子、餐巾酒杯、灰烬、盖布家具、
+//     破桶、行李箱、伞架、扫帚、挂衣、窗台水杯、蛛网、倒下的烛台。
+//     每一件都带一条贴地的落影，不然会像浮在地板上。
+//
+// 暖色只用 rgba 叠在暗部上：烛光与火光不能太亮，否则在暗角里会发白。
+
+/** 壁灯：铁背板 + 弯臂 + 两支蜡烛，火苗周围压一圈暖光，一眼能看出光从哪来 */
+function decorWallSconce(g: Ctx): void {
+  // 暖光晕：以两支火苗的中心 (8,11) 为圆心，由内向外淡下去
+  for (let y = 1; y < 31; y++) {
+    for (let x = 0; x < TILE; x++) {
+      const d = Math.hypot((x - 8) / 8.2, (y - 12) / 12.5)
+      if (d > 1) continue
+      const a = (1 - d) * 0.20
+      if (a > 0.008) px(g, x, y, `rgba(224,90,58,${a.toFixed(3)})`)
+    }
+  }
+  // 背板：一块竖铁片，左缘受光
+  r(g, 7, 19, 4, 11, C.graphite)
+  r(g, 7, 19, 1, 11, C.cold)
+  r(g, 10, 19, 1, 11, C.shadow)
+  px(g, 8, 21, C.pale)
+  px(g, 9, 25, C.pale)
+  // 弯臂：从背板横出去，两端向上托住烛杯
+  r(g, 4, 18, 9, 1, C.graphite)
+  r(g, 4, 18, 9, 1, 'rgba(77,86,101,0.55)')
+  r(g, 4, 15, 1, 3, C.cold)
+  r(g, 11, 15, 1, 3, C.cold)
+  // 烛杯
+  r(g, 3, 14, 3, 1, C.brass)
+  r(g, 10, 14, 3, 1, C.brass)
+  px(g, 3, 14, C.gold)
+  px(g, 10, 14, C.gold)
+  // 蜡烛
+  r(g, 4, 9, 2, 5, C.bone)
+  px(g, 4, 9, C.sugar)
+  px(g, 5, 9, C.pale)
+  r(g, 11, 10, 2, 4, C.bone)
+  px(g, 11, 10, C.sugar)
+  px(g, 12, 10, C.pale)
+  // 火苗：外橙、内金、芯白
+  r(g, 4, 6, 2, 3, C.fire)
+  px(g, 4, 6, C.gold)
+  px(g, 5, 5, C.sugar)
+  r(g, 11, 7, 2, 3, C.fire)
+  px(g, 11, 7, C.gold)
+  px(g, 12, 6, C.sugar)
+  // 灯下的墙被烤出一层暖
+  r(g, 3, 16, 10, 1, 'rgba(224,90,58,0.20)')
+}
+
+/** 鹿角：一块木托板，两支分叉的鹿角 —— 老城堡的墙上总该有一副 */
+function decorAntlers(g: Ctx): void {
+  // 木托板
+  r(g, 5, 22, 6, 6, '#3f2f1c')
+  r(g, 5, 22, 6, 1, '#77603f')
+  r(g, 5, 22, 1, 6, '#5c4630')
+  r(g, 10, 22, 1, 6, '#241a10')
+  px(g, 7, 24, C.brass)
+  px(g, 9, 24, C.brass)
+  // 角：主干从托板顶长出，分三段折向上；支叉各两根
+  const horn = (side: 1 | -1): void => {
+    const X = (x: number): number => 8 + side * (x - 8)
+    // 主干（粗一点：同一条线画两遍，第二遍偏一像素）
+    for (const off of [0, 1]) {
+      line(g, X(7), 22, X(4), 16 - off, '#9a8a68')
+      line(g, X(4), 16, X(3), 9 - off, '#9a8a68')
+      line(g, X(3), 9, X(5), 3, '#9a8a68')
+    }
+    // 支叉
+    line(g, X(4), 15, X(2), 13, '#8a7a5c')
+    line(g, X(3), 11, X(1), 8, '#8a7a5c')
+    line(g, X(4), 7, X(6), 5, '#8a7a5c')
+    // 角尖
+    px(g, X(5), 2, '#b8a880')
+    px(g, X(1), 7, '#b8a880')
+  }
+  horn(1)
+  horn(-1)
+}
+
+/** 挂钟：木壳小钟，钟盘朝外，下面一截摆锤；只占上半格，所以它真的"挂"在墙上 */
+function decorWallClock(g: Ctx): void {
+  // 木壳
+  r(g, 3, 2, 10, 18, '#3f2f1c')
+  r(g, 3, 2, 10, 1, '#77603f')
+  r(g, 3, 2, 1, 18, '#5c4630')
+  r(g, 12, 2, 1, 18, '#241a10')
+  r(g, 3, 19, 10, 1, '#241a10')
+  r(g, 4, 1, 8, 1, C.brass)
+  px(g, 8, 0, C.gold)
+  // 钟盘
+  r(g, 5, 4, 6, 6, C.bone)
+  r(g, 5, 4, 6, 1, C.sugar)
+  r(g, 5, 9, 6, 1, C.pale)
+  px(g, 5, 5, C.graphite)
+  px(g, 10, 5, C.graphite)
+  px(g, 5, 8, C.graphite)
+  px(g, 10, 8, C.graphite)
+  // 指针：一短一长，停在差一刻
+  r(g, 7, 5, 1, 3, C.night)
+  r(g, 7, 7, 2, 1, C.night)
+  px(g, 7, 7, C.brass)
+  // 摆锤窗
+  r(g, 5, 11, 6, 7, '#1c241c')
+  r(g, 5, 11, 1, 7, C.cold)
+  r(g, 7, 11, 1, 5, C.brass)
+  r(g, 6, 16, 4, 2, C.gold)
+  r(g, 6, 16, 4, 1, C.sugar)
+  // 钟壳顶上被旁边的灯映出一点暖
+  r(g, 3, 2, 10, 1, 'rgba(224,90,58,0.16)')
+}
+
+/** 窗帘：深红绒布，铜杆挂着，下摆垂到墙脚 —— 窗边的那一层 */
+function decorCurtain(g: Ctx): void {
+  // 铜杆与两端球头
+  r(g, 0, 1, 16, 1, C.brass)
+  px(g, 1, 1, C.gold)
+  px(g, 14, 1, C.gold)
+  px(g, 0, 1, C.gold)
+  px(g, 15, 1, C.gold)
+  // 布：上窄下宽，两侧各收一档
+  for (let y = 2; y < 31; y++) {
+    const x0 = 2 + (y > 24 ? 1 : 0)
+    const x1 = 13 - (y > 24 ? 1 : 0)
+    r(g, x0, y, x1 - x0, 1, '#4a1218')
+    px(g, x0, y, '#6b1b22')
+    px(g, x1 - 1, y, '#2c0a0e')
+    // 竖褶：每 4px 一道，错开
+    if (y % 4 === 0) {
+      r(g, x0 + 3, y, 1, 3, '#3a0c11')
+      r(g, x1 - 4, y, 1, 3, '#3a0c11')
+    }
+  }
+  // 下摆：几个垂尖
+  for (const x of [3, 6, 9, 12]) {
+    r(g, x, 31, 2, 1, '#6b1b22')
+    px(g, x + 1, 31, '#3a0c11')
+  }
+  // 布面上的尘光
+  r(g, 3, 20, 8, 1, 'rgba(111,122,140,0.16)')
+}
+
+/** 墙上的水痕：从墙缝往下淌的一道深色，底部长了一点霉 —— 地窖与背阴的墙 */
+function decorDampStain(g: Ctx): void {
+  // 主痕：上宽下窄，边缘不齐
+  for (let y = 2; y < 30; y++) {
+    const p = y / 30
+    const w = 9 - Math.round(p * 4)
+    const x0 = 8 - Math.floor(w / 2) + (y % 7 === 0 ? 1 : 0)
+    for (let x = x0; x < x0 + w; x++) {
+      const a = 0.17 * (1 - p * 0.45)
+      px(g, x, y, `rgba(18,24,30,${a.toFixed(3)})`)
+    }
+  }
+  // 边缘的水线：几道 1px 的深色，读作"干过又湿过"
+  r(g, 5, 6, 6, 1, 'rgba(11,13,16,0.26)')
+  r(g, 6, 14, 4, 1, 'rgba(11,13,16,0.22)')
+  r(g, 7, 22, 3, 1, 'rgba(11,13,16,0.18)')
+  // 底部的霉
+  px(g, 7, 28, 'rgba(61,74,47,0.55)')
+  px(g, 8, 29, 'rgba(61,74,47,0.40)')
+  px(g, 9, 27, 'rgba(61,74,47,0.30)')
+  // 还没干的两道
+  px(g, 5, 18, 'rgba(111,122,140,0.18)')
+  px(g, 10, 11, 'rgba(111,122,140,0.16)')
+}
+
+/** 蛛网：结在墙角的几根丝，网心破了一个洞 */
+function decorCobweb(g: Ctx): void {
+  // 从左上角发散出去的经丝
+  const spokes: [number, number][] = [[14, 1], [12, 5], [14, 10], [10, 12], [5, 13]]
+  for (const [x, y] of spokes) line(g, 1, 1, x, y, 'rgba(216,221,229,0.20)')
+  // 纬丝：两道弧，右上断掉一截
+  const arc = (r0: number): void => {
+    for (let a = 0.1; a < Math.PI / 2; a += 0.14) {
+      const x = Math.round(1 + Math.cos(a) * r0)
+      const y = Math.round(1 + Math.sin(a) * r0)
+      if (x > 12 && y < 5) continue
+      px(g, x, y, 'rgba(216,221,229,0.15)')
+    }
+  }
+  arc(5)
+  arc(9)
+  // 网上的一点凝露
+  px(g, 4, 5, 'rgba(216,221,229,0.32)')
+}
+
+/** 散落的信：三张纸摊在地板上，一张翻着，火漆印滚在旁边 */
+function decorScatteredLetters(g: Ctx): void {
+  r(g, 2, 13, 12, 1, 'rgba(5,6,11,0.35)')
+  // 三张纸，各有角度
+  r(g, 3, 6, 6, 5, C.bone)
+  r(g, 3, 6, 6, 1, C.sugar)
+  r(g, 8, 6, 1, 5, C.pale)
+  r(g, 4, 8, 4, 1, C.pale)
+  r(g, 8, 9, 6, 4, C.bone)
+  r(g, 8, 9, 6, 1, C.sugar)
+  r(g, 4, 10, 4, 3, '#d8d2c4')
+  r(g, 5, 11, 2, 1, C.cold)
+  // 火漆印：滚到一边，红的一点
+  px(g, 11, 7, C.bloodDark)
+  px(g, 11, 8, C.blood)
+  px(g, 12, 7, C.bloodDark)
+  // 被踩过的小折角
+  r(g, 6, 12, 2, 1, '#e8e2d4')
+}
+
+/** 一只手套：翻着掌心躺在地板上，指头朝右上 */
+function decorLostGlove(g: Ctx): void {
+  r(g, 4, 12, 9, 1, 'rgba(5,6,11,0.35)')
+  // 手套主体
+  r(g, 5, 6, 5, 5, '#5c5047')
+  r(g, 5, 6, 5, 1, '#8a7a6a')
+  r(g, 5, 6, 1, 5, '#6b5c50')
+  // 四根手指
+  r(g, 10, 5, 2, 1, '#5c5047')
+  r(g, 10, 7, 2, 1, '#5c5047')
+  r(g, 10, 9, 2, 1, '#5c5047')
+  // 拇指
+  r(g, 4, 8, 1, 2, '#5c5047')
+  // 手口与一道褶
+  r(g, 5, 10, 5, 1, '#3a332d')
+  px(g, 7, 8, '#8a7a6a')
+}
+
+/** 倒下的烛台：横躺在地板上，三枝蜡烛指着一边，蜡在地砖上摊开一小片 */
+function decorTippedCandelabrum(g: Ctx): void {
+  r(g, 1, 13, 14, 1, 'rgba(5,6,11,0.40)')
+  // 底座：倒着的圆盘压在最左
+  r(g, 2, 8, 3, 5, C.brass)
+  r(g, 2, 8, 1, 5, C.gold)
+  r(g, 4, 9, 1, 3, C.graphite)
+  // 横臂：躺着的一根黄铜
+  r(g, 4, 10, 9, 1, C.brass)
+  r(g, 4, 10, 9, 1, 'rgba(232,207,112,0.50)')
+  // 三个烛杯：歪着朝上
+  r(g, 5, 8, 1, 3, C.brass)
+  r(g, 8, 9, 1, 2, C.brass)
+  r(g, 11, 8, 1, 3, C.brass)
+  // 蜡烛：横躺，冲着右边
+  r(g, 12, 8, 3, 1, C.bone)
+  r(g, 12, 8, 3, 1, C.sugar)
+  r(g, 5, 5, 1, 3, C.bone)
+  px(g, 5, 5, C.sugar)
+  // 洒出来的蜡：地上两小片
+  r(g, 7, 12, 4, 1, 'rgba(242,236,224,0.35)')
+  r(g, 9, 13, 3, 1, 'rgba(242,236,224,0.25)')
+  // 冷掉的火
+  px(g, 5, 4, 'rgba(224,90,58,0.32)')
+}
+
+/** 碎瓷：一只摔碎的杯子，白瓷片散在地板上，还有一点洒出来的茶 */
+function decorBrokenPorcelain(g: Ctx): void {
+  r(g, 3, 13, 10, 1, 'rgba(5,6,11,0.32)')
+  // 洒出来的茶
+  r(g, 6, 10, 5, 2, 'rgba(58,36,20,0.55)')
+  r(g, 5, 11, 7, 1, 'rgba(58,36,20,0.35)')
+  // 最大的一片：杯底的一段弧
+  r(g, 3, 7, 4, 1, C.bone)
+  r(g, 3, 8, 3, 2, C.bone)
+  px(g, 3, 7, C.sugar)
+  px(g, 6, 7, C.pale)
+  // 小片
+  r(g, 9, 6, 2, 1, C.bone)
+  px(g, 11, 7, C.pale)
+  r(g, 11, 9, 2, 1, C.bone)
+  r(g, 8, 12, 3, 1, C.pale)
+  // 杯耳
+  px(g, 13, 6, C.bone)
+  px(g, 13, 7, C.pale)
+}
+
+/** 一只鞋：鞋头朝右，鞋带散着 —— 走廊里总有这种没人认领的东西 */
+function decorLostShoe(g: Ctx): void {
+  r(g, 3, 12, 10, 1, 'rgba(5,6,11,0.38)')
+  // 鞋身
+  r(g, 3, 8, 9, 4, '#2e2620')
+  r(g, 3, 8, 9, 1, '#4a3f36')
+  r(g, 3, 8, 1, 4, '#3d342c')
+  // 鞋头
+  r(g, 11, 9, 2, 3, '#2e2620')
+  px(g, 12, 9, '#4a3f36')
+  // 鞋跟
+  r(g, 2, 10, 1, 2, '#1a1410')
+  // 鞋带
+  r(g, 5, 7, 4, 1, '#6b5c50')
+  px(g, 9, 6, '#6b5c50')
+  // 鞋口
+  px(g, 4, 8, '#15100c')
+}
+
+/** 摊开的书：书脊朝上鼓着，两页摊在地板上，一页卷起来，书签拖到地上 */
+function decorDroppedBook(g: Ctx): void {
+  r(g, 2, 13, 12, 1, 'rgba(5,6,11,0.32)')
+  // 两页
+  r(g, 3, 6, 5, 6, C.bone)
+  r(g, 8, 6, 5, 6, C.bone)
+  r(g, 3, 6, 10, 1, C.sugar)
+  r(g, 3, 11, 10, 1, C.pale)
+  // 中缝：书脊压在下面
+  r(g, 8, 6, 1, 6, '#3f2f1c')
+  // 字行
+  for (let i = 0; i < 3; i++) {
+    r(g, 4, 7 + i * 2, 3, 1, C.cold)
+    r(g, 9, 7 + i * 2, 3, 1, C.cold)
+  }
+  // 卷起来的一角
+  r(g, 12, 6, 1, 3, '#e2dccd')
+  px(g, 12, 6, C.sugar)
+  // 书签：一条红丝带拖到地上
+  r(g, 8, 12, 1, 2, C.bloodDark)
+  px(g, 9, 13, C.bloodDark)
+}
+
+/** 一摞书：四本叠着，最上面那本歪了，边角磨白 */
+function decorBookStack(g: Ctx): void {
+  r(g, 2, 14, 12, 1, 'rgba(5,6,11,0.35)')
+  const spines: [number, string][] = [
+    [11, '#6b1a22'], [9, '#3a4450'], [7, '#33402a'], [5, '#5c4630'],
+  ]
+  for (const [y, col] of spines) {
+    r(g, 3, y, 9, 2, col)
+    r(g, 3, y, 9, 1, 'rgba(216,221,229,0.16)')
+    r(g, 3, y + 1, 9, 1, 'rgba(11,13,16,0.35)')
+  }
+  // 最上面那本歪了半格
+  r(g, 4, 3, 9, 2, '#7a2a20')
+  r(g, 4, 3, 9, 1, 'rgba(216,221,229,0.20)')
+  r(g, 5, 4, 7, 1, C.brass)
+  // 掉出来的一张纸角
+  px(g, 13, 12, '#d8d2c4')
+}
+
+/** 倒地的梯子：两根边木、四道横档，一头的铁箍压在地板上 */
+function decorTippedLadder(g: Ctx): void {
+  r(g, 1, 13, 14, 1, 'rgba(5,6,11,0.35)')
+  // 两根边木（横躺着）
+  r(g, 1, 5, 14, 1, '#5c4630')
+  r(g, 1, 10, 14, 1, '#5c4630')
+  r(g, 1, 5, 14, 1, 'rgba(119,96,63,0.55)')
+  // 横档：四道竖着的短木
+  for (const x of [3, 6, 9, 12]) {
+    r(g, x, 5, 1, 6, '#3f2f1c')
+    px(g, x, 5, '#77603f')
+  }
+  // 钉头
+  px(g, 3, 5, C.brass)
+  px(g, 9, 5, C.brass)
+  // 一头的铁箍
+  r(g, 13, 4, 2, 8, C.graphite)
+  r(g, 13, 4, 1, 8, C.cold)
+}
+
+/** 翻倒的椅子：四脚朝天、靠背倒向一边，座面还留着一点丝绒 */
+function decorOverturnedChair(g: Ctx): void {
+  r(g, 2, 13, 12, 1, 'rgba(5,6,11,0.35)')
+  // 座面（侧翻）
+  r(g, 4, 6, 8, 6, '#3f2f1c')
+  r(g, 4, 6, 8, 1, '#77603f')
+  r(g, 4, 6, 1, 6, '#5c4630')
+  r(g, 4, 11, 8, 1, '#241a10')
+  // 靠背：倒向左边
+  r(g, 2, 7, 3, 2, '#3f2f1c')
+  r(g, 2, 7, 3, 1, '#77603f')
+  r(g, 2, 9, 2, 1, '#241a10')
+  // 四条腿：两条朝天
+  r(g, 5, 3, 1, 3, '#5c4630')
+  r(g, 10, 3, 1, 3, '#5c4630')
+  px(g, 5, 2, '#77603f')
+  px(g, 10, 2, '#77603f')
+  r(g, 5, 12, 1, 2, '#3f2f1c')
+  r(g, 10, 12, 1, 2, '#3f2f1c')
+  // 座面上的丝绒残迹
+  r(g, 6, 8, 4, 2, 'rgba(140,31,40,0.55)')
+}
+
+/** 地上的餐巾与酒杯：揉皱的白餐巾，旁边一只倒下的杯子，酒洒在地砖上 */
+function decorDiningMess(g: Ctx): void {
+  r(g, 2, 13, 12, 1, 'rgba(5,6,11,0.32)')
+  // 洒出来的酒
+  r(g, 4, 10, 5, 2, 'rgba(90,20,28,0.55)')
+  r(g, 3, 11, 7, 1, 'rgba(90,20,28,0.35)')
+  // 餐巾：揉成一团
+  r(g, 2, 6, 6, 5, '#e6e2d6')
+  r(g, 2, 6, 6, 1, '#fdfcf8')
+  r(g, 2, 10, 6, 1, '#c8c2b0')
+  r(g, 4, 7, 1, 3, '#c8c2b0')
+  r(g, 6, 8, 1, 2, '#c8c2b0')
+  // 倒下的酒杯：杯口朝左，杯底朝右
+  r(g, 10, 7, 1, 5, 'rgba(216,221,229,0.75)')
+  r(g, 11, 7, 3, 1, 'rgba(216,221,229,0.75)')
+  r(g, 11, 11, 3, 1, 'rgba(216,221,229,0.75)')
+  r(g, 12, 8, 1, 3, 'rgba(58,36,20,0.55)')
+  px(g, 13, 6, 'rgba(216,221,229,0.55)')
+  // 滚出去的一颗葡萄
+  px(g, 8, 12, 'rgba(70,30,50,0.85)')
+}
+
+/** 壁炉前的灰烬：一堆冷掉的白灰，掺着没烧完的炭与一截柴 */
+function decorAshPile(g: Ctx): void {
+  r(g, 2, 14, 12, 1, 'rgba(5,6,11,0.35)')
+  // 灰堆：中间高、边上薄
+  const mound: [number, number, number, number][] = [
+    [3, 11, 10, 3], [4, 9, 8, 3], [6, 7, 4, 2],
+  ]
+  for (const [x, y, w, h] of mound) {
+    r(g, x, y, w, h, '#8a8f96')
+    r(g, x, y, w, 1, '#b8bcc4')
+  }
+  // 灰里的炭
+  px(g, 5, 11, '#15181d')
+  px(g, 8, 10, '#232830')
+  px(g, 10, 12, '#15181d')
+  px(g, 7, 8, '#232830')
+  // 没烧完的一截柴
+  r(g, 10, 9, 3, 1, '#3f2f1c')
+  // 飞出去的一点灰
+  px(g, 13, 12, 'rgba(154,166,184,0.35)')
+  px(g, 2, 9, 'rgba(154,166,184,0.25)')
+}
+
+/** 盖着布的家具：白布罩着，垂下来的褶子里积了灰 —— 这一间很久没人用了 */
+function decorDrapedFurniture(g: Ctx): void {
+  r(g, 1, 13, 14, 1, 'rgba(5,6,11,0.35)')
+  // 布罩
+  r(g, 3, 4, 10, 9, '#d8d2c4')
+  r(g, 3, 4, 10, 1, '#f2ece0')
+  r(g, 2, 6, 1, 7, '#c8c2b0')
+  r(g, 13, 6, 1, 7, '#b8b0a0')
+  r(g, 1, 12, 2, 1, '#c8c2b0')
+  r(g, 13, 12, 2, 1, '#b8b0a0')
+  // 褶：三道竖的影
+  r(g, 5, 6, 1, 7, '#b8b0a0')
+  r(g, 8, 5, 1, 8, '#c8c2b0')
+  r(g, 11, 6, 1, 7, '#b8b0a0')
+  // 灰：布顶一层浮尘
+  r(g, 3, 4, 10, 1, 'rgba(111,122,140,0.28)')
+  px(g, 6, 5, 'rgba(111,122,140,0.22)')
+  // 露出来的一只椅脚
+  r(g, 4, 12, 1, 2, '#3f2f1c')
+  r(g, 11, 12, 1, 2, '#3f2f1c')
+}
+
+/** 破桶：侧板崩开一道，桶箍松了，稻草从缝里漏出来 */
+function decorBrokenBarrel(g: Ctx): void {
+  r(g, 2, 14, 12, 1, 'rgba(5,6,11,0.38)')
+  // 桶身：两块弧形的木板
+  r(g, 3, 4, 5, 10, '#5c4630')
+  r(g, 3, 4, 5, 1, '#77603f')
+  r(g, 3, 4, 1, 10, '#6a5038')
+  r(g, 9, 4, 4, 10, '#4a3822')
+  r(g, 9, 4, 4, 1, '#77603f')
+  r(g, 12, 4, 1, 10, '#241a10')
+  // 崩开的缝
+  r(g, 8, 4, 1, 10, '#15100c')
+  // 桶箍：两道铁
+  r(g, 2, 6, 12, 1, C.graphite)
+  r(g, 2, 6, 12, 1, 'rgba(77,86,101,0.55)')
+  r(g, 2, 11, 12, 1, '#2a2f38')
+  // 松掉的一截铁箍歪在右边
+  r(g, 12, 8, 3, 1, C.cold)
+  r(g, 13, 9, 2, 1, C.graphite)
+  // 漏出来的稻草
+  r(g, 7, 12, 4, 2, 'rgba(122,106,58,0.75)')
+  px(g, 6, 13, 'rgba(122,106,58,0.65)')
+  px(g, 11, 13, 'rgba(122,106,58,0.55)')
+  px(g, 9, 14, 'rgba(122,106,58,0.45)')
+}
+
+/** 窗台上的水杯：小半杯水，杯壁映着一道月光 */
+function decorWaterGlass(g: Ctx): void {
+  r(g, 4, 11, 8, 2, 'rgba(5,6,11,0.25)')
+  // 杯身
+  r(g, 5, 4, 6, 7, 'rgba(216,221,229,0.30)')
+  r(g, 5, 4, 6, 1, 'rgba(216,221,229,0.60)')
+  r(g, 5, 10, 6, 1, 'rgba(216,221,229,0.50)')
+  // 水：小半杯
+  r(g, 6, 8, 4, 3, 'rgba(43,58,74,0.85)')
+  r(g, 6, 8, 4, 1, 'rgba(154,166,184,0.55)')
+  // 杯壁上的月光
+  r(g, 5, 5, 1, 6, 'rgba(242,236,224,0.45)')
+  px(g, 9, 6, 'rgba(242,236,224,0.30)')
+  // 杯底
+  r(g, 6, 11, 4, 1, 'rgba(154,166,184,0.55)')
+}
+
+/** 行李箱：一只旧皮箱立在床脚，皮带扣松着 —— 还没打开过 */
+function decorSuitcase(g: Ctx): void {
+  r(g, 2, 22, 12, 1, 'rgba(5,6,11,0.40)')
+  // 箱体
+  r(g, 3, 8, 10, 14, '#3a2415')
+  r(g, 3, 8, 10, 1, '#553721')
+  r(g, 3, 8, 1, 14, '#4c3020')
+  r(g, 12, 8, 1, 14, '#241a10')
+  // 箱盖分界与皮带
+  r(g, 3, 13, 10, 1, '#241a10')
+  r(g, 6, 8, 2, 14, '#241a10')
+  px(g, 6, 15, C.brass)
+  px(g, 7, 15, C.brass)
+  // 提手
+  r(g, 6, 6, 4, 2, '#241a10')
+  r(g, 7, 6, 2, 1, '#3a2415')
+  // 磨白的铜角
+  px(g, 3, 20, C.brass)
+  px(g, 12, 20, C.brass)
+  // 行李牌
+  r(g, 13, 10, 2, 3, C.bone)
+  px(g, 14, 11, C.cold)
+}
+
+/** 伞架：门边的黄铜桶，插着两把伞，一把的伞骨歪了 */
+function decorUmbrellaStand(g: Ctx): void {
+  r(g, 3, 21, 10, 1, 'rgba(5,6,11,0.38)')
+  // 伞架
+  r(g, 4, 12, 8, 10, C.brass)
+  r(g, 4, 12, 8, 1, C.gold)
+  r(g, 4, 12, 1, 10, '#5f5430')
+  r(g, 11, 12, 1, 10, '#3f2f1c')
+  r(g, 4, 21, 8, 1, '#3f2f1c')
+  // 两把伞：一根直杆、一把歪了
+  r(g, 6, 3, 1, 10, '#232830')
+  r(g, 6, 3, 1, 3, '#4a3822')
+  px(g, 5, 3, C.cold)
+  r(g, 9, 5, 1, 8, '#232830')
+  r(g, 10, 4, 1, 1, '#4a3822')
+  px(g, 11, 4, C.cold)
+  // 伞骨的一根断丝
+  px(g, 12, 6, C.graphite)
+  // 架里的一点雨水
+  r(g, 5, 19, 6, 1, 'rgba(77,86,101,0.22)')
+}
+
+/** 扫帚：斜靠在墙上的一把旧扫帚，柄上缠着麻绳，地上散着碎草 */
+function decorStrawBroom(g: Ctx): void {
+  r(g, 2, 30, 12, 1, 'rgba(5,6,11,0.40)')
+  // 柄：从右下斜到左上
+  line(g, 12, 29, 6, 6, '#5c4630')
+  line(g, 13, 29, 7, 6, '#3f2f1c')
+  // 绑绳
+  r(g, 7, 11, 4, 1, '#8a7a5c')
+  r(g, 7, 12, 4, 1, '#6b5c44')
+  // 帚头：散开的稻草
+  for (let i = 0; i < 7; i++) {
+    const x = 4 + i
+    const y0 = 19 + (i % 3)
+    const len = 9 - (i % 4)
+    line(g, x + 1, y0, x, y0 + len, i % 2 === 0 ? '#7a6a3a' : '#5c4e2c')
+  }
+  // 地上的碎草
+  px(g, 4, 29, 'rgba(122,106,58,0.65)')
+  px(g, 9, 30, 'rgba(122,106,58,0.45)')
+}
+
+/** 挂着的衣服：一件外套挂在钉子上，两只袖子垂着 —— 房间的主人刚出门 */
+function decorHangingClothes(g: Ctx): void {
+  // 钉子
+  r(g, 7, 3, 2, 1, C.graphite)
+  px(g, 8, 3, C.pale)
+  // 衣架
+  line(g, 8, 4, 4, 7, '#77603f')
+  line(g, 8, 4, 12, 7, '#77603f')
+  // 外套：肩宽下摆窄
+  for (let y = 6; y < 30; y++) {
+    const w = 12 - Math.round(((y - 6) / 24) * 3)
+    const x0 = 8 - Math.floor(w / 2)
+    r(g, x0, y, w, 1, y > 26 ? '#14121a' : '#1a1d24')
+    px(g, x0, y, '#2f3644')
+    px(g, x0 + w - 1, y, '#0b0d11')
+    // 前襟的开缝
+    if (y > 9) px(g, 8, y, '#0b0d11')
+  }
+  // 两只袖子
+  r(g, 2, 8, 2, 12, '#1a1d24')
+  r(g, 2, 8, 1, 12, '#2f3644')
+  r(g, 12, 8, 2, 12, '#1a1d24')
+  r(g, 13, 8, 1, 12, '#0b0d11')
+  // 领子与纽扣
+  r(g, 6, 6, 5, 1, '#2f3644')
+  px(g, 8, 12, C.brass)
+  px(g, 8, 17, C.brass)
+  px(g, 8, 22, C.brass)
+}
+
+// ============================================================
 // 注册表
 // ============================================================
 
@@ -4261,6 +4857,32 @@ export const SPRITES: Record<string, Sprite | Sprite[]> = {
   gargoyle: decorSprite(16, 32, decorGargoyle), // 石像鬼：蹲在墙沿上的一团石（门两侧两尊共用）
   portcullisChain: decorSprite(16, 24, decorGateChain), // 吊闸的铁链：从闸顶铁环垂下，钩子空着
   deadTree: decorSprite(16, 32, decorDeadTree), // 枯树：一根没有叶子的黑树干，立在门的右侧
+  // ---- 装饰：聚斯霍芬堡内部 · 墙面 ----
+  wallSconce: decorSprite(16, 32, decorWallSconce), // 壁灯：铁背板 + 两支蜡烛，自带一圈暖光
+  antlers: decorSprite(16, 32, decorAntlers), // 鹿角：木托板 + 两支分叉的鹿角
+  wallClock: decorSprite(16, 32, decorWallClock), // 挂钟：木壳小钟 + 钟盘 + 摆锤，只占上半格
+  curtain: decorSprite(16, 32, decorCurtain), // 窗帘：深红绒布，铜杆挂着
+  dampStain: decorSprite(16, 32, decorDampStain), // 墙上的水痕：往下淌的一道深色，底部长霉
+  // ---- 装饰：聚斯霍芬堡内部 · 地上的杂物 ----
+  cobweb: decorSprite(16, 16, decorCobweb), // 蛛网：结在墙角的几根丝
+  scatteredLetters: decorSprite(16, 16, decorScatteredLetters), // 散落的信：三张纸 + 火漆印
+  lostGlove: decorSprite(16, 16, decorLostGlove), // 一只手套：翻着掌心躺在地板上
+  tippedCandelabrum: decorSprite(16, 16, decorTippedCandelabrum), // 倒下的烛台：横躺 + 洒出的蜡
+  brokenPorcelain: decorSprite(16, 16, decorBrokenPorcelain), // 碎瓷：摔碎的杯子与洒出的茶
+  lostShoe: decorSprite(16, 16, decorLostShoe), // 一只鞋：鞋头朝右，鞋带散着
+  droppedBook: decorSprite(16, 16, decorDroppedBook), // 摊开的书：两页摊平，书签拖到地上
+  bookStack: decorSprite(16, 16, decorBookStack), // 一摞书：四本叠着，最上面那本歪了
+  tippedLadder: decorSprite(16, 16, decorTippedLadder), // 倒地的梯子：两根边木 + 四道横档
+  overturnedChair: decorSprite(16, 16, decorOverturnedChair), // 翻倒的椅子：四脚朝天
+  diningMess: decorSprite(16, 16, decorDiningMess), // 餐巾与酒杯：揉皱的白餐巾 + 倒下的杯子
+  ashPile: decorSprite(16, 16, decorAshPile), // 壁炉前的灰烬：冷掉的白灰与炭
+  drapedFurniture: decorSprite(16, 16, decorDrapedFurniture), // 盖着布的家具：白布与积灰
+  brokenBarrel: decorSprite(16, 16, decorBrokenBarrel), // 破桶：崩开一道，稻草漏出来
+  waterGlass: decorSprite(16, 16, decorWaterGlass), // 窗台上的水杯：小半杯水，映一道月光
+  suitcase: decorSprite(16, 24, decorSuitcase), // 行李箱：旧皮箱立在床脚
+  umbrellaStand: decorSprite(16, 24, decorUmbrellaStand), // 伞架：门边的黄铜桶插着两把伞
+  strawBroom: decorSprite(16, 32, decorStrawBroom), // 扫帚：斜靠在墙上，地上散着碎草
+  hangingClothes: decorSprite(16, 32, decorHangingClothes), // 挂着的衣服：外套挂在钉子上
 }
 
 /** 角色精灵名（供实体使用） */

@@ -87,9 +87,17 @@ const SPECIAL: Record<string, () => void> = {
     // 例外：睡觉是推进章节的开关，第二次调查也必须能推进，
     // 所以这里不走 speak()（否则会被 endPrologue_again 之类吃掉）。
     const g = useGame.getState()
-    // 第一夜睡下之后要接那段法兰克福的蒙太奇（「纱锭与煤气灯」）。
-    // endPrologue 的收尾是切到章节卡，所以这里只排一个待办：
-    // 章节卡按任意键 → beginExplore() → 那里紧接着起播（见 store.startMontage）。
+    // 第一夜分两段 —— 原作里他第一次躺下是睡不着的：
+    //   第一次躺下 → 睡不着，起来闲逛 → 出门（nightWalk 开放东走廊）
+    //   夜游遇到赫尔曼，被送回房 → 再躺下 → 这才真的睡着
+    // 所以「第一次」只播 cannotSleep，不推进章节。
+    if (g.chapter === 0 && !hasFlag('nightWalk')) {
+      setFlag('nightWalk', true)
+      startScript('cannotSleep')
+      return
+    }
+    // 第二段：睡着之后接法兰克福的蒙太奇（「纱锭与煤气灯」），
+    // 章节卡在蒙太奇之后才切（见 script.ts 的 wakeAfterMontage）。
     if (g.chapter === 0 && !hasFlag('sawFrankfurt')) setFlag('montagePending', true)
     startScript(g.chapter === 1 ? 'endChapter1' : 'endPrologue')
   },
