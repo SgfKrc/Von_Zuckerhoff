@@ -61,6 +61,12 @@ export interface GameState {
    * modal 只负责让 engine 冻结世界。
    */
   montage: string | null
+  /**
+   * 山路尽头的第一视角过场（见 ui/RoadEnd.tsx）。
+   * 与 montage 一样与 modal 分开存：播放器要看这个值决定挂不挂载，
+   * modal 只负责让 engine 冻结世界。播完由 finishRoadEnd() 落到大门前。
+   */
+  roadEnd: boolean
   /** 背包内容（去重、按取得顺序） */
   inventory: ItemId[]
   /** 背包界面是否打开（打开时同时把 modal 设成 'inventory' 冻结世界） */
@@ -108,6 +114,7 @@ export const useGame = create<GameState>((set, get) => ({
   repairErrors: 0,
   modal: null,
   montage: null,
+  roadEnd: false,
   inventory: [],
   inventoryOpen: false,
   inventoryPick: null,
@@ -124,13 +131,19 @@ export function setFlag(k: string, v: boolean | number): void {
 }
 
 export function addToast(text: string, kind: Toast['kind'] = 'info'): void {
+  const s = useGame.getState()
+  // 同一条警告不叠罗汉。
+  // engine 的传送门锁是逐帧判定的：顶着一扇锁着的门，每一帧都会 addToast 一次，
+  // 一秒能堆几十条一模一样的提示（走廊尽头那扇门尤其明显 —— 玩家会习惯性按住方向键）。
+  // 只对 warn 去重：别的 toast 多少带着状态变化（确信、糖、入包），重复出现是合理的。
+  if (kind === 'warn' && s.toasts.some(t => t.kind === 'warn' && t.text === text)) return
   const id = ++toastSeq
-  useGame.setState(s => ({ toasts: [...s.toasts, { id, text, kind }] }))
+  useGame.setState(st => ({ toasts: [...st.toasts, { id, text, kind }] }))
   // 每条 toast 自己定时移除。
   // （原来是共享一个 timer：新 toast 会清掉旧 timer，旧 toast 就永远留在屏幕上。
   //   背包连续入包时会一眼看出来，所以改成逐条计时。）
   window.setTimeout(() => {
-    useGame.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) }))
+    useGame.setState(st => ({ toasts: st.toasts.filter(t => t.id !== id) }))
   }, 2600)
 }
 
@@ -307,6 +320,41 @@ export function finishEtiquette(score: number): void {
   addToast(`礼仪课 · 记录 ${n} / 3`, 'info')
 }
 
+// ---------------- 时钟转场（睡不着的两个小时） ----------------
+
+/**
+ * 转场用的 modal 值。engine 的 uiOpen 认 modal —— 它一立起来世界就冻结，
+ * 黑幕底下不会有人走动；清掉就交还操作。
+ */
+const CLOCK_MODAL = 'clockInterlude'
+
+/**
+ * 起播「时钟转场」（见 ui/ClockInterlude.tsx）。
+ *
+ * 与 montage 不同，这里不另开一个 GameState 字段：剧本只认识 Effect.flag，
+ * 所以入口是 flags.clockInterlude（script.ts 追加区 12 在 cannotSleep 末尾立的）。
+ * 组件认领这个 flag、挂上时调本函数立 modal，播完调 finishClockInterlude()。
+ *
+ * 有人占了 modal（背包 / 书 / 蒙太奇）时不抢：那几种情况下剧本也走不到这里。
+ */
+export function startClockInterlude(): void {
+  const s = useGame.getState()
+  if (s.modal) return
+  useGame.setState({ modal: CLOCK_MODAL })
+}
+
+/**
+ * 转场播完 / 组件被外面拔掉：清 flag、把 modal 交还。
+ * 幂等 —— 播完的收尾与卸载时的兜底会各调一次。
+ */
+export function finishClockInterlude(): void {
+  const s = useGame.getState()
+  useGame.setState({
+    modal: s.modal === CLOCK_MODAL ? null : s.modal,
+    flags: { ...s.flags, clockInterlude: false },
+  })
+}
+
 // ---------------- 木刻蒙太奇（法兰克福的前半生） ----------------
 
 /**
@@ -338,6 +386,54 @@ export function finishMontage(): void {
   Snd.setBgm('interior')
   // 只在探索模式里接「醒来」那一段：调试入口（?ui=montage）不该写进任何状态
   if (useGame.getState().mode === 'explore') startScript('wakeAfterMontage')
+}
+
+// ---------------- 山路尽头的过场（第一视角） ----------------
+
+/**
+ * 过场占用的 modal 值。engine 的 uiOpen 认 modal —— 它一立起来世界就冻结，
+ * 黑幕底下不会有人在走，也不会再有传送门被踩到。
+ */
+const ROAD_END_MODAL = 'roadEnd'
+
+/**
+ * 走到山路尽头那一段的第一视角过场（见 ui/RoadEnd.tsx + art/roadEnd.ts）。
+ *
+ * 与蒙太奇同一条路：store 只立标志 + 立 modal（这一帧就冻结世界），
+ * 画面由 RoadEnd.tsx 接管；播完由播放器调 finishRoadEnd()，到那里才 teleport。
+ *
+ * 之所以不把这件事交给 maps.ts 的传送门：传送门是「走过去就换图」，
+ * 而这一段要在**不换图**的前提下把镜头交给过场（雨、脚步、雾里的城堡轮廓），
+ * 换图只能发生在过场结束的那一刻。触发点由 App.tsx 盯着玩家位置
+ * （山路上 x ≥ 44 就起播），所以路线只有一条，不会重入。
+ *
+ * 只播一次：flags.roadEndSeen 守着（正门那一格已经封死，正常情况下也回不去）。
+ */
+export function startRoadEnd(): void {
+  const g = useGame.getState()
+  if (g.roadEnd) return
+  if (g.flags.roadEndSeen) return
+  if (g.mode !== 'explore') return
+  if (g.dialog || g.chapterCard) return
+  useGame.setState({ roadEnd: true, modal: ROAD_END_MODAL, dialog: null })
+}
+
+/**
+ * 过场播完：清标志、交还画面、把玩家落在大门前。
+ *
+ * 落点 (11,16) 与旧的 road→gate 传送落点是同一个位置：门的左前方，
+ * 抬头就是那扇木门、门楣上的纹章与两侧的火把。
+ * 走的是 bridge.teleport 而不是传送门 —— 过场结束的落点必须是确定的。
+ */
+export function finishRoadEnd(): void {
+  const g = useGame.getState()
+  if (!g.roadEnd) return
+  useGame.setState({
+    roadEnd: false,
+    modal: g.modal === ROAD_END_MODAL ? null : g.modal,
+  })
+  setFlag('roadEndSeen', true)
+  if (g.mode === 'explore') bridge.teleport('gate', 11, 16, 'up')
 }
 
 // ---------------- 成就 ----------------
@@ -594,6 +690,7 @@ function applySaveData(d: SaveData): void {
     inventoryPick: null,
     modal: null,
     montage: null,
+    roadEnd: false,
   })
   bridge.teleport(d.map, d.x, d.y, d.dir)
 }
@@ -725,6 +822,7 @@ export function newGame(): void {
     repairErrors: 0,
     modal: null,
     montage: null,
+    roadEnd: false,
     inventory: [...STARTING_ITEMS],
     inventoryOpen: false,
     inventoryPick: null,
@@ -749,6 +847,7 @@ export function toTitle(): void {
     inventoryPick: null,
     modal: s.modal === 'inventory' ? null : s.modal,
     montage: null,
+    roadEnd: false,
   })
 }
 

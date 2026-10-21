@@ -586,6 +586,9 @@ export const SCRIPTS: Record<string, Step[]> = {
     { t: 'do', do: [
       { shake: 6 },
       { sound: 'bell' },
+      // 直接起蒙太奇：不能等章节卡，因为 beginExplore() 才是 montagePending 的消费者，
+      // 而章节卡又在蒙太奇之后 —— 那样会绕成死锁（并行会话实测断在这里）。
+      { montage: 'frankfurt' },
     ] },
   ],
 
@@ -2022,3 +2025,18 @@ const DINING_DRAPED_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, DINING_DRAPED_SCRIPTS)
+
+// ============================================================
+// 追加区 12 · 第一夜：睡不着的两个小时
+// ------------------------------------------------------------
+// cannotSleep 播完就直接放开行动，玩家会觉得「刚躺下就天亮了」。
+// 原作里他其实躺了两个小时：钟从十一下走到一点，中间睡不着。
+// 这一段把那两小时折成一次转场（见 ui/ClockInterlude.tsx）：
+//   淡出 0.9s → 黑屏中央的时钟特写 2.5s（指针 11:00 → 1:00）→ 淡入 0.9s
+//
+// 正文一个字都不动，只在脚本末尾补一拍：
+//   flags.clockInterlude → ClockInterlude 接管画面，播完自己清掉。
+// 它跟着最后一条 do 一起执行，所以是等玩家把独白读完、对话框关掉的
+// 那一刻才起播 —— 时序正好是「话说完 → 黑下来 → 两个小时过去」。
+// ============================================================
+SCRIPTS.cannotSleep.push({ t: 'do', do: [{ flag: ['clockInterlude', true] }] })

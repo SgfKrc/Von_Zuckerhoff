@@ -24,10 +24,28 @@ const ENTER: Partial<Record<MapId, string>> = {
   parlor: 'arriveParlor',
 }
 
+/**
+ * 第一夜的「夜游」还没结束吗。
+ *
+ * 从「按床睡不着」到「赫尔曼把人送回房」这一段，东翼是被隔开的：
+ * 走廊尽头那扇通往门厅的门锁着 —— 他以为自己只是走到走廊口看一眼，
+ * 可不管往哪边走，都回不到大厅（见 maps.ts 的 corridorE portal）。
+ *
+ * 赫尔曼拦过他一次（hermannSawNight）之后，戏里的「送回房」已经发生，
+ * 这扇门就恢复通行；睡到第一章之后自然也通。
+ */
+function eastWingSealed(): boolean {
+  const g = useGame.getState()
+  return g.chapter === 0 && hasFlag('nightWalk') && !hasFlag('hermannSawNight')
+}
+
 export function onEnterMap(map: MapId): void {
   // 通行权限：进入某地图即解锁对应的门（幂等）
   if (map === 'hall') setFlag('hallOpen', true)
   if (map === 'dining') setFlag('cellarOpen', true)
+  // 走廊 → 门厅：每次进走廊都按剧情状态重算（白天通，夜游锁）。
+  // 门本身默认是锁的，所以这一行必须跑在「门还能不能用」之前 —— 它就在这。
+  if (map === 'corridorE') setFlag('corridorToHallOpen', !eastWingSealed())
 
   const key = 'seen_' + map
   if (hasFlag(key)) return
@@ -64,9 +82,29 @@ const SPECIAL: Record<string, () => void> = {
     if (hasFlag('gateOpen')) { speak('gateAlreadyOpen'); return }
     speak('knockGate')
   },
+  /**
+   * 大门前 (13,17) 那个看不见的锚点：回山路的那一格已经封死（maps.ts 的 neverOpen）。
+   * 走进 (12,17) 什么也不会发生 —— 这一句是给「什么也没发生」一个能按得到的解释。
+   * 不走剧本：script.ts 不归这一段管，一条 toast 就够了。
+   */
+  gateBackRoad: () => {
+    addToast('（来路在雨里断了。回头已经没有路。）', 'info')
+  },
   enterBedroom: () => {
     setFlag('nightWalk', true)
     speak('enterBedroom')
+  },
+  /**
+   * 走廊里的赫尔曼。那句「我送您回房间」在戏里就是夜游的终点 ——
+   * 搭话的一刻，走廊尽头通往门厅的门就重新通了（门上的 flag 只有真假，
+   * 没有「赫尔曼说过话」这个条件，所以在这里补一笔）。
+   *
+   * 对话期间世界是冻结的，早设一步没有副作用；仍然走 speak()：
+   * 第二次搭话的 _again 规则一条不改。
+   */
+  talkHermannNight: () => {
+    speak('talkHermannNight')
+    setFlag('corridorToHallOpen', true)
   },
   toBridge: () => {
     speak('toBridge')
@@ -93,6 +131,9 @@ const SPECIAL: Record<string, () => void> = {
     // 所以「第一次」只播 cannotSleep，不推进章节。
     if (g.chapter === 0 && !hasFlag('nightWalk')) {
       setFlag('nightWalk', true)
+      // 夜游开始的那一刻就把东翼封上：走廊尽头通往门厅的门锁起来，
+      // 他只能在卧室与这条走廊之间来回（门在 onEnterMap('corridorE') 里还会再算一次）。
+      setFlag('corridorToHallOpen', false)
       startScript('cannotSleep')
       return
     }

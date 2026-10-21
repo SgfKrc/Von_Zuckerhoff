@@ -136,9 +136,11 @@ for (const b of bounds) {
       errors++
       continue
     }
-        // 落点不能正好压在目标地图的某个传送门上 —— 否则站住不动就被弹回去
+        // 落点不能正好压在目标地图的**任何**传送门上 —— 否则站住不动就被弹回去。
+    // 注意：不能用 q.to !== from 排除「回程门」，那正是最容易来回弹的情况
+    // （A→B 的落点正好是 B→A 的门）。之前就是这么漏掉的，5 处一起错了。
     const targetPortals = target.portals ?? []
-    const clash = targetPortals.find(q => q.x === +tx && q.y === +ty && q.to !== from)
+    const clash = targetPortals.find(q => q.x === +tx && q.y === +ty)
     if (clash) {
       console.log(`[ERR] ${from}→${to}: 落点 (${tx},${ty}) 压在 ${to}→${clash.to} 的传送门上 → 站住不动会被弹回`)
       errors++

@@ -376,7 +376,10 @@ function findInteract(): { ent: EntityDef; sx: number; sy: number } | null {
     const cy = e.y * TILE + TILE / 2
     const d1 = Math.hypot(cx - fx, cy - fy)
     const d2 = Math.hypot(cx - world.px, cy - world.py)
-    const d = Math.min(d1, d2 * 2.2)
+    // 取「面朝方向上的距离」优先：只有前方够不着（d1 >= 24）时才退回「脚下的距离」。
+    // 原来写的是 min(d1, d2 * 2.2) —— 门槛刻痕铺在门前地面上，
+    // 玩家一站上去 d2 就是 0，永远赢过 4px 外的大门（实测要敲两次门才敲到）。
+    const d = d1 < 24 ? d1 : d2 * 2.2
     if (d < 24 && (!best || d < best.d)) best = { ent: e, sx: cx, sy: e.y * TILE, d }
   }
   return best ? { ent: best.ent, sx: best.sx, sy: best.sy } : null

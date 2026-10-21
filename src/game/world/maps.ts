@@ -280,16 +280,22 @@ const gate: GameMap = {
   ambient: 'night',
   // 远景（gate-castle.webp）压到 0.30，这层暗角就不能再重：0.40 时
   // 画面上缘的钟楼还认得出窗棂，石阶与门洞仍然沉在暗里。
-  dark: 0.40,
+  // 城墙改成三层带砖缝之后压到 0.34：再重的话，石基与砖墙的明度差
+  // 与门槛上的刻痕都会被暗角一起吃掉（那三层就等于白分了）。
+  dark: 0.34,
   camBiasY: -72,
-  // 26×20。城墙压到三行，远景那 120px 才空得出来：
+  // 26×20。城墙现在是三层，从下往上读（画法见 art/tiles.ts 的「正门」那一节）：
   //   y0..9    虚空 —— 远景窗口：城堡正面（钟楼在右上、石像鬼在两侧）
-  //   y10      城垛（# 一格隔一格）：墙顶的齿，衬在远景上
-  //   y11..13  城墙与门洞：x11..13 是门洞，y13 是门槛（w）
-  //   y14..17  门前院子：石阶、水沟（s，横贯 y15）、从山路走上来的那一头
-  //   y18..19  山脊上的冷杉与外墙
-  // 门前的空地上站着人（13,14），抬头就是城堡正面 —— 相机 bias 让这一段
-  // 正好落在画面上方：y11 的墙顶停在屏幕 120px 处，上面全是远景。
+  //   y10      城垛：垛齿 M 与垛口 G 交替，缺口里透出背后的远景
+  //   y11..12  砖墙 R 与木城门（x11..13，六块瓦片拼成一扇 48×32 的双开门）
+  //   y13      石基 F：墙根的大压底石，x11..13 是门槛条石 w
+  //   y14..17  院子：湿石板 S / 积水 P（倒映门上的橙光）/ 车辙 V，水沟 s 横贯 y15
+  //   y18..19  山脊上的冷杉与外墙（最底下那行也是石基）
+  //
+  // 城门这回是**关着的**：原来门洞是 '...'（可走的地面），玩家能站在门里；
+  // 现在 x11..13 那两行是木门（阻挡，带动画不动的铁十字与门钉），
+  // 要按 E 敲（knockGate）才开。门槛 (12,13) 仍然可走 —— 站上去敲门，
+  // 门开了以后 (12,13) 那个传送门才通。
   tiles: [
     '                          ',
     '                          ',
@@ -301,16 +307,16 @@ const gate: GameMap = {
     '                          ',
     '                          ',
     '                          ',
-    '##..##..##..##..##..##..##',
-    '##########################',
-    '###########...############',
-    '###########www############',
-    '#........................#',
+    'MMGGMMGGMMGMMMGGMMGGMMGGMM',
+    'RRRRQRRRRRRAeiRRRQRRRRRRRR',
+    'RRRRRRRQRRRaglRRRRRRRRRRRR',
+    'FFFFFFFFFFFwwwFFFFFFFFFFFF',
+    '#SSSSSSSVSPSSSPSVSSSSSSSS#',
     '#ssssssssssssssssssssssss#',
-    '#........................#',
-    '#........................#',
+    '#SSPSSSSVSSSSSSSVSSSSPSSS#',
+    '#SSSSSSSVSSSPSSSVSSSSSSSS#',
     '#^^^^^^^^^^^^^^^^^^^^^^^^#',
-    '##########################',
+    'FFFFFFFFFFFFFFFFFFFFFFFFFF',
   ],
   struct: [
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
@@ -323,7 +329,7 @@ const gate: GameMap = {
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
-    'SS..SS..SS..SS..SS..SS..SS',
+    'SS..SS..SS.SSS..SS..SS..SS',
     'SSSSSSSSSSSSSSSSSSSSSSSSSS',
     'SSSSSSSSSSSFFFSSSSSSSSSSSS',
     'SSSSSSSSSSSFFFSSSSSSSSSSSS',
@@ -338,7 +344,10 @@ const gate: GameMap = {
       { id: 'gateDitch', x: 18, y: 15, sprite: '', solid: false, interact: 'gateDitch' },
       { id: 'gateThreshold', x: 12, y: 13, sprite: '', solid: false, interact: 'gateThreshold' },
     // ---- 主线：门 / 旗 / 艾玛（门与旗挪到了新的墙面上） ----
-    { id: 'gateDoor', x: 12, y: 12, sprite: 'gateArch', solid: false, interact: 'knockGate', tall: true },
+    // 门本身由 y11..12 那六块瓦片画（木门、铁包边、门钉、铁十字）；
+    // 这个实体只剩「敲门」这一个交互锚点，不画任何东西 —— 再叠一层拱门精灵
+    // 就会把那扇真正的木门盖掉。
+    { id: 'gateDoor', x: 12, y: 12, sprite: '', solid: false, interact: 'knockGate' },
     // 旗：挂在门右侧的墙面下端（原来挂在虚空里，现在那上面是远景）
     { id: 'flag', x: 17, y: 13, sprite: 'banner', solid: false, tall: true, interact: 'gateFlag' },
     { id: 'emma3', x: 14, y: 16, sprite: 'emma_up', solid: true, interact: 'talkEmmaGate' },
@@ -355,13 +364,35 @@ const gate: GameMap = {
     // 水沟 (y15 横贯)：纯瓦片装饰（'s'），沟由瓦片画，没有实体
     // 门槛刻痕 (x11..13,y13)：纯瓦片装饰（'w'），刻痕由瓦片画，没有实体
 
+    // ---- 精细化 v2：火把 / 门楣纹章 / 攀爬的藤 ----
+    // 火把：门两侧各一盏，插在 y11..y12 的砖墙上（tall 让火头落在墙面上半）。
+    // 不挂 interact —— 它挂在够不着的高处；门前的积水替它把光落在地上。
+    { id: 'gateTorchL', x: 10, y: 12, sprite: 'wallTorch', tall: true },
+    { id: 'gateTorchR', x: 14, y: 12, sprite: 'wallTorch', tall: true },
+    // 纹章：门楣上那块石刻（32×16，不 tall，正压在 y10 中间那三格垛口上）。
+    // 也够不着，所以同样只是装饰 —— 认得出秃鹫与铁十字就够了。
+    { id: 'gateCrest', x: 12, y: 10, sprite: 'gateCrest' },
+    // 藤：从墙根爬上来的三处（三层墙里最湿的就是石基那一段，能长的只有它）
+    { id: 'gateIvy1', x: 4, y: 13, sprite: 'wallIvy', tall: true },
+    { id: 'gateIvy2', x: 21, y: 13, sprite: 'wallIvy', tall: true },
+    { id: 'gateIvy3', x: 23, y: 13, sprite: 'wallIvy', tall: true },
+
+    // 回山路的那个缺口：没有瓦片、没有精灵，只有一句「路没了」。
+    // 它是给「走进 (12,17) 没有反应」这件事一个能按得到的解释。
+    { id: 'gateBackRoad', x: 13, y: 17, sprite: '', solid: false, interact: 'gateBackRoad' },
+
     // ---- 图纸模式专属：告示牌 ----
     { id: 'bpGateArch', x: 12, y: 14, sprite: 'notice', blueprintOnly: true, interact: 'bpGateArch' },
     { id: 'bpGateGargoyle', x: 9, y: 14, sprite: 'notice', blueprintOnly: true, interact: 'bpGateGargoyle' },
   ],
   portals: [
-    { x: 12, y: 17, to: 'road', tx: 45, ty: 5, dir: 'down' },
-    { x: 12, y: 13, to: 'hall', tx: 12, ty: 14, dir: 'up', lockFlag: 'gateOpen', lockMsg: '门闩沉重。' },
+    // 回山路的那一格 (12,17)：**封死**。
+    // 从山路走到这里是播过场（不是走传送门），过场结束由 store 直接 teleport 到门前；
+    // 所以这一格只可能被用来「原路回去」——而那段路在叙事上已经回不去了。
+    // neverOpen 不给 lockMsg：每帧的 pushBack 会反复弹那一条 toast，
+    // 提示交给 (13,17) 那个锚点（events.ts 的 gateBackRoad）。
+    { x: 12, y: 17, to: 'road', tx: 45, ty: 5, dir: 'down', neverOpen: true },
+    { x: 12, y: 13, to: 'hall', tx: 12, ty: 13, dir: 'up', lockFlag: 'gateOpen', lockMsg: '门闩沉重。' },
   ],
 }
 const hall: GameMap = {
@@ -441,6 +472,9 @@ const hall: GameMap = {
     { x: 12, y: 14, to: 'gate', tx: 9, ty: 16, dir: 'down' },
     { x: 1, y: 10, to: 'cellar', tx: 10, ty: 2, dir: 'left', lockFlag: 'cellarOpen', lockMsg: '铁门锁着。' },
     { x: 24, y: 10, to: 'bedroom1', tx: 2, ty: 7, dir: 'right', lockFlag: 'hallOpen' },
+    // 第一章的入口：大厅东侧的通道。序章时锁着（他要先上三楼），
+    // 进了第一章（chapter1 flag）才开放 —— 否则第一章 6 张图与序章完全不连通。
+    { x: 1, y: 12, to: 'corridorMain', tx: 2, ty: 4, dir: 'left', lockFlag: 'chapter1', lockMsg: '（这条通道现在不开。）' },
   ],
 }
 const corridorE: GameMap = {
@@ -499,7 +533,11 @@ const corridorE: GameMap = {
     { id: 'ceWeb2', x: 26, y: 8, sprite: 'cobweb' },
   ],
   portals: [
-    { x: 1, y: 6, to: 'hall', tx: 20, ty: 12, dir: 'left' },
+    // 走廊 → 门厅的门。白天一直通；第一夜「睡不着出门」那一段锁上
+    // （他正被隔在东翼，回不去大厅），夜游结束由 events.ts 打开。
+    // flag 默认不设 = 锁：每次进走廊时 onEnterMap('corridorE') 按剧情状态重算一次，
+    // 所以这扇门任何时候都不会停在错误的那一边。
+    { x: 1, y: 6, to: 'hall', tx: 20, ty: 12, dir: 'left', lockFlag: 'corridorToHallOpen', lockMsg: '（太远了。现在回不去。）' },
     { x: 26, y: 6, to: 'bedroom1', tx: 2, ty: 7, dir: 'right' },
   ],
 }
@@ -569,7 +607,7 @@ const bedroom1: GameMap = {
     { id: 'bedBooks', x: 8, y: 10, sprite: 'bookStack' },
   ],
   portals: [
-    { x: 1, y: 7, to: 'corridorE', tx: 26, ty: 6, dir: 'left', lockFlag: 'nightWalk', lockMsg: '（门外的走廊很黑。今晚还是先睡吧。）' },
+    { x: 1, y: 7, to: 'corridorE', tx: 25, ty: 6, dir: 'left', lockFlag: 'nightWalk', lockMsg: '（门外的走廊很黑。今晚还是先睡吧。）' },
   ],
 }
 
@@ -645,7 +683,7 @@ const dining: GameMap = {
     { id: 'dinDraped', x: 22, y: 6, sprite: 'drapedFurniture', solid: true, interact: 'diningDraped' },
   ],
   portals: [
-    { x: 1, y: 12, to: 'corridorMain', tx: 20, ty: 8, dir: 'left' },
+    { x: 1, y: 12, to: 'corridorMain', tx: 19, ty: 8, dir: 'left' },
     { x: 24, y: 12, to: 'library', tx: 2, ty: 8, dir: 'right' },
   ],
 }
@@ -781,7 +819,7 @@ const corridorMain: GameMap = {
     { id: 'cmWeb2', x: 38, y: 1, sprite: 'cobweb' },
   ],
   portals: [
-    { x: 20, y: 8, to: 'dining', tx: 1, ty: 12, dir: 'up' },
+    { x: 20, y: 8, to: 'dining', tx: 2, ty: 12, dir: 'up' },
     { x: 1, y: 4, to: 'garden', tx: 25, ty: 10, dir: 'left' },
     { x: 38, y: 4, to: 'bridge', tx: 7, ty: 22, dir: 'up' },
   ],
@@ -1037,7 +1075,7 @@ const parlor: GameMap = {
     { id: 'parlWeb', x: 20, y: 1, sprite: 'cobweb' },
   ],
   portals: [
-    { x: 1, y: 7, to: 'library', tx: 28, ty: 12, dir: 'left' },
+    { x: 1, y: 7, to: 'library', tx: 27, ty: 12, dir: 'left' },
   ],
 }
 

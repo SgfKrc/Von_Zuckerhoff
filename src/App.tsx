@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem, finishMontage } from './game/store'
+import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem, finishMontage, finishClockInterlude, startRoadEnd, finishRoadEnd } from './game/store'
 import { isItemId } from './game/data/items'
 import { bridge } from './game/bridge'
 import type { MapId } from './game/types'
@@ -20,6 +20,8 @@ import { TowerMeasure } from './ui/TowerMeasure'
 import { EtiquetteQuiz } from './ui/EtiquetteQuiz'
 import { GrimmBook } from './ui/GrimmBook'
 import { Montage } from './ui/Montage'
+import { RoadEnd } from './ui/RoadEnd'
+import { ClockInterlude } from './ui/ClockInterlude'
 import { Toasts } from './ui/Toasts'
 import { Snd } from './game/audio'
 import './styles.css'
@@ -29,8 +31,14 @@ export default function App() {
   const inventoryOpen = useGame(s => s.inventoryOpen)
   /** 正在播放的木刻蒙太奇（游戏里由 store.startMontage 起播） */
   const montage = useGame(s => s.montage)
+  /** 时钟转场：剧本在 cannotSleep 末尾立 flags.clockInterlude，这里挂播放器 */
+  const clockInterlude = useGame(s => !!s.flags.clockInterlude)
+  /** 山路尽头的第一视角过场（走到山路右端起播，见 store.startRoadEnd） */
+  const roadEnd = useGame(s => s.roadEnd)
   /** 调试入口 ?ui=montage：不进游戏，直接把七张木刻铺在标题画面上 */
   const [montageDemo, setMontageDemo] = useState(false)
+  /** 调试入口 ?ui=roadend：同样的用法，单独看山路尽头那一段 */
+  const [roadEndDemo, setRoadEndDemo] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [showAch, setShowAch] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -52,6 +60,9 @@ export default function App() {
       // 单独调蒙太奇（?ui=montage）：七张木刻直接铺在标题画面上，放完为止。
       // 配 &montage=<秒> 可以定帧（静音），截图就用那个。
       if (q.get('ui') === 'montage') setMontageDemo(true)
+      // 单独调山路尽头的过场（?ui=roadend）：第一视角那 16 秒铺在标题画面上。
+      // 配 &roadend=<秒> 定帧（静音），截图用那个。
+      if (q.get('ui') === 'roadend') setRoadEndDemo(true)
       return
     }
     newGame()
@@ -96,6 +107,8 @@ export default function App() {
         if (ui === 'book') setFlag('grimmBookActive', true)
         // 调试：?ui=montage 在游戏里直接看这段蒙太奇（不走睡下那条路）
         if (ui === 'montage') setMontageDemo(true)
+        // 调试：?ui=roadend 在游戏里直接看山路尽头那一段（不写任何状态）
+        if (ui === 'roadend') setRoadEndDemo(true)
         // 调试：?item=letter,brooch,sugar 直接发放物品；?ui=inv 打开背包
         const items = q.get('item')
         if (items) {
@@ -120,6 +133,33 @@ export default function App() {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null
     if (canvas) startEngine(canvas)
     return () => stopEngine()
+  }, [mode])
+
+  /**
+   * 山路尽头的过场：走到路的右端就起播。
+   *
+   * 为什么不用传送门：传送门是「走过去立刻换图」，而这一段要**停在山路上**
+   * 把镜头交给过场（雨、脚步、雾里浮出来的城堡），换图只能发生在过场结束那一刻
+   * （finishRoadEnd 里 bridge.teleport 到门前）。所以 maps.ts 里那个
+   * road→gate 的传送门已经删掉了，触发改由这里盯着玩家位置：
+   *
+   *   x ≥ 44（离尽头还有两格）就起播 —— 早一点，玩家不会先撞到地图边缘；
+   *   只在探索模式、没有对话 / 模态、这一段还没播过的时候触发。
+   *
+   * 80ms 一次：玩家 90px/s ≈ 0.45 格/次，从 x44 到 x47 有半秒多的余量。
+   */
+  useEffect(() => {
+    if (mode !== 'explore') return
+    const id = window.setInterval(() => {
+      const g = useGame.getState()
+      if (g.roadEnd || g.modal || g.dialog || g.chapterCard) return
+      if (g.flags.roadEndSeen) return
+      const p = bridge.getPos()
+      if (p.map !== 'road') return
+      // 只在路面上（y5..8 是山道，y9 是下坡那一侧的林子）
+      if (p.x >= 44 && p.y >= 4 && p.y <= 9) startRoadEnd()
+    }, 80)
+    return () => window.clearInterval(id)
   }, [mode])
 
   useEffect(() => {
@@ -188,8 +228,10 @@ export default function App() {
       {(mode === 'explore' || mode === 'ending') && (
         <>
           <GameCanvas />
-          <HUD />
-          <DialogBox />
+          {/* 全屏过场期间藏起 HUD 与对话框：蒙太奇 / 时钟转场 / 山路尽头
+              都是"画面就是全部"的时刻，顶上的状态栏会把黑场戳破。 */}
+          {!montage && !clockInterlude && !roadEnd && <HUD />}
+          {!montage && !clockInterlude && !roadEnd && <DialogBox />}
           {mode === 'ending' && <EndingScreen />}
         </>
       )}
@@ -219,6 +261,19 @@ export default function App() {
         ? <Montage key="montage" onFinish={finishMontage} />
         : montageDemo
           ? <Montage key="montage-demo" demo onFinish={() => setMontageDemo(false)} />
+          : null}
+      {/* 时钟转场：第一夜睡不着的那两个小时（淡出 → 时钟特写 → 淡入）。
+          由 cannotSleep 末尾的 flags.clockInterlude 起播，播完自己清掉。 */}
+      {mode === 'explore' && clockInterlude && (
+        <ClockInterlude onFinish={finishClockInterlude} />
+      )}
+      {/* 山路尽头的过场：第一视角，雨中走到尽头，雾里浮出聚斯霍芬堡。
+          游戏里由 store.startRoadEnd 挂起（App 的 x ≥ 44 检测触发），
+          播完 finishRoadEnd 把玩家落在大门前；?ui=roadend 走 demo（不写任何状态）。 */}
+      {roadEnd
+        ? <RoadEnd key="roadend" onFinish={finishRoadEnd} />
+        : roadEndDemo
+          ? <RoadEnd key="roadend-demo" demo onFinish={() => setRoadEndDemo(false)} />
           : null}
       <Toasts />
     </div>
