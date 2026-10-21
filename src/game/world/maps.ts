@@ -187,9 +187,9 @@ const station: GameMap = {
   ],
   portals: [
     // 回到列车：落点改到车厢右端过道（x34），正好在车门内侧，不再是旧图的中段
-    { x: 1, y: 6, to: 'train', tx: 34, ty: 4, dir: 'left' },
+    { x: 1, y: 9, to: 'train', tx: 34, ty: 4, dir: 'left' },
     // 去山路：落点挪到 (2,6) —— 原来正落在山路自己的回程传送门上，站住不动就会被弹回来
-    { x: 24, y: 6, to: 'road', tx: 2, ty: 6, dir: 'right' },
+    { x: 24, y: 9, to: 'road', tx: 2, ty: 6, dir: 'right' },
   ],
 }
 const road: GameMap = {
