@@ -1898,3 +1898,127 @@ const INTERIOR_CLUTTER_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, INTERIOR_CLUTTER_SCRIPTS)
+
+// ============================================================
+// 追加区 10：后四张地图（卧室 / 接待厅 / 东翼走廊 / 地窖）的新杂物
+// ------------------------------------------------------------
+// 与追加区 9 同一条纪律：不给物品、不立 flag、不推剧情，只写「看见什么」。
+// 每条 2–3 句，后跟一句 _again；主角独白全角括号，不用感叹号。
+// ============================================================
+
+const INTERIOR_CLUTTER_SCRIPTS_2: Record<string, Step[]> = {
+  // ---------------- 东翼走廊 ----------------
+  corridorEastAntlers: [
+    { t: 'line', sp: 'none', text: '鹿角挂得比大走廊那副低，角尖几乎齐着人的眉。' },
+    { t: 'line', sp: 'ftz', text: '（挂得这么低，像是故意让人撞上去 —— 或者让矮个子也看得见。）' },
+  ],
+  corridorEastAntlers_again: [
+    { t: 'line', sp: 'ftz', text: '（角尖还齐着眉。）' },
+  ],
+  corridorEastChina: [
+    { t: 'line', sp: 'none', text: '又一只杯子碎了。这一只碎得更细，瓷片一直扫到墙根。' },
+    { t: 'line', sp: 'ftz', text: '（两次了。这座堡里摔杯子的，好像总是同一个人。）' },
+  ],
+  corridorEastChina_again: [
+    { t: 'line', sp: 'ftz', text: '（瓷片还是没人扫。）' },
+  ],
+  corridorEastShoe: [
+    { t: 'line', sp: 'none', text: '一只男式皮鞋卡在墙脚的踢脚线下面，鞋尖朝里。' },
+    { t: 'line', sp: 'ftz', text: '（不是我的尺码。这一只比走廊里那只女鞋，旧得多。）' },
+  ],
+  corridorEastShoe_again: [
+    { t: 'line', sp: 'ftz', text: '（鞋尖还是朝里。）' },
+  ],
+  corridorEastBook: [
+    { t: 'line', sp: 'none', text: '一本书摊在走廊中间，硬壳朝上，页角卷着。' },
+    { t: 'line', sp: 'ftz', text: '（《巴伐利亚建筑史》。翻到的那一页，画的是这座堡的时计塔。）' },
+  ],
+  corridorEastBook_again: [
+    { t: 'line', sp: 'ftz', text: '（还是那一页。）' },
+  ],
+
+  // ---------------- 卧室 ----------------
+  bedroomSuitcase: [
+    { t: 'line', sp: 'none', text: '行李箱立在床脚，皮带扣松着。提手上还挂着站台的纸牌。' },
+    { t: 'line', sp: 'ftz', text: '（我的。从列车上提下来之后，就再没打开。）' },
+    { t: 'line', sp: 'ftz', text: '（打开它，我就得承认我要在这里住下去。）' },
+  ],
+  bedroomSuitcase_again: [
+    { t: 'line', sp: 'ftz', text: '（锁扣上有一道新的划痕。）' },
+  ],
+  bedroomCoat: [
+    { t: 'line', sp: 'none', text: '一件外套挂在床头的钉子上，肩线还很硬。' },
+    { t: 'line', sp: 'ftz', text: '（不是我的。袖口磨得发亮，主人穿了它很多年。）' },
+  ],
+  bedroomCoat_again: [
+    { t: 'line', sp: 'ftz', text: '（夜里有风。外套的袖子在动。）' },
+  ],
+  bedroomGlass: [
+    { t: 'line', sp: 'none', text: '窗台上放着一只水杯，小半杯水，杯壁映着一道月光。' },
+    { t: 'line', sp: 'ftz', text: '（水是满的。有人今天早上擦过这只杯子，却没有喝完。）' },
+  ],
+  bedroomGlass_again: [
+    { t: 'line', sp: 'ftz', text: '（水面上浮着一层灰。）' },
+  ],
+
+  // ---------------- 接待厅 ----------------
+  parlorClock: [
+    { t: 'line', sp: 'none', text: '接待厅的挂钟慢了半刻。钟摆还在动，只是拖着。' },
+    { t: 'line', sp: 'ftz', text: '（这一间屋子的时间，好像比别的地方走得慢。）' },
+  ],
+  parlorClock_again: [
+    { t: 'line', sp: 'ftz', text: '（还是慢半刻。）' },
+  ],
+  parlorDraped: [
+    { t: 'line', sp: 'none', text: '一件家具蒙着白布，布的褶子里积了灰。掀开一角，底下是黄铜的扶手。' },
+    { t: 'line', sp: 'ftz', text: '（扶手是冰的。这间屋子很久没有客人了。）' },
+  ],
+  parlorDraped_again: [
+    { t: 'line', sp: 'ftz', text: '（白布上多了一个手印。是新的。）' },
+  ],
+  parlorOpenBook: [
+    { t: 'line', sp: 'none', text: '一本诗集摊在地上，读到的那一页折了角。' },
+    { t: 'line', sp: 'ftz', text: '（页边的批注很用力，几乎划破了纸。写的是「怎么可以这样」）' },
+  ],
+  parlorOpenBook_again: [
+    { t: 'line', sp: 'ftz', text: '（折角还在。）' },
+  ],
+  parlorAsh: [
+    { t: 'line', sp: 'none', text: '壁炉里只剩一层白灰，冷透了。灰里压着半张没烧完的信纸。' },
+    { t: 'line', sp: 'ftz', text: '（烧信的人很有耐心。每一张都烧到只剩一个角。）' },
+  ],
+  parlorAsh_again: [
+    { t: 'line', sp: 'ftz', text: '（灰是冷的。）' },
+  ],
+
+  // ---------------- 地窖 ----------------
+  cellarBrokenBarrel: [
+    { t: 'line', sp: 'none', text: '一只桶从中间崩开了，桶板歪向两边，稻草从缝里漏了一地。' },
+    { t: 'line', sp: 'ftz', text: '（不是摔的。是里面的东西涨开，把它顶裂的。）' },
+  ],
+  cellarBrokenBarrel_again: [
+    { t: 'line', sp: 'ftz', text: '（稻草上有新的脚印。）' },
+  ],
+  cellarBroom: [
+    { t: 'line', sp: 'none', text: '一把扫帚斜靠在墙上，柄上缠着麻绳，帚头的草散了大半。' },
+    { t: 'line', sp: 'ftz', text: '（扫了一辈子地的人，最后连帚头都顾不上扎紧。）' },
+  ],
+  cellarBroom_again: [
+    { t: 'line', sp: 'ftz', text: '（地板上还是那层灰。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, INTERIOR_CLUTTER_SCRIPTS_2)
+
+// 追加区 11：餐厅东墙那张蒙白布的椅子（补一条，与追加区 9 同一批杂物）
+const DINING_DRAPED_SCRIPTS: Record<string, Step[]> = {
+  diningDraped: [
+    { t: 'line', sp: 'none', text: '一张椅子蒙着白布，摆在东墙下，布角用别针别住。' },
+    { t: 'line', sp: 'ftz', text: '（餐厅里唯一没人坐的位置。布下面的椅背朝着墙。）' },
+  ],
+  diningDraped_again: [
+    { t: 'line', sp: 'ftz', text: '（布上落了一层灰。别针没有动过。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, DINING_DRAPED_SCRIPTS)
