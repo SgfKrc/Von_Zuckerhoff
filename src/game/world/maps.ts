@@ -480,6 +480,23 @@ const corridorE: GameMap = {
     { id: 'hermannNight', x: 18, y: 6, sprite: 'hermann_left', solid: true, showFlag: 'nightWalk', interact: 'talkHermannNight' },
     { id: 'bedroomDoor', x: 26, y: 6, sprite: 'notice', solid: false, interact: 'enterBedroom' },
     { id: 'loopMark', x: 12, y: 6, sprite: 'notice', solid: false, interact: 'nightCorridorLoop' },
+
+    // ---- 精细化：东翼走廊 —— 比大走廊更窄，壁灯也挂得更密 ----
+    // 这一条走廊没有窗，冷光靠两扇高窗漏进来（见 tiles 的 ':' / '<'）
+    { id: 'ceSconce1', x: 4, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'ceSconce2', x: 11, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'ceSconce3', x: 18, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'ceSconce4', x: 25, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'ceCurtain1', x: 7, y: 1, sprite: 'curtain', tall: true },
+    { id: 'ceCurtain2', x: 20, y: 1, sprite: 'curtain', tall: true },
+    { id: 'ceAntlers', x: 13, y: 1, sprite: 'antlers', tall: true, interact: 'corridorEastAntlers' },
+    // 地上的杂物：碎瓷、一只鞋、掉落的书（能查），外加倒下的烛台、两张蛛网
+    { id: 'ceChina', x: 6, y: 7, sprite: 'brokenPorcelain', interact: 'corridorEastChina' },
+    { id: 'ceShoe', x: 23, y: 7, sprite: 'lostShoe', interact: 'corridorEastShoe' },
+    { id: 'ceBook', x: 19, y: 4, sprite: 'droppedBook', interact: 'corridorEastBook' },
+    { id: 'ceCandleFall', x: 22, y: 3, sprite: 'tippedCandelabrum', solid: true },
+    { id: 'ceWeb1', x: 1, y: 8, sprite: 'cobweb' },
+    { id: 'ceWeb2', x: 26, y: 8, sprite: 'cobweb' },
   ],
   portals: [
     { x: 1, y: 6, to: 'hall', tx: 20, ty: 12, dir: 'left' },
@@ -537,6 +554,19 @@ const bedroom1: GameMap = {
     { id: 'shelfLow', x: 3, y: 8, sprite: 'bookshelf', solid: true, tall: true },
     { id: 'shelfLow2', x: 4, y: 8, sprite: 'bookshelf', solid: true, tall: true },
     { id: 'ceiling', x: 10, y: 12, sprite: 'notice', solid: false, interact: 'bedroomCeiling' },
+
+    // ---- 精细化：卧室 —— 两扇月光窗、一盏床头壁灯，其余靠杂物说话 ----
+    { id: 'bedSconce', x: 10, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'bedCurtain1', x: 5, y: 1, sprite: 'curtain', tall: true },
+    { id: 'bedCurtain2', x: 13, y: 1, sprite: 'curtain', tall: true },
+    { id: 'bedAntlers', x: 12, y: 1, sprite: 'antlers', tall: true },
+    // 床脚立着一只还没打开的行李箱；墙上挂着一件外套；窗台上一只水杯
+    { id: 'bedSuitcase', x: 7, y: 6, sprite: 'suitcase', solid: true, interact: 'bedroomSuitcase' },
+    { id: 'bedCoat', x: 2, y: 2, sprite: 'hangingClothes', tall: true, interact: 'bedroomCoat' },
+    { id: 'bedGlass', x: 14, y: 1, sprite: 'waterGlass', interact: 'bedroomGlass' },
+    // 纯装饰：墙角蛛网、床下的一摞书
+    { id: 'bedWeb', x: 20, y: 11, sprite: 'cobweb' },
+    { id: 'bedBooks', x: 8, y: 10, sprite: 'bookStack' },
   ],
   portals: [
     { x: 1, y: 7, to: 'corridorE', tx: 26, ty: 6, dir: 'left', lockFlag: 'nightWalk', lockMsg: '（门外的走廊很黑。今晚还是先睡吧。）' },
@@ -889,6 +919,18 @@ const cellar: GameMap = {
     { id: 'barrel4', x: 14, y: 4, sprite: 'tableSmall', solid: true },
     { id: 'ironDoor', x: 5, y: 7, sprite: 'gateArch', solid: false, tall: true, interact: 'lookIronDoor' },
     { id: 'emmaCellar', x: 14, y: 8, sprite: 'emma_up', solid: true, interact: 'talkEmmaCellar' },
+
+    // ---- 精细化：地窖 —— 两盏壁灯是唯一的火，墙上的水痕说明这地方从来没干过 ----
+    { id: 'cellarSconce1', x: 2, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'cellarSconce2', x: 16, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'cellarDamp1', x: 3, y: 1, sprite: 'dampStain', tall: true },
+    { id: 'cellarDamp2', x: 12, y: 1, sprite: 'dampStain', tall: true },
+    // 一只桶崩开了，稻草漏在地上；墙边斜靠着一把旧扫帚
+    { id: 'cellarBroken', x: 8, y: 9, sprite: 'brokenBarrel', solid: true, interact: 'cellarBrokenBarrel' },
+    { id: 'cellarBroom', x: 17, y: 8, sprite: 'strawBroom', tall: true, interact: 'cellarBroom' },
+    // 纯装饰：两张蛛网
+    { id: 'cellarWeb1', x: 1, y: 3, sprite: 'cobweb' },
+    { id: 'cellarWeb2', x: 18, y: 10, sprite: 'cobweb' },
   ],
   portals: [
     { x: 10, y: 1, to: 'hall', tx: 10, ty: 12, dir: 'down' },
@@ -977,6 +1019,20 @@ const parlor: GameMap = {
     { id: 'parlorFire', x: 4, y: 8, sprite: 'fireplace', solid: true, tall: true },
     { id: 'emmaParlor', x: 16, y: 5, sprite: 'emma_left', solid: true, interact: 'talkEmmaParlor' },
     { id: 'chairs', x: 9, y: 4, sprite: 'notice', solid: false, interact: 'parlorChairs' },
+
+    // ---- 精细化：接待厅 —— 半熄的壁炉、盖着布的家具、很久没人翻的书 ----
+    { id: 'parlSconce1', x: 3, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'parlSconce2', x: 11, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'parlSconce3', x: 17, y: 1, sprite: 'wallSconce', tall: true },
+    { id: 'parlClock', x: 9, y: 1, sprite: 'wallClock', tall: true, interact: 'parlorClock' },
+    { id: 'parlCurtain1', x: 4, y: 1, sprite: 'curtain', tall: true },
+    { id: 'parlCurtain2', x: 13, y: 1, sprite: 'curtain', tall: true },
+    // 地上：一张盖着白布的旧家具、一本摊开的书、壁炉前没扫的灰、窗台水杯、墙角蛛网
+    { id: 'parlDraped', x: 15, y: 9, sprite: 'drapedFurniture', solid: true, interact: 'parlorDraped' },
+    { id: 'parlBook', x: 12, y: 7, sprite: 'droppedBook', interact: 'parlorOpenBook' },
+    { id: 'parlAsh', x: 6, y: 9, sprite: 'ashPile', interact: 'parlorAsh' },
+    { id: 'parlGlass', x: 5, y: 1, sprite: 'waterGlass' },
+    { id: 'parlWeb', x: 20, y: 1, sprite: 'cobweb' },
   ],
   portals: [
     { x: 1, y: 7, to: 'library', tx: 28, ty: 12, dir: 'left' },
