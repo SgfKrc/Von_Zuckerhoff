@@ -18,16 +18,23 @@
 // ============================================================
 
 export type BgmName =
-  | 'title'      // 标题「宝石」
-  | 'opening'    // 开场分镜「群山」
-  | 'train'      // 南下黑森林的列车
-  | 'station'    // 糖堡站
-  | 'road'       // 山路
-  | 'gate'       // 城堡正门（与桥共用）
-  | 'interior'   // 聚斯霍芬堡内部（门厅 / 走廊 / 图书室 / 接待厅 / 卧室 / 餐厅）
-  | 'hall'       // interior 的旧名，保留为别名
+  | 'title'        // 标题「宝石」
+  | 'opening'      // 开场分镜「群山」
+  | 'train'        // 南下黑森林的列车
+  | 'station'      // 糖堡站
+  | 'road'         // 山路
+  | 'gate'         // 城堡正门（与桥共用）
+  | 'interior'     // 聚斯霍芬堡内部（门厅 / 走廊 / 图书室 / 接待厅 / 卧室 / 餐厅）
+  | 'hall'         // interior 的旧名，保留为别名
+  | 'graveyard'    // 「墓地」：低频 pedal + 极慢管风琴长和弦 + 远处的钟
+  | 'libraryDream' // 「図書室の夢」：八音盒，只由阅读界面手动点播（不挂地图）
 
-type Inst = 'organ' | 'strings' | 'pedal' | 'pulse' | 'pizz'
+/**
+ * 音色。后两个是本轮为两首参考曲新增的：
+ * - musicBox：八音盒的金属齿（正弦泛音列 + 失谐 + 极短噪声 click）
+ * - toll：教堂钟（2.76 / 5.4 的非整数音程 + 4 秒衰减 + 随机声像）
+ */
+type Inst = 'organ' | 'strings' | 'pedal' | 'pulse' | 'pizz' | 'musicBox' | 'toll'
 
 /** 时间单位一律是四分音符（beat）：t = 起点，d = 长度 */
 interface Note { t: number; d: number; n: number; v: number }
@@ -36,10 +43,13 @@ interface Note { t: number; d: number; n: number; v: number }
 interface Span { at: number; d: number; notes: number[]; inst: Inst; v: number }
 
 /**
- * 显式落点事件：拨弦、脚步这类需要精确控制在第几拍、哪一下重哪一下轻的声部。
+ * 显式落点事件：拨弦、脚步、八音盒的每个齿、远处的钟。
  * spans 只能整块铺底，做不到「轻重交替」的节奏感，所以单独留一条通道。
+ *
+ * to：可选的目标 MIDI 音高。给了就在 0.28s 内滑过去 —— 只给八音盒用，
+ * 用来做「偶尔的高音滑音」（发条快松完时齿的音高会掉下去一点）。
  */
-interface Hit { inst: Inst; t: number; n: number; v: number; d?: number }
+interface Hit { inst: Inst; t: number; n: number; v: number; d?: number; to?: number }
 
 interface Track {
   bpm: number
@@ -56,7 +66,7 @@ interface Track {
   level?: number
 }
 
-interface Ev { inst: Inst; n: number; t: number; d: number; v: number }
+interface Ev { inst: Inst; n: number; t: number; d: number; v: number; to?: number }
 
 /** 一个音符产生的全部节点；ended 时整组回收 */
 interface Voice {
@@ -90,6 +100,41 @@ const DEFAULT_FADE_IN = 2.4
 const hz = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12)
 
 // ------------------------------------------------------------
+// 新增两件音色的谐音列（参数来源见下方曲目注释）
+// ------------------------------------------------------------
+
+/**
+ * 八音盒的「金属齿」：正弦泛音列。
+ * [倍频, 相对幅度, 失谐音分]
+ *
+ * 1x / 2x / 4x 是整数倍 —— 这三个决定音高和「亮」；
+ * 3x 故意偏 +7 音分：这一条**不跟基频对齐**，8 秒的衰减里它会和 2x 打出一道
+ * 缓慢的拍频（beat），听感上就是金属齿被夹住之后那点不服帖的颤。
+ * 少了这条，四个正弦叠起来只是一架干净的电钢琴，不是八音盒。
+ */
+const MUSIC_BOX_PARTIALS: ReadonlyArray<readonly [number, number, number]> = [
+  [1, 0.50, 0],
+  [2, 0.25, 0],
+  [3, 0.08, 7],
+  [4, 0.12, 0],
+]
+
+/**
+ * 教堂钟：钟体振动不按整数谐波列走。
+ * [倍频, 相对幅度, 衰减秒数]
+ *
+ * 2.76 是钟的「隆起音」(superquint)，5.4 是它上面那道 —— 这两个非整数比例
+ * 是钟与「一声低音」的全部区别。整数倍只会得到一根管风琴音栓。
+ * 高倍频衰减快（1.4s），基音拖 4 秒：真钟就是这样，敲完先听见「铛」，
+ * 再听见「嗡」。
+ */
+const TOLL_PARTIALS: ReadonlyArray<readonly [number, number, number]> = [
+  [1, 1.0, 4.0],
+  [2.76, 0.42, 2.6],
+  [5.4, 0.22, 1.4],
+]
+
+// ------------------------------------------------------------
 // 曲目数据
 // 旋律刻意稀疏（每分钟 8–14 个音）：留白才是黑暗感的来源。
 // ------------------------------------------------------------
@@ -114,6 +159,129 @@ const INTERIOR: Track = {
     { at: 8, d: 8, notes: [39], inst: 'pedal', v: 0.20 },            // E♭2
     { at: 16, d: 8, notes: [38], inst: 'pedal', v: 0.18 },           // D2（这两小节只有地板）
     { at: 24, d: 8, notes: [37], inst: 'pedal', v: 0.17 },           // C♯2
+  ],
+}
+
+/**
+ * 「墓地」：B 小调，42 BPM，4/4，8 小节 = 45.71s（整数小节，首尾对齐）
+ *
+ * ---- 从 local_docs/墓地.wav 实测到的东西 ----
+ * 39.87s / 44.1kHz 立体声。稳态 FFT 的音级能量分布：
+ *   F♯ 14.5% · C♯ 12.8% · A 12.1% · E 10.6% · B 10.3% · G♯ 9.5% · D♯ 7.2% · D 7.0%
+ * 这堆音恰好是 {B C♯ D E F♯ G♯ A} —— 可以从 F♯ 小调读，也可以从 B 多利亚读，
+ * 两者是同一组音的两种写法。低频那几个峰（C♯2 69.3 / D2 73.1 / E2 82.3 /
+ * F♯2 91.4 Hz）正好是这组音的第 2 3 4 5 级。
+ * 能量包络自相关在 0.20–0.30s（≈200–270 BPM），但 1 秒窗 RMS 的标准差只有 1.7dB：
+ * 说明那不是拍子，是长音在缓慢呼吸的颤音周期。整曲**没有节拍、没有钟、没有旋律线**。
+ *
+ * ---- 照搬什么，新写什么 ----
+ * 照搬：音级集合（含 G♯ 六度 → 多利亚色彩）、
+ *       中音区全部落在 82–208Hz（参考曲 82.3/91.4/123/137.9/146.4/164.2/182.5/208 Hz 的峰）、
+ *       低频 pedal 落在 69–92Hz、以及「几乎不动」的整体电平。
+ * 新写：钟（参考曲里没有钟，这是按「墓园该有的远处教堂钟」补的氛围，不是抄的）；
+ *       和弦每 2 小节换一次（参考曲没有可辨识的和声进行，但 45 秒全无变化会只剩嗡嗡声，
+ *       所以给一个最低限度的骨架）；
+ *       旋律：没有。整曲 = 4 个和弦 + 1 条 pedal + 7 记钟。
+ *
+ * 和弦：Bm6 – Gmaj7 – Em7 – F♯m
+ *   Bm6   = B D F♯ G♯   带六度 G♯（多利亚；参考曲里 G♯ 占 9.5%）
+ *   Gmaj7 = G B D F♯    B 小调的自然六度，整块往下沉
+ *   Em7   = G B D E      底面留给 pedal 的 E2
+ *   F♯m   = F♯ A C♯      小属和弦 —— 回 Bm6 时不带导音 A♯，不给终止感，一直悬着
+ */
+const GRAVEYARD: Track = {
+  bpm: 42,
+  beatsPerBar: 4,
+  bars: 8,
+  level: 0.88,
+  spans: [
+    // —— 管风琴长和弦：每 2 小节一个，5Hz 颤音 + 1.4s 起音 ——
+    { at: 0, d: 8, notes: [47, 50, 54, 56], inst: 'organ', v: 0.115 },   // Bm6    B2  D3  F♯3 G♯3
+    { at: 8, d: 8, notes: [43, 47, 50, 54], inst: 'organ', v: 0.105 },   // Gmaj7  G2  B2  D3  F♯3
+    { at: 16, d: 8, notes: [43, 47, 50, 52], inst: 'organ', v: 0.1 },    // Em7    G2  B2  D3  E3
+    { at: 24, d: 8, notes: [42, 45, 49], inst: 'organ', v: 0.11 },       // F♯m    F♯2 A2  C♯3
+    // —— 低频 pedal：D2 73.4Hz 正落在参考曲 70–80Hz 的主体上 ——
+    { at: 0, d: 16, notes: [38], inst: 'pedal', v: 0.26 },               // D2   73.43Hz
+    { at: 16, d: 8, notes: [40], inst: 'pedal', v: 0.24 },               // E2   82.41Hz
+    { at: 24, d: 8, notes: [37], inst: 'pedal', v: 0.25 },               // C♯2  69.30Hz
+  ],
+  hits: [
+    // —— 钟：7 记 / 45.7s，间隔 6.4 / 6.4 / 7.9 / 6.4 / 7.9 / 6.4 / 4.3 秒 ——
+    // 全部在 4–8 秒区间内；落点故意不对齐任何拍子。
+    { inst: 'toll', t: 1.5, n: 45, v: 0.3 },    // A2 110.0Hz（任务指定的「约 110Hz」）
+    { inst: 'toll', t: 6, n: 45, v: 0.22 },     // A2 弱一档：同一口钟，远了一点
+    { inst: 'toll', t: 10.5, n: 47, v: 0.2 },   // B2 123.5Hz
+    { inst: 'toll', t: 16, n: 42, v: 0.28 },    // F♯2 92.5Hz 最低的一口
+    { inst: 'toll', t: 20.5, n: 45, v: 0.23 },  // A2
+    { inst: 'toll', t: 26, n: 40, v: 0.21 },    // E2 82.4Hz
+    { inst: 'toll', t: 30.5, n: 45, v: 0.3 },   // A2 回到主钟 —— 跨过循环点接上第一记
+  ],
+}
+
+/**
+ * 「図書室の夢」：C♯ 小调（多利亚六度），30 BPM，4/4，8 小节 = 64.00s（整数小节）
+ *
+ * ---- 从 local_docs/図書室の夢.wav 实测到的东西 ----
+ * 160.00s / 44.1kHz 立体声。稳态 FFT 的音级能量：
+ *   G♯ 20.7% · D♯ 13.7% · C♯ 11.4% · E 11.2% · A♯ 9.6% · F♯ 8.8% · B 6.1%
+ * 合计 {C♯ D♯ E F♯ G♯ A♯ B} —— **C♯ 多利亚**，也就是 B 大调音阶。
+ * 能量最高的三格确实是 C♯–E–G♯，所以「C♯ 小调」这个判断是对的；
+ * 但它的六度是 A♯（466Hz 与 933Hz 两个峰），不是 A。
+ * 这个 A♯ 就是参考曲「清亮」的来源，本曲保留它（bar5 的 A♯4、bar7 的 A♯5）。
+ *
+ * 起音检测：118 次有效击发，间隔中位数 2.0s，且高度整齐地落在 2s 网格上
+ * （4.0 / 6.0 / 8.0 / 10.0 / … / 30.0 / 32.0 …）→ 1 拍 = 2s → **30 BPM 实锤**。
+ * 再把 0–64s 和 104–168s 逐点对齐，音符完全重合 → **循环长度正好 64.0s**
+ * = 8 小节 × 4 拍 × 30 BPM。这两个数字都是从 wav 里量出来的，不是估的。
+ *
+ * ---- 照搬什么，新写什么 ----
+ * 照搬：C♯ 小调 + A♯ 六度、64.0s 的循环长度、30 BPM、音区 D♯4–A♯5、
+ *       以及参考曲的三段式动态：0–32s 中区徘徊 → 32–48s 沉到 F♯4/A♯3 →
+ *       48–64s 冲到 G♯5/A♯5。
+ * 新写：密度。参考曲每 2 秒一个音（118 个 / 160s），本曲按任务要求压到
+ *       每小节 1–2 个音（16 个 / 64s）—— 参考曲的安静来自 -30dB 的电平，
+ *       本曲的安静来自「少」，是刻意更空的一版。
+ *       滑音：参考曲没有滑音，bar8 的 C♯6 → G♯5 是新增的（发条快松完那一下）。
+ *
+ * 旋律（16 个音，每小节 2 个）：
+ *   bar1  G♯4    C♯5                      主和弦摊开
+ *   bar2  E5     B4
+ *   bar3  D♯5    G♯4                      九度与五度
+ *   bar4  C♯5    F♯4                      ← 开始下沉（对应参考曲 32s 后的 F♯4 段）
+ *   bar5  A♯4    E5                       ← A♯ = 多利亚六度，参考曲最响的非三和弦音
+ *   bar6  D♯5    G♯5                      ← 上行
+ *   bar7  C♯5    A♯5                      ← 最高点（参考曲 933Hz）
+ *   bar8  C♯6→G♯5（滑音）  D♯5            ← 落回，接上循环第一音
+ * 循环处：bar8 最后一音在 62.0s，衰减到 64.0s 自然消失；下一个音在 64.0s 起。
+ */
+const LIBRARY_DREAM: Track = {
+  bpm: 30,
+  beatsPerBar: 4,
+  bars: 8,
+  level: 0.95,
+  spans: [
+    // —— 极轻的低音垫：只为了让八音盒不是浮在真空里。参考曲 92.7Hz 有个 F♯2 的弱峰 ——
+    { at: 0, d: 16, notes: [37], inst: 'pedal', v: 0.07 },    // C♯2 69.30Hz
+    { at: 16, d: 8, notes: [42], inst: 'pedal', v: 0.058 },   // F♯2 92.50Hz
+    { at: 24, d: 8, notes: [37], inst: 'pedal', v: 0.065 },   // C♯2
+  ],
+  hits: [
+    { inst: 'musicBox', t: 0, n: 68, v: 0.26 },             // bar1 G♯4 415Hz
+    { inst: 'musicBox', t: 2, n: 73, v: 0.23 },             // bar1 C♯5 554Hz
+    { inst: 'musicBox', t: 4.5, n: 76, v: 0.24 },           // bar2 E5  659Hz
+    { inst: 'musicBox', t: 7, n: 71, v: 0.2 },              // bar2 B4  494Hz
+    { inst: 'musicBox', t: 9, n: 75, v: 0.24 },             // bar3 D♯5 622Hz
+    { inst: 'musicBox', t: 10.5, n: 68, v: 0.21 },          // bar3 G♯4
+    { inst: 'musicBox', t: 12, n: 73, v: 0.25 },            // bar4 C♯5
+    { inst: 'musicBox', t: 15, n: 66, v: 0.19 },            // bar4 F♯4 370Hz
+    { inst: 'musicBox', t: 16.5, n: 70, v: 0.22 },          // bar5 A♯4 466Hz
+    { inst: 'musicBox', t: 18.5, n: 76, v: 0.24 },          // bar5 E5
+    { inst: 'musicBox', t: 21.5, n: 75, v: 0.23 },          // bar6 D♯5
+    { inst: 'musicBox', t: 23, n: 80, v: 0.26 },            // bar6 G♯5 830Hz
+    { inst: 'musicBox', t: 24, n: 73, v: 0.25 },            // bar7 C♯5
+    { inst: 'musicBox', t: 26.5, n: 82, v: 0.26 },          // bar7 A♯5 932Hz
+    { inst: 'musicBox', t: 29, n: 85, v: 0.22, to: 80 },    // bar8 C♯6 1109Hz → G♯5 滑音
+    { inst: 'musicBox', t: 31, n: 75, v: 0.21 },            // bar8 D♯5
   ],
 }
 
@@ -340,6 +508,14 @@ const TRACKS: Record<BgmName, Track> = {
     ],
   },
 
+  // 「墓地」：见文件上方的 GRAVEYARD 常量。第三章地图挂上就用，现在先备好。
+  graveyard: GRAVEYARD,
+
+  // 「図書室の夢」：见文件上方的 LIBRARY_DREAM 常量。
+  // 这首**不挂任何地图** —— 只有阅读界面会手动 Snd.setBgm('libraryDream')，
+  // 离开阅读界面时由那边自己 setBgm 回去。key 必须正好是 libraryDream。
+  libraryDream: LIBRARY_DREAM,
+
   // 「城堡」：见文件上方的 INTERIOR 常量
   interior: INTERIOR,
   hall: INTERIOR,
@@ -358,6 +534,8 @@ const CANONICAL: Record<BgmName, BgmName> = {
   gate: 'gate',
   interior: 'interior',
   hall: 'interior',
+  graveyard: 'graveyard',
+  libraryDream: 'libraryDream',
 }
 
 /** 交叉淡变时长（秒）：audio.ts 在开场那一刀传 2.0 / 2.0，地图之间用默认值 */
@@ -395,6 +573,32 @@ export function makeImpulse(ctx: AudioContext, seconds: number, decay: number): 
     }
   }
   return ir
+}
+
+/**
+ * 八音盒击发瞬间的「齿轮咬合」：8ms 的噪声小块。
+ *
+ * 只在第一次用到时生成一次，之后所有音符共用这一份 AudioBuffer。
+ * 如果每次击发都 new 一个 buffer，是每次分配 1.4KB 的 AudioBuffer 对象：
+ * libraryDream 一个循环 16 个音、连播一小时就是 57600 次分配 —— 这正是
+ * 「每循环泄漏一点」的另一种形状（不算节点泄漏，但 GC 会被搞出锯齿）。
+ * 共用之后是 0 次。
+ *
+ * 尾部的平方衰减很重要：没有它，click 停得太平，会留下一声「嗒」的尾巴，
+ * 听起来像唱针落地，而不是齿轮咬上。
+ */
+let clickNoise: AudioBuffer | null = null
+function clickNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  if (clickNoise) return clickNoise
+  const len = Math.max(8, Math.floor(ctx.sampleRate * 0.008))
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) {
+    const p = 1 - i / len
+    data[i] = (Math.random() * 2 - 1) * p * p
+  }
+  clickNoise = buf
+  return buf
 }
 
 // ------------------------------------------------------------
@@ -542,6 +746,9 @@ class Player {
       case 'pedal': this.pedal(ev.n, t, dur, ev.v); return
       case 'pulse': this.pulse(ev.n, t, ev.v); return
       case 'pizz': this.pizz(ev.n, t, ev.v); return
+      // 八音盒的时长不用 d：齿的衰减只由音高决定，见 musicBox()
+      case 'musicBox': this.musicBox(ev.n, t, ev.v, ev.to); return
+      case 'toll': this.toll(ev.n, t, ev.v); return
     }
   }
 
@@ -802,6 +1009,137 @@ class Player {
     saw.start(t); tri.start(t)
     saw.stop(stopAt); tri.stop(stopAt)
   }
+
+  /**
+   * 八音盒（musicBox）：发条拨过一根金属齿。
+   *
+   * 信号链（每个音符一条，ended 后整链回收）：
+   *   4 个正弦泛音 → 各自的幅度 → highpass 300Hz → 包络 → BGM 总线
+   *   ＋ 8ms 噪声 click（0.02，经由同一个 highpass）
+   *
+   * 四个决定成败的参数：
+   * 1. **起音 3ms**，之后立刻 exponentialRamp 走到底，中间**不留平台**。
+   *    一有平台就变成风琴了 —— 八音盒的每个音从响的那一刻起就在死。
+   * 2. **衰减 1.2–2.4s，低音更长**：G3 大约 2.4s，E6 压到 1.2s。
+   *    物理原因是低齿粗、转动惯量大；听感原因是低音散得太快会显得「薄」。
+   * 3. **highpass 300Hz**：八音盒没有低音。低音垫是另一条 pedal 声部，
+   *    齿里混进 200Hz 的基频只会把整个画面糊成「风琴 + 铃」。
+   * 4. **不连奏**：每个音独立起落（都有 ended、都会回收），
+   *    上一根齿还在响时下一根照常敲，两个音叠着 decay、从不 slur。
+   *
+   * to 给了就在 0.28s 内滑过去（bar8 那个 C♯6 → G♯5）：所有泛音一起滑，
+   * 保持谐波关系不变，听感是「齿松了」而不是「音走了」。
+   */
+  private musicBox(midi: number, t: number, v: number, to?: number): void {
+    const voice = this.beginVoice()
+    if (!voice) return
+    const ctx = this.ctx
+    const f = hz(midi)
+    const atk = 0.003
+    // 低音更长：MIDI 88（E6）→ 1.2s，MIDI 55（G3）→ 2.4s，中间线性
+    const decay = 1.2 + 1.2 * Math.min(1, Math.max(0, (88 - midi) / 33))
+    const end = t + atk + decay
+    const glide = to == null ? 0 : hz(to)
+
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 300
+    hp.Q.value = 0.7
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(0.0001, t)
+    env.gain.linearRampToValueAtTime(v, t + atk)
+    env.gain.exponentialRampToValueAtTime(0.0001, end)
+    hp.connect(env)
+    env.connect(this.gain)
+
+    const oscs: OscillatorNode[] = []
+    const nodes: AudioNode[] = [hp, env]
+    for (const [mult, amp, cents] of MUSIC_BOX_PARTIALS) {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(f * mult, t)
+      if (glide > 0) osc.frequency.exponentialRampToValueAtTime(glide * mult, t + 0.28)
+      osc.detune.value = cents
+      const g = ctx.createGain()
+      g.gain.value = amp
+      osc.connect(g)
+      g.connect(hp)
+      oscs.push(osc)
+      nodes.push(g)
+    }
+
+    // 齿轮咬合：8ms 噪声，只补一个「咔」的瞬态，不要任何尾巴
+    const click = ctx.createBufferSource()
+    click.buffer = clickNoiseBuffer(ctx)
+    const clickGain = ctx.createGain()
+    clickGain.gain.value = 0.02
+    click.connect(clickGain)
+    clickGain.connect(hp)
+    click.start(t)
+    click.stop(t + 0.008)
+    nodes.push(click, clickGain)
+
+    this.register(voice, oscs[0], oscs, nodes)
+
+    const stopAt = end + 0.05
+    for (const osc of oscs) {
+      osc.start(t)
+      osc.stop(stopAt)
+    }
+  }
+
+  /**
+   * 教堂钟（toll）：远处的、隔着一片墓碑传过来的那一声。
+   *
+   * 三层非整数音程同时敲：基音（4s 衰减）+ 2.76 倍（隆起音，2.6s）+ 5.4 倍
+   * （上泛音，1.4s）。高倍频先散、基音拖到最后 —— 所以听见的是先「铛」后「嗡」，
+   * 而不是「一声低音加两个伴音」。用 2 / 4 / 6 这样的整数倍只会得到一根管风琴音栓。
+   *
+   * 声像每次随机偏 ±0.55：同一口钟，但这一次像是从墓园左边那棵树下传来，
+   * 下一次在右边。参考曲是单声道铺开的稳态长音，没有这个信息 —— 钟是新加的，
+   * 所以「从不同方向传来」这件事必须由声像自己交代。
+   */
+  private toll(midi: number, t: number, v: number): void {
+    const voice = this.beginVoice()
+    if (!voice) return
+    const ctx = this.ctx
+    const f = hz(midi)
+
+    const out = ctx.createGain()
+    out.gain.value = 1
+    const nodes: AudioNode[] = [out]
+    // StereoPanner 在老浏览器上不存在；没有就退回单声道，不影响发声
+    if (typeof ctx.createStereoPanner === 'function') {
+      const pan = ctx.createStereoPanner()
+      pan.pan.value = (Math.random() * 2 - 1) * 0.55
+      out.connect(pan)
+      pan.connect(this.gain)
+      nodes.push(pan)
+    } else {
+      out.connect(this.gain)
+    }
+
+    const oscs: OscillatorNode[] = []
+    for (const [mult, amp, dec] of TOLL_PARTIALS) {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = f * mult
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(v * amp, t + 0.002)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dec)
+      osc.connect(g)
+      g.connect(out)
+      oscs.push(osc)
+      nodes.push(g)
+      osc.start(t)
+      osc.stop(t + dec + 0.05)
+    }
+
+    // oscs[0] 是基音（衰减 4s），最长 —— 拿它当「这个音符什么时候结束」的锚
+    this.register(voice, oscs[0], oscs, nodes)
+  }
 }
 
 function compile(track: Track): Map<number, Ev[]> {
@@ -821,7 +1159,7 @@ function compile(track: Track): Map<number, Ev[]> {
   }
   for (const note of track.organ ?? []) add({ inst: 'organ', n: note.n, t: note.t, d: note.d, v: note.v })
   for (const hit of track.hits ?? []) {
-    add({ inst: hit.inst, n: hit.n, t: hit.t, d: hit.d ?? 0.25, v: hit.v })
+    add({ inst: hit.inst, n: hit.n, t: hit.t, d: hit.d ?? 0.25, v: hit.v, to: hit.to })
   }
   if (track.pulseRoots) {
     for (let bar = 0; bar < track.pulseRoots.length; bar++) {

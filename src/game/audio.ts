@@ -14,6 +14,7 @@ export type SceneAudio =
   | 'road'      // 山路
   | 'gate'      // 城堡正门 / 桥（同属城堡外围，风大）
   | 'interior'  // 聚斯霍芬堡内部（门厅 / 走廊 / 图书室 / 接待厅 / 卧室 / 餐厅）
+  | 'graveyard' // 墓地（第三章）：低频 pedal + 远处的钟
   | 'fog'
   | 'night'
   | 'cellar'
@@ -23,6 +24,9 @@ export type SceneAudio =
  * 场景 → BGM 曲目。
  * 每个地图一首；聚斯霍芬堡内部（含酒窖、花园）共用 interior，
  * 城堡外围（正门与桥）共用 gate —— 「同一类地图同一首」是刻意设计的。
+ *
+ * 注意 libraryDream 不在表里：它不挂任何地图，只由阅读界面手动
+ * Snd.setBgm('libraryDream') 点播，离开时那边自己 setBgm 回去。
  */
 const BGM_FOR_SCENE: Record<SceneAudio, BgmName | null> = {
   title: 'title',
@@ -32,6 +36,7 @@ const BGM_FOR_SCENE: Record<SceneAudio, BgmName | null> = {
   road: 'road',
   gate: 'gate',
   interior: 'interior',
+  graveyard: 'graveyard',
   cellar: 'interior',
   garden: 'interior',
   fog: null,
@@ -104,8 +109,21 @@ class SoundEngine {
     return true
   }
 
+  /**
+   * 手动指定 BGM（不经过地图场景表）。
+   *
+   * 阅读界面用这个点播 libraryDream，离开时由调用方 setBgm 回原曲。
+   * 先补一次 ensure()：阅读界面有可能是音频尚未被地图启动时打开的
+   * （ensure 内部有 try/catch，没有用户手势时只会在后台等一次手势，不会抛）。
+   * 不改 this.scene —— 手动点播不改写「玩家在哪张地图」，地图场景照旧。
+   *
+   * 淡入只给 1.2s（默认 2.4s 是给两张大地图之间的切换用的）：
+   * 八音盒的第一个音在 play() 之后 0.15s 就落，2.4s 的淡入会把它压在 6% 音量上，
+   * 听感变成「先什么都没有、两秒后才突然有」。
+   */
   setBgm(name: BgmName | null): void {
-    this.bgm.setTrack(name)
+    this.ensure()
+    this.bgm.setTrack(name, name === 'libraryDream' ? { out: 1.0, in: 1.2 } : undefined)
   }
 
   bgmOn(): void {
@@ -193,6 +211,13 @@ class SoundEngine {
       case 'interior':
         this.layers.push(this.drone(58, 0.035, 'sine'))
         this.layers.push(this.bellPattern(0.05, [1, 0, 0, 1, 0, 0, 1, 0]))
+        break
+      case 'graveyard':
+        // 墓地：几乎只剩低频在呼吸（参考曲整曲 1s-RMS 的波动只有 1.7dB）。
+        // 这里给一条与 BGM pedal 同频的正弦（D2 73.42Hz）把地基再垫厚一点，
+        // 风只留一丝 —— 再多就把几十秒一次的那记钟盖掉了。
+        this.layers.push(this.drone(73.42, 0.045, 'sine'))
+        this.layers.push(this.noise(0.012, 420))
         break
       case 'fog':
         this.layers.push(this.noise(0.035, 900))
@@ -595,6 +620,9 @@ export function sceneForMap(map: string, ambient: string): SceneAudio {
   if (map === 'train') return 'train'
   if (map === 'station') return 'station'
   if (map === 'road') return 'road'
+  // 墓园 / 教会墓地：第三章才会有的地图，现在还没做。
+  // 先把映射挂上 —— 没有这些 id 时这里一行都不会命中，不会报错。
+  if (map === 'grave' || map === 'cemetery' || map === 'graveyard') return 'graveyard'
   // 城堡外围：正门与桥同一类（风大、都是压下来的），共用 gate 曲
   if (map === 'gate' || map === 'bridge') return 'gate'
   if (map === 'cellar') return 'cellar'
