@@ -67,6 +67,13 @@ export interface GameState {
    * modal 只负责让 engine 冻结世界。播完由 finishRoadEnd() 落到大门前。
    */
   roadEnd: boolean
+  /**
+   * 序章的章末演出（见 ui/ChapterFinale.tsx）。
+   * 与 montage / roadEnd 一样与 modal 分开存：播放器要看这个值决定挂不挂载，
+   * modal 只负责让 engine 冻结世界。播完由 finishChapterFinale() 切章节卡
+   * 「第一章 糖庄」，并把玩家送进卧室（第一章的起点）。
+   */
+  chapterFinale: boolean
   /** 背包内容（去重、按取得顺序） */
   inventory: ItemId[]
   /** 背包界面是否打开（打开时同时把 modal 设成 'inventory' 冻结世界） */
@@ -115,6 +122,7 @@ export const useGame = create<GameState>((set, get) => ({
   modal: null,
   montage: null,
   roadEnd: false,
+  chapterFinale: false,
   inventory: [],
   inventoryOpen: false,
   inventoryPick: null,
@@ -436,6 +444,77 @@ export function finishRoadEnd(): void {
   if (g.mode === 'explore') bridge.teleport('gate', 11, 16, 'up')
 }
 
+// ---------------- 序章的章末演出（「您有一辈子的时间」之后） ----------------
+
+/**
+ * 演出占用的 modal 值。engine 的 uiOpen 认 modal —— 它一立起来世界就冻结。
+ */
+const CHAPTER_FINALE_MODAL = 'chapterFinale'
+
+/**
+ * 起播章末演出（见 ui/ChapterFinale.tsx + art/chapterFinale.ts）。
+ *
+ * 触发点只有一个：script.ts 的 talkHermannHall 最后一步立的 flags.chapterFinale。
+ * App.tsx 认那个 flag 挂 <ChapterFinale>，组件挂载时调本函数立 modal ——
+ * 与 ClockInterlude 完全同一条路（剧本只认识 Effect.flag）。
+ * 有人占了 modal 时不抢：这条路上前面只有对话框，关掉之后 modal 是空的。
+ */
+export function startChapterFinale(): void {
+  const g = useGame.getState()
+  if (g.chapterFinale && g.modal === CHAPTER_FINALE_MODAL) return
+  if (g.mode !== 'explore') return
+  if (g.dialog || g.chapterCard) return
+  useGame.setState({ chapterFinale: true, modal: CHAPTER_FINALE_MODAL, dialog: null })
+}
+
+/**
+ * 演出播完：切章节卡「第一章 糖庄」，并把玩家送进卧室。
+ *
+ * 章节卡在这里切（而不是在醒来之后）：序章止步于赫尔曼那句「您有一辈子的时间」，
+ * 之后是独角戏；第一章从卧室睡觉开始 —— 所以卡一落，人就已经在卧室门口了。
+ * 传送交给 beginExplore()（章节卡被关掉的那一刻）；这里只立一个 flag，
+ * 因为 bridge.teleport 的入场脚本要等 mode 回到 explore 才会跑。
+ *
+ * 顺带三件事：
+ *   · hermannLeft —— 管家已经退下，大厅里那个实体从此不出现；
+ *   · upstairsOpen —— 三楼那扇门从此是通的（序章里他自己上不去）；
+ *   · chapterFinaleDone —— 只播一次的判据（重入不上演第二遍）。
+ */
+export function finishChapterFinale(): void {
+  const g = useGame.getState()
+  if (!g.chapterFinale && !g.flags.chapterFinale) return
+  const c = chapter(1)
+  useGame.setState({
+    chapterFinale: false,
+    modal: g.modal === CHAPTER_FINALE_MODAL ? null : g.modal,
+    chapter: 1,
+    mode: 'chapter',
+    chapterCard: { num: c.num, name: c.name, quote: c.quote },
+    dialog: null,
+    // 触发用的 flag 也要清掉：App 用「state 字段 或 flag」决定挂不挂播放器
+    flags: { ...g.flags, chapterFinale: false },
+  })
+  setFlag('hermannLeft', true)
+  setFlag('upstairsOpen', true)
+  setFlag('chapterFinaleDone', true)
+  setFlag('pendingBedroomArrive', true)
+}
+
+/**
+ * 组件被外面拔掉（切标题 / 读档 / 热更新）时的兜底：只交还 flag 与 modal，
+ * 不切章节、不传送 —— 章节卡的切换只属于「播完」那一条路（finishChapterFinale）。
+ * 幂等：播完之后播放器卸载还会再调一次，那时 chapterFinale 已经是 false。
+ */
+export function abortChapterFinale(): void {
+  const g = useGame.getState()
+  if (!g.chapterFinale && !g.flags.chapterFinale) return
+  useGame.setState({
+    chapterFinale: false,
+    modal: g.modal === CHAPTER_FINALE_MODAL ? null : g.modal,
+    flags: { ...g.flags, chapterFinale: false },
+  })
+}
+
 // ---------------- 成就 ----------------
 
 function loadAchievements(): string[] {
@@ -600,19 +679,22 @@ export function showChapterCard(no: ChapterId): void {
 
 export function beginExplore(): void {
   const g = useGame.getState()
+  useGame.setState({ mode: 'explore', chapterCard: null })
   if (g.chapter === 1) {
     setFlag('ch1_started', true)
-    unlockAch('ch1')
   } else {
     unlockAch('ch0')
   }
-  useGame.setState({ mode: 'explore', chapterCard: null })
-  // 第一夜在卧室睡下 → 章节卡 → 这里：那段法兰克福的蒙太奇紧接着起播。
-  // （蒙太奇放在章节卡之后是刻意的：标题先亮出来，再倒叙前半生，最后在
-  //   卧室里醒来，接 wakeAfterMontage。）
-  if (g.flags.montagePending && !g.flags.sawFrankfurt) {
-    setFlag('montagePending', false)
-    startMontage('frankfurt')
+  // 序章的章末演出之后：章节卡关掉的这一刻，把他送进卧室 ——
+  // 第一章从「他躺下」开始（原作里那一段属于第二章）。
+  // 传送必须等 mode 变回 explore 再发：bridge.teleport 的入场脚本要等到
+  // 章节卡关掉才跑，落在这里正好接上 arriveBedroom（seen_bedroom1 还没立）。
+  //
+  // （旧的 montagePending 分支删掉了：蒙太奇现在由第一章「睡着」那一段
+  //   直接起播（endPrologue → montage），不再经过章节卡。）
+  if (g.flags.pendingBedroomArrive) {
+    setFlag('pendingBedroomArrive', false)
+    bridge.teleport('bedroom1', 2, 7, 'down')
   }
 }
 
@@ -691,6 +773,7 @@ function applySaveData(d: SaveData): void {
     modal: null,
     montage: null,
     roadEnd: false,
+    chapterFinale: false,
   })
   bridge.teleport(d.map, d.x, d.y, d.dir)
 }
@@ -823,6 +906,7 @@ export function newGame(): void {
     modal: null,
     montage: null,
     roadEnd: false,
+    chapterFinale: false,
     inventory: [...STARTING_ITEMS],
     inventoryOpen: false,
     inventoryPick: null,
@@ -848,6 +932,7 @@ export function toTitle(): void {
     modal: s.modal === 'inventory' ? null : s.modal,
     montage: null,
     roadEnd: false,
+    chapterFinale: false,
   })
 }
 

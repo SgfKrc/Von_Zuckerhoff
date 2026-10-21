@@ -386,6 +386,16 @@ export const SCRIPTS: Record<string, Step[]> = {
     { t: 'line', sp: 'ftz', text: '（他说一辈子。语气像在说一个下午。）' },
     { t: 'line', sp: 'ftz', text: '（我没有再问。他把话头收起来的样子，像收起一把餐刀。）' },
     { t: 'do', do: [{ flag: ['hHermannPromise', true] }, { conviction: -2 }] },
+
+    // ---- 赫尔曼退下：从这里开始是独角戏 ----
+    // 序章止步于「您有一辈子的时间」。管家走后，大厅空下来，
+    // 只剩火、只剩那幅画像 —— 章末演出由 flags.chapterFinale 接管
+    // （App 挂 ui/ChapterFinale.tsx，播完切「第一章 糖庄」并把他送进卧室）。
+    { t: 'line', sp: 'hermann', text: '晚餐在七点。您可以先用些时间。' },
+    { t: 'line', sp: 'none', text: '他鞠了一躬，退向侧门。' },
+    { t: 'line', sp: 'ftz', text: '（他的脚步还是没有声音。门在他身后合上，也没有。）' },
+    { t: 'line', sp: 'none', text: '门关上之后，大厅里只剩下火的声音。' },
+    { t: 'do', do: [{ sound: 'door' }, { flag: ['chapterFinale', true] }] },
   ],
 
   archNeedBlueprint: [
@@ -573,6 +583,9 @@ export const SCRIPTS: Record<string, Step[]> = {
     { t: 'line', sp: 'ftz', text: '（镜子里没有雾。有雾的是我的这一边。）' },
   ],
 
+  // 第一章 · 第一次真的睡着（夜游回来之后，回房按床）。
+  // 序章不再走到这里：序章止于大厅那场独角戏，章节卡之后人才被送进卧室。
+  // 这一段只负责「躺下、钟声、吹灯、起蒙太奇」，不切章节 —— 章节卡在演出后切过了。
   endPrologue: [
     { t: 'line', sp: 'none', text: '我躺下。天花板上的拱形肋架在中央汇成一个星形图案。' },
     { t: 'line', sp: 'ftz', text: '（和楼下大厅的拱顶一模一样，只是小了很多。）' },
@@ -586,8 +599,8 @@ export const SCRIPTS: Record<string, Step[]> = {
     { t: 'do', do: [
       { shake: 6 },
       { sound: 'bell' },
-      // 直接起蒙太奇：不能等章节卡，因为 beginExplore() 才是 montagePending 的消费者，
-      // 而章节卡又在蒙太奇之后 —— 那样会绕成死锁（并行会话实测断在这里）。
+      // 蒙太奇直接起播：这一段是第一章的「睡着之后」，不经过任何章节卡
+      // （章节卡已经由序章末尾的章末演出切过了）。
       { montage: 'frankfurt' },
     ] },
   ],
@@ -1713,7 +1726,9 @@ const FRANKFURT_SCRIPTS: Record<string, Step[]> = {
       { flag: ['chapter1', true] },
       { shake: 5 },
       { sound: 'bell' },
-      { chapter: { num: '第一章', name: '糖庄', quote: '「甜是生命，亦是死亡。」' } },
+      // 章节卡在序章的章末演出之后已经切过了（store.finishChapterFinale）：
+      // 这里不再切章节 —— 醒来就是第一章的白天，玩家自己下楼去吃早餐。
+      { toast: '（门外已经有了天光。楼下有食物的味道。）' },
     ] },
   ],
 }

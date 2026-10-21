@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem, finishMontage, finishClockInterlude, startRoadEnd, finishRoadEnd } from './game/store'
+import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem, finishMontage, finishClockInterlude, startRoadEnd, finishRoadEnd, finishChapterFinale } from './game/store'
 import { isItemId } from './game/data/items'
 import { bridge } from './game/bridge'
 import type { MapId } from './game/types'
@@ -21,6 +21,7 @@ import { EtiquetteQuiz } from './ui/EtiquetteQuiz'
 import { GrimmBook } from './ui/GrimmBook'
 import { Montage } from './ui/Montage'
 import { RoadEnd } from './ui/RoadEnd'
+import { ChapterFinale } from './ui/ChapterFinale'
 import { ClockInterlude } from './ui/ClockInterlude'
 import { Toasts } from './ui/Toasts'
 import { Snd } from './game/audio'
@@ -35,10 +36,21 @@ export default function App() {
   const clockInterlude = useGame(s => !!s.flags.clockInterlude)
   /** 山路尽头的第一视角过场（走到山路右端起播，见 store.startRoadEnd） */
   const roadEnd = useGame(s => s.roadEnd)
+  /** 序章的章末演出：talkHermannHall 末尾立 flags.chapterFinale，这里挂播放器 */
+  const chapterFinale = useGame(s => s.chapterFinale)
+  /**
+   * 剧本只能立 flags（Effect.flag），而播放器要的是 state.chapterFinale ——
+   * 两个都看：flag 先亮起来把组件挂上去，组件再调 startChapterFinale()
+   * 把 state 字段与 modal 一起立起来（engine 靠 modal 冻结世界）。
+   */
+  const chapterFinaleFlag = useGame(s => !!s.flags.chapterFinale)
+  const finaleOn = chapterFinale || chapterFinaleFlag
   /** 调试入口 ?ui=montage：不进游戏，直接把七张木刻铺在标题画面上 */
   const [montageDemo, setMontageDemo] = useState(false)
   /** 调试入口 ?ui=roadend：同样的用法，单独看山路尽头那一段 */
   const [roadEndDemo, setRoadEndDemo] = useState(false)
+  /** 调试入口 ?ui=chapterfinale：单独看章末演出那一段 */
+  const [chapterFinaleDemo, setChapterFinaleDemo] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [showAch, setShowAch] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -63,6 +75,9 @@ export default function App() {
       // 单独调山路尽头的过场（?ui=roadend）：第一视角那 16 秒铺在标题画面上。
       // 配 &roadend=<秒> 定帧（静音），截图用那个。
       if (q.get('ui') === 'roadend') setRoadEndDemo(true)
+      // 单独调章末演出（?ui=chapterfinale）：那 53 秒铺在标题画面上。
+      // 配 &chapterfinale=<秒> 定帧（静音），截图用那个。
+      if (q.get('ui') === 'chapterfinale') setChapterFinaleDemo(true)
       return
     }
     newGame()
@@ -109,6 +124,8 @@ export default function App() {
         if (ui === 'montage') setMontageDemo(true)
         // 调试：?ui=roadend 在游戏里直接看山路尽头那一段（不写任何状态）
         if (ui === 'roadend') setRoadEndDemo(true)
+        // 调试：?ui=chapterfinale 在游戏里直接看章末演出（不写任何状态）
+        if (ui === 'chapterfinale') setChapterFinaleDemo(true)
         // 调试：?item=letter,brooch,sugar 直接发放物品；?ui=inv 打开背包
         const items = q.get('item')
         if (items) {
@@ -228,10 +245,10 @@ export default function App() {
       {(mode === 'explore' || mode === 'ending') && (
         <>
           <GameCanvas />
-          {/* 全屏过场期间藏起 HUD 与对话框：蒙太奇 / 时钟转场 / 山路尽头
-              都是"画面就是全部"的时刻，顶上的状态栏会把黑场戳破。 */}
-          {!montage && !clockInterlude && !roadEnd && <HUD />}
-          {!montage && !clockInterlude && !roadEnd && <DialogBox />}
+          {/* 全屏过场期间藏起 HUD 与对话框：蒙太奇 / 时钟转场 / 山路尽头 /
+              章末演出都是"画面就是全部"的时刻，顶上的状态栏会把黑场戳破。 */}
+          {!montage && !clockInterlude && !roadEnd && !finaleOn && <HUD />}
+          {!montage && !clockInterlude && !roadEnd && !finaleOn && <DialogBox />}
           {mode === 'ending' && <EndingScreen />}
         </>
       )}
@@ -274,6 +291,15 @@ export default function App() {
         ? <RoadEnd key="roadend" onFinish={finishRoadEnd} />
         : roadEndDemo
           ? <RoadEnd key="roadend-demo" demo onFinish={() => setRoadEndDemo(false)} />
+          : null}
+      {/* 序章的章末演出：赫尔曼退下之后，大厅里只剩他看着画像。
+          游戏里由 script.ts 的 talkHermannHall 立 flags.chapterFinale 挂起，
+          播完 finishChapterFinale 切章节卡「第一章 糖庄」并把他送进卧室；
+          ?ui=chapterfinale 走 demo（播完只关掉自己，不写任何状态）。 */}
+      {finaleOn
+        ? <ChapterFinale key="finale" onFinish={finishChapterFinale} />
+        : chapterFinaleDemo
+          ? <ChapterFinale key="finale-demo" demo onFinish={() => setChapterFinaleDemo(false)} />
           : null}
       <Toasts />
     </div>

@@ -25,18 +25,20 @@ const ENTER: Partial<Record<MapId, string>> = {
 }
 
 /**
- * 第一夜的「夜游」还没结束吗。
+ * 「夜游」还没结束吗。
  *
- * 从「按床睡不着」到「赫尔曼把人送回房」这一段，东翼是被隔开的：
+ * 从「按床睡不着」到「睡着」这一段，东翼是被隔开的：
  * 走廊尽头那扇通往门厅的门锁着 —— 他以为自己只是走到走廊口看一眼，
  * 可不管往哪边走，都回不到大厅（见 maps.ts 的 corridorE portal）。
  *
  * 赫尔曼拦过他一次（hermannSawNight）之后，戏里的「送回房」已经发生，
- * 这扇门就恢复通行；睡到第一章之后自然也通。
+ * 这扇门就恢复通行；睡着之后（sawFrankfurt：蒙太奇播过）自然也通。
+ *
+ * 注意这里不再看 chapter：第一章开头他就是从「睡不着」开始的
+ * （序章止于大厅那场独角戏，章节卡之后人才被送进卧室）。
  */
 function eastWingSealed(): boolean {
-  const g = useGame.getState()
-  return g.chapter === 0 && hasFlag('nightWalk') && !hasFlag('hermannSawNight')
+  return hasFlag('nightWalk') && !hasFlag('hermannSawNight') && !hasFlag('sawFrankfurt')
 }
 
 export function onEnterMap(map: MapId): void {
@@ -124,12 +126,13 @@ const SPECIAL: Record<string, () => void> = {
   lookBed: () => {
     // 例外：睡觉是推进章节的开关，第二次调查也必须能推进，
     // 所以这里不走 speak()（否则会被 endPrologue_again 之类吃掉）。
-    const g = useGame.getState()
-    // 第一夜分两段 —— 原作里他第一次躺下是睡不着的：
-    //   第一次躺下 → 睡不着，起来闲逛 → 出门（nightWalk 开放东走廊）
-    //   夜游遇到赫尔曼，被送回房 → 再躺下 → 这才真的睡着
-    // 所以「第一次」只播 cannotSleep，不推进章节。
-    if (g.chapter === 0 && !hasFlag('nightWalk')) {
+    //
+    // 第一章分三段（章节卡之后他已经在卧室里了 —— 序章不进卧室）：
+    //   ① 还没躺下过（nightWalk 未立）→ cannotSleep：第一次躺下，睡不着
+    //   ② 夜游回来（nightWalk 已立，蒙太奇还没播）→ endPrologue：钟声、吹灯、睡着
+    //   ③ 醒来之后（sawFrankfurt 已立）→ endChapter1：第一章收束
+    // 所以这里不再判 chapter，只看走到了哪一段。
+    if (!hasFlag('nightWalk')) {
       setFlag('nightWalk', true)
       // 夜游开始的那一刻就把东翼封上：走廊尽头通往门厅的门锁起来，
       // 他只能在卧室与这条走廊之间来回（门在 onEnterMap('corridorE') 里还会再算一次）。
@@ -137,10 +140,12 @@ const SPECIAL: Record<string, () => void> = {
       startScript('cannotSleep')
       return
     }
-    // 第二段：睡着之后接法兰克福的蒙太奇（「纱锭与煤气灯」），
-    // 章节卡在蒙太奇之后才切（见 script.ts 的 wakeAfterMontage）。
-    if (g.chapter === 0 && !hasFlag('sawFrankfurt')) setFlag('montagePending', true)
-    startScript(g.chapter === 1 ? 'endChapter1' : 'endPrologue')
+    // 睡着之后接法兰克福的蒙太奇（「纱锭与煤气灯」）；醒来之后才是第一章收束。
+    if (hasFlag('sawFrankfurt')) {
+      startScript('endChapter1')
+      return
+    }
+    startScript('endPrologue')
   },
 }
 

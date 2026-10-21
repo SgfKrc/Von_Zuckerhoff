@@ -447,7 +447,7 @@ const hall: GameMap = {
     { id: 'candR', x: 22, y: 5, sprite: 'candelabra', solid: true, tall: true, interact: 'lightCandle' },
     { id: 'candL2', x: 2, y: 11, sprite: 'candelabra', solid: true, tall: true },
     { id: 'candR2', x: 22, y: 11, sprite: 'candelabra', solid: true, tall: true },
-    { id: 'hermannHall', x: 18, y: 8, sprite: 'hermann_down', solid: true, interact: 'talkHermannHall' },
+    { id: 'hermannHall', x: 18, y: 8, sprite: 'hermann_down', solid: true, interact: 'talkHermannHall', hideFlag: 'hermannLeft' },
     { id: 'hallArch', x: 13, y: 9, sprite: 'notice', solid: false, interact: 'hallArch' },
 
     // ---- 精细化：门厅的墙与地上的东西 ----
@@ -471,7 +471,9 @@ const hall: GameMap = {
   portals: [
     { x: 12, y: 14, to: 'gate', tx: 9, ty: 16, dir: 'down' },
     { x: 1, y: 10, to: 'cellar', tx: 10, ty: 2, dir: 'left', lockFlag: 'cellarOpen', lockMsg: '铁门锁着。' },
-    { x: 24, y: 10, to: 'bedroom1', tx: 2, ty: 7, dir: 'right', lockFlag: 'hallOpen' },
+    // 通往三楼卧房：序章锁着（这一段他不自己上去 —— 章末演出之后，
+    // 章节卡一落人就已经在卧室里了）；finishChapterFinale 立 upstairsOpen 之后通行。
+    { x: 24, y: 10, to: 'bedroom1', tx: 2, ty: 7, dir: 'right', lockFlag: 'upstairsOpen', lockMsg: '（楼梯上是卧房。现在上去还太早。）' },
     // 第一章的入口：大厅东侧的通道。序章时锁着（他要先上三楼），
     // 进了第一章（chapter1 flag）才开放 —— 否则第一章 6 张图与序章完全不连通。
     { x: 1, y: 12, to: 'corridorMain', tx: 2, ty: 4, dir: 'left', lockFlag: 'chapter1', lockMsg: '（这条通道现在不开。）' },
@@ -511,7 +513,9 @@ const corridorE: GameMap = {
     { id: 'paint2', x: 9, y: 2, sprite: 'bigPainting', solid: false, tall: true, interact: 'lookPainting' },
     { id: 'paint3', x: 15, y: 2, sprite: 'bigPaintingGem', solid: false, tall: true, interact: 'lookWilliam' },
     { id: 'paint4', x: 21, y: 2, sprite: 'bigPainting', solid: false, tall: true, interact: 'lookPainting' },
-    { id: 'hermannNight', x: 18, y: 6, sprite: 'hermann_left', solid: true, showFlag: 'nightWalk', interact: 'talkHermannNight' },
+    // 夜游的赫尔曼：入夜之后才站在走廊里；睡着（sawFrankfurt）之后走廊里就没有他了
+    // （他跟他说完「我送您回房间」之后还会站在那儿，直到人真的睡着）。
+    { id: 'hermannNight', x: 18, y: 6, sprite: 'hermann_left', solid: true, showFlag: 'nightWalk', hideFlag: 'sawFrankfurt', interact: 'talkHermannNight' },
     { id: 'bedroomDoor', x: 26, y: 6, sprite: 'notice', solid: false, interact: 'enterBedroom' },
     { id: 'loopMark', x: 12, y: 6, sprite: 'notice', solid: false, interact: 'nightCorridorLoop' },
 
