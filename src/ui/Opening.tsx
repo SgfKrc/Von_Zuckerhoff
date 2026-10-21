@@ -33,9 +33,12 @@
 //   16.4      车厢内：一声轻碰撞；行车声交给 engine 在进车厢时接手的 train 场景
 //   跳过时    不补放错过的汽笛；先把开场自己的行车声收干净，再交给 engine
 //
-// 任意键 / 点击可跳过（落到 30.4s：他说完那句话的那一帧）
+// 任意键 / 点击可跳过：**按段跳** —— 每按一次落到下一个镜头的起点
+// （0 黑场 / 1.0 群山 / 3.4 铁轨 / 6.4 车头 / 11.9 侧视 / 16.4 车厢内 /
+//   26.2 艾玛 / 28.4 回到他），跳到 28.4 之后再按一次才结束（停 160ms）。
+// 每次跳段右下角显示一行「跳过 · n / m」，1 秒后淡出。
 // ============================================================
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { finishOpening } from '../game/store'
 import { Snd } from '../game/audio'
 import { VIEW_W, VIEW_H } from '../game/constants'
@@ -43,6 +46,7 @@ import {
   CAM_END,
   HERO_X,
   HERO_Y,
+  OPENING_SHOT_STARTS,
   drawEmmaShot,
   drawFocusWindow,
   drawLocoFront,
@@ -322,6 +326,11 @@ function freezeAt(): number | null {
 
 export function Opening() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  /** 跳过：effect 内部定义，点击 / 按键通过 ref 拿到它 */
+  const skipRef = useRef<() => void>(() => {})
+  /** 右下角那行「跳过 · n / m」；seq 只用来重启 CSS 动画 */
+  const [skipNote, setSkipNote] = useState<{ n: number; m: number; seq: number } | null>(null)
+  const noteSeq = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -362,6 +371,11 @@ export function Opening() {
     let doorFired = false
     let stopped = false
     let holdTimer = 0
+    /** 按段跳的偏移量：跳过的秒数加在这里 */
+    let tOffset = 0
+
+    /** 此刻的播放时间（秒）：自然流逝 + 跳段偏移 */
+    const nowT = (): number => (performance.now() - start) / 1000 + tOffset
 
     const removeListeners = (): void => {
       window.removeEventListener('keydown', onKey)
@@ -376,30 +390,62 @@ export function Opening() {
       finishOpening()
     }
 
-    // 跳过：直接落到 30.4s（他说完那句话的那一帧），停一下再进车厢。
-    // 错过的汽笛不补放（错过就错过），但开场自己起的行车声不能留成孤儿：
-    // 先静音收干净，160ms 后 finishOpening() 进车厢，engine 第一帧 setScene('train')
+    /** 跳段时把错过的音效 / 场景锚点吞掉：汽笛不补放，行车声该在就起 */
+    const catchUp = (to: number): void => {
+      if (!railFired && to >= T_RAIL) {
+        railFired = true
+        Snd.setScene('railway')
+      }
+      if (!whistleAFired && to >= WHISTLE_A_AT) whistleAFired = true
+      if (!whistleBFired && to >= WHISTLE_B_AT) whistleBFired = true
+      if (!doorFired && to >= DOOR_AT) doorFired = true
+    }
+
+    // 跳到最后一个镜头之后再按一次：落到 30.4s（他说完那句话的那一帧），
+    // 停一下再进车厢。开场自己起的行车声不能留成孤儿：先静音收干净，
+    // 160ms 后 finishOpening() 进车厢，engine 第一帧 setScene('train')
     // 会重新起 BGM 与「隔着车厢壁」的行车声 —— 那 160ms 的空档就是交接本身。
-    const skip = (): void => {
+    const endSegment = (): void => {
       if (stopped) return
       stopped = true
       cancelAnimationFrame(raf)
       removeListeners()
       Snd.setScene('silent')
-      renderFrame(g, SKIP_AT)
+      renderFrame(g, Math.max(SKIP_AT, Math.min(nowT(), TOTAL)))
       holdTimer = window.setTimeout(finishOpening, SKIP_HOLD_MS)
     }
+
+    // 跳过：落到下一个镜头的起点。连按就连跳；最后一段之后再按才结束整段。
+    const skip = (): void => {
+      if (stopped) return
+      const t = nowT()
+      let next = OPENING_SHOT_STARTS.length
+      for (let i = 0; i < OPENING_SHOT_STARTS.length; i++) {
+        if (OPENING_SHOT_STARTS[i] > t + 0.02) { next = i; break }
+      }
+      if (next >= OPENING_SHOT_STARTS.length) {
+        endSegment()
+        return
+      }
+      tOffset += OPENING_SHOT_STARTS[next] - t
+      catchUp(OPENING_SHOT_STARTS[next])
+      renderFrame(g, OPENING_SHOT_STARTS[next])
+      noteSeq.current += 1
+      setSkipNote({ n: next + 1, m: OPENING_SHOT_STARTS.length, seq: noteSeq.current })
+    }
+    skipRef.current = skip
 
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       e.preventDefault()
+      if (e.repeat) return   // 按住不放不连跳
       skip()
     }
     const onSkip = (): void => skip()
 
     const loop = (): void => {
       if (stopped) return
-      const t = (performance.now() - start) / 1000
+      const t = nowT()
 
       // 6.4s：车头开始迎面驶来 —— 远处的行车声从这一刻起来。
       // BGM 在挂载那一步就已经是 opening 曲了，这里 setTrack 同名是空操作：
@@ -458,6 +504,11 @@ export function Opening() {
   return (
     <div className="stage">
       <canvas ref={canvasRef} width={VIEW_W} height={VIEW_H} className="game-canvas" />
+      {skipNote && (
+        <div key={skipNote.seq} className="cutscene-skip">
+          跳过 · {skipNote.n} / {skipNote.m}
+        </div>
+      )}
     </div>
   )
 }

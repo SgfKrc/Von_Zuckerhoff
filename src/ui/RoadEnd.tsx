@@ -3,8 +3,8 @@
 //
 // 与 Montage.tsx 同一付骨架（照抄那套骨架，不照抄画法）：
 //   · 全屏 canvas，384×216 逻辑分辨率（与游戏一致）；
-//   · renderFrame(g, t) 是纯函数，任意一秒都能直接画出来 —— 跳过就靠这条性质；
-//   · rAF 驱动，组件卸载 / 跳过时一定 cancelAnimationFrame；
+//   · renderFrame(g, t) 是纯函数，任意一秒都能直接画出来 —— 跳段靠这条性质；
+//   · rAF 驱动，组件卸载 / 结束时一定 cancelAnimationFrame；
 //   · 另加一道 setTimeout 兜底：后台标签页里 rAF 不跑，过场不能永久卡在那一帧。
 //
 // 声音（这一段只调 audio.ts 已有的入口，不改那个文件）：
@@ -17,13 +17,15 @@
 //   13.6  Snd.setScene('night') —— 雨收掉，只留极低频的一点空气。
 //   结束  交还场景（游戏里 engine 下一帧就把 gate 的那一层接回去）。
 //
-// 跳过：任意键 / 点击 → 落到轮廓占满画面的那一帧（ROAD_END_SKIP_AT），
-//       停 160ms 再结束；错过的脚步声与钟声不补放，静音该到就到。
+// 跳过（按段跳）：每按一次跳过键，落到 ROAD_END_SHOTS 里的**下一个镜头的起点**；
+//   连按就连跳。跳到第七段（仰视、占满画面）之后，再按一次才整段结束（停 160ms）。
+//   每次跳段右下角显示一行「跳过 · n / m」，1 秒后淡出；
+//   错过的脚步声与钟声不补放，静音该到就到。
 //
 // 调试：?ui=roadend 直接铺在标题画面上看全片；
 //       ?roadend=<秒> 定帧（静音、不播放，用来截图）。
 // ============================================================
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Snd } from '../game/audio'
 import {
   ROADEND_H,
@@ -33,12 +35,17 @@ import {
   ROAD_END_BELL_AT,
   ROAD_END_BREATHS,
   ROAD_END_FOOTSTEPS,
+  ROAD_END_SHOT_STARTS,
+  ROAD_END_SHOTS,
   ROAD_END_SILENT_AT,
   renderFrame,
 } from '../game/art/roadEnd'
 
 /** 跳过时把落点那一帧留一下再交还画面 */
 const SKIP_HOLD_MS = 160
+
+/** 八段的起点（秒）。按段跳就是在这张表上前进一格。 */
+const SHOT_STARTS: ReadonlyArray<number> = ROAD_END_SHOT_STARTS
 
 /**
  * rAF 兜底：后台标签页 / 系统休眠时 requestAnimationFrame 不跑，
@@ -66,6 +73,9 @@ export function RoadEnd({ demo = false, onFinish }: { demo?: boolean; onFinish: 
   /** 最新的 onFinish（父组件重渲染不会重启播放） */
   const finishRef = useRef(onFinish)
   finishRef.current = onFinish
+  /** 右下角那行「跳过 · n / m」；seq 只用来重启 CSS 动画 */
+  const [skipNote, setSkipNote] = useState<{ n: number; m: number; seq: number } | null>(null)
+  const noteSeq = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -102,11 +112,17 @@ export function RoadEnd({ demo = false, onFinish }: { demo?: boolean; onFinish: 
     let breathIdx = 0
     let bellFired = false
     let silentFired = false
+    /** 按段跳的偏移量 */
+    let tOffset = 0
+
+    /** 此刻的播放时间（秒）：自然流逝 + 跳段偏移 */
+    const nowT = (): number => (performance.now() - start) / 1000 + tOffset
 
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       e.preventDefault()
       e.stopPropagation()
+      if (e.repeat) return   // 按住不放不连跳
       skip()
     }
 
@@ -127,26 +143,58 @@ export function RoadEnd({ demo = false, onFinish }: { demo?: boolean; onFinish: 
       finishRef.current()
     }
 
-    // 跳过：直接落到轮廓占满画面的那一帧，停一下再结束。
-    const skip = (): void => {
+    /** 跳段时把错过的脚步 / 呼吸 / 钟声吞掉（不补放，只把状态推到位） */
+    const catchUp = (to: number): void => {
+      while (stepIdx < ROAD_END_FOOTSTEPS.length &&
+        ROAD_END_FOOTSTEPS[stepIdx].t0 < to - 1e-3) stepIdx++
+      while (breathIdx < ROAD_END_BREATHS.length &&
+        ROAD_END_BREATHS[breathIdx] < to - 1e-3) breathIdx++
+      if (!bellFired && to >= ROAD_END_BELL_AT) bellFired = true
+      if (!silentFired && to >= ROAD_END_SILENT_AT) {
+        silentFired = true
+        Snd.setScene('night')
+      }
+    }
+
+    /** 已经在最后一段：再按一次才结束整段（停在落点那一帧，160ms 后交还画面） */
+    const endSegment = (): void => {
       if (stopped || finished) return
       stopped = true
       cancelAnimationFrame(raf)
       window.clearTimeout(fallbackTimer)
       removeListeners()
-      // 雨该停了：跳到最后一帧时不该还下着 13.6s 之前的雨
+      // 雨该停了：别让最后一眼还下着 13.6s 之前的雨
       if (!silentFired) {
         silentFired = true
         Snd.setScene('night')
       }
-      renderFrame(g, ROADEND_SKIP_AT)
+      renderFrame(g, Math.max(ROADEND_SKIP_AT, Math.min(nowT(), ROADEND_TOTAL)))
       holdTimer = window.setTimeout(finishNow, SKIP_HOLD_MS)
+    }
+
+    // 跳过：落到下一个镜头的起点。连按就连跳；最后一段之后再按才结束。
+    const skip = (): void => {
+      if (stopped || finished) return
+      const t = nowT()
+      let next = SHOT_STARTS.length
+      for (let i = 0; i < SHOT_STARTS.length; i++) {
+        if (SHOT_STARTS[i] > t + 0.02) { next = i; break }
+      }
+      if (next >= SHOT_STARTS.length) {
+        endSegment()
+        return
+      }
+      tOffset += SHOT_STARTS[next] - t
+      catchUp(SHOT_STARTS[next])
+      renderFrame(g, SHOT_STARTS[next])
+      noteSeq.current += 1
+      setSkipNote({ n: next + 1, m: SHOT_STARTS.length, seq: noteSeq.current })
     }
     skipRef.current = skip
 
     const loop = (): void => {
       if (stopped || finished) return
-      const t = (performance.now() - start) / 1000
+      const t = nowT()
 
       // 脚步：踩进泥里的那一下
       while (stepIdx < ROAD_END_FOOTSTEPS.length && t >= ROAD_END_FOOTSTEPS[stepIdx].t0) {
@@ -199,7 +247,12 @@ export function RoadEnd({ demo = false, onFinish }: { demo?: boolean; onFinish: 
         height={ROADEND_H}
         className="roadend-canvas"
       />
-      <div className="roadend-hint">任意键跳过</div>
+      <div className="roadend-hint">任意键跳过 · 每次跳一段</div>
+      {skipNote && (
+        <div key={skipNote.seq} className="cutscene-skip">
+          跳过 · {skipNote.n} / {skipNote.m}
+        </div>
+      )}
     </div>
   )
 }

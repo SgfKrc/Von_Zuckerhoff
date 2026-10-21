@@ -3,8 +3,8 @@
 //
 // 与 Opening.tsx 同一付骨架：
 //   · 全屏 canvas，384×216 逻辑分辨率（与游戏一致），木刻只有墨黑与纸白两色；
-//   · renderFrame(g, t) 是纯函数，任意一秒都能直接画出来 —— 跳过就靠这条性质；
-//   · rAF 驱动，组件卸载 / 跳过时一定 cancelAnimationFrame；
+//   · renderFrame(g, t) 是纯函数，任意一秒都能直接画出来 —— 跳段靠这条性质；
+//   · rAF 驱动，组件卸载 / 结束时一定 cancelAnimationFrame；
 //   · 另加一道 setTimeout 兜底：后台标签页里 rAF 不跑，过场不能永久卡在那一帧。
 //
 // 时间轴（每镜头：木刻淡入 0.5s → 旁白逐字打出 → 停留 → 淡出 0.4s）：
@@ -23,13 +23,15 @@
 //   镜头 7    setBgm('libraryDream') 淡入 —— 全片唯一的旋律出现在「古堡」；
 //   旁白      每 3 个字一次 Snd.sfx('type')（与 DialogBox 的击键音同源）。
 //
-// 跳过：任意键 / 点击 → 落到最后一个镜头的最后一帧（淡出前那一帧），
-//       停 160ms 再结束；错过的钟声不补放。
+// 跳过（按段跳）：每按一次跳过键，落到 SHOT_START 里的**下一张版画的起点**；
+//   连按就连跳。跳到第七张之后，再按一次才整段结束（停 160ms）。
+//   每次跳段右下角显示一行「跳过 · n / m」，1 秒后淡出；
+//   错过的钟声不补放，第 7 张的 BGM 该在就让它进来。
 //
 // 调试：?ui=montage 直接铺在标题画面上看全片；
 //       ?ui=montage&montage=<秒> 定帧（静音、不播放，用来截图）。
 // ============================================================
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Snd } from '../game/audio'
 import {
   MONTAGE_BELL_AT,
@@ -38,12 +40,16 @@ import {
   MONTAGE_SKIP_AT,
   MONTAGE_TOTAL,
   MONTAGE_W,
+  SHOT_START,
   renderFrame,
   typedAt,
 } from '../game/art/montage'
 
 /** 跳过时把落点那一帧留一下再交还画面 */
 const SKIP_HOLD_MS = 160
+
+/** 七张版画的起点（秒）。按段跳就是在这张表上前进一格。 */
+const SHOT_STARTS: ReadonlyArray<number> = SHOT_START
 
 /**
  * rAF 兜底：后台标签页 / 系统休眠时 requestAnimationFrame 不跑，
@@ -71,6 +77,9 @@ export function Montage({ demo = false, onFinish }: { demo?: boolean; onFinish: 
   /** 最新的 onFinish（父组件重渲染不会重启播放） */
   const finishRef = useRef(onFinish)
   finishRef.current = onFinish
+  /** 右下角那行「跳过 · n / m」；seq 只用来重启 CSS 动画 */
+  const [skipNote, setSkipNote] = useState<{ n: number; m: number; seq: number } | null>(null)
+  const noteSeq = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -109,11 +118,17 @@ export function Montage({ demo = false, onFinish }: { demo?: boolean; onFinish: 
     /** 上一帧的打字进度：用来每 3 个字响一下击键音 */
     let prevShot = 0
     let prevShown = 0
+    /** 按段跳的偏移量 */
+    let tOffset = 0
+
+    /** 此刻的播放时间（秒）：自然流逝 + 跳段偏移 */
+    const nowT = (): number => (performance.now() - start) / 1000 + tOffset
 
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       e.preventDefault()
       e.stopPropagation()
+      if (e.repeat) return   // 按住不放不连跳
       skip()
     }
 
@@ -134,9 +149,21 @@ export function Montage({ demo = false, onFinish }: { demo?: boolean; onFinish: 
       finishRef.current()
     }
 
-    // 跳过：直接落到最后一个镜头的最后一帧，停一下再结束。
-    // 错过的钟声不补放；第 7 镜头的 BGM 该在就让它进来。
-    const skip = (): void => {
+    /** 跳段时把错过的锚点吞掉（钟声不补放，BGM 该在就起） */
+    const catchUp = (to: number): void => {
+      if (!bellFired && to >= MONTAGE_BELL_AT) bellFired = true
+      if (!bgmFired && to >= MONTAGE_BGM_AT) {
+        bgmFired = true
+        Snd.setBgm('libraryDream')
+      }
+      // 打字声的游标跟着跳过去，免得落地那一下爆一串击键音
+      const prog = typedAt(to)
+      prevShot = prog.shot
+      prevShown = prog.shown
+    }
+
+    /** 已经在最后一张：再按一次才结束整段（停在落点那一帧，160ms 后交还画面） */
+    const endSegment = (): void => {
       if (stopped || finished) return
       stopped = true
       cancelAnimationFrame(raf)
@@ -149,11 +176,30 @@ export function Montage({ demo = false, onFinish }: { demo?: boolean; onFinish: 
       renderFrame(g, MONTAGE_SKIP_AT)
       holdTimer = window.setTimeout(finishNow, SKIP_HOLD_MS)
     }
+
+    // 跳过：落到下一张版画的起点。连按就连跳；最后一张之后再按才结束。
+    const skip = (): void => {
+      if (stopped || finished) return
+      const t = nowT()
+      let next = SHOT_STARTS.length
+      for (let i = 0; i < SHOT_STARTS.length; i++) {
+        if (SHOT_STARTS[i] > t + 0.02) { next = i; break }
+      }
+      if (next >= SHOT_STARTS.length) {
+        endSegment()
+        return
+      }
+      tOffset += SHOT_STARTS[next] - t
+      catchUp(SHOT_STARTS[next])
+      renderFrame(g, SHOT_STARTS[next])
+      noteSeq.current += 1
+      setSkipNote({ n: next + 1, m: SHOT_STARTS.length, seq: noteSeq.current })
+    }
     skipRef.current = skip
 
     const loop = (): void => {
       if (stopped || finished) return
-      const t = (performance.now() - start) / 1000
+      const t = nowT()
 
       // 镜头 2：一声钟 —— 时间被吃掉的那个标点
       if (!bellFired && t >= MONTAGE_BELL_AT) {
@@ -204,7 +250,12 @@ export function Montage({ demo = false, onFinish }: { demo?: boolean; onFinish: 
         height={MONTAGE_H}
         className="montage-canvas"
       />
-      <div className="montage-hint">任意键跳过</div>
+      <div className="montage-hint">任意键跳过 · 每次跳一段</div>
+      {skipNote && (
+        <div key={skipNote.seq} className="cutscene-skip cutscene-skip--ink">
+          跳过 · {skipNote.n} / {skipNote.m}
+        </div>
+      )}
     </div>
   )
 }

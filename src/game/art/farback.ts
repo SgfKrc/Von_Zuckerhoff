@@ -63,6 +63,37 @@ const HALF_GAUGE = 42
 /** 消失点→近端的纵深 */
 const TRACK_SPAN = TRACK_NEAR_Y - VP_LINE
 
+// ------------------------------------------------------------
+// 镜头表（「按段跳」用：每按一次跳过键，落到下一个镜头的起点）
+// 只给播放器算跳点，不参与任何绘制 —— 画面仍然只由 renderFrame(t) 决定。
+// ------------------------------------------------------------
+
+export interface OpeningShot {
+  /** 这一段的起点（秒） */
+  t0: number
+  label: string
+}
+
+/**
+ * 开场的八段：黑场 → 群山 → 铁轨 → 车头 → 侧视 → 车厢内 → 艾玛 → 回到他。
+ * 这些时刻与 Opening.tsx 里的 T_CAM_START / T_RAIL / T_BLACK_END /
+ * T_CABIN / T_EMMA / T_BACK 是同一批数字；改运镜时两边一起改。
+ */
+export const OPENING_SHOTS: ReadonlyArray<OpeningShot> = [
+  { t0: 0.0, label: '黑场' },
+  { t0: 1.0, label: '群山渐显' },
+  { t0: 3.4, label: '铁轨露出' },
+  { t0: 6.4, label: '车头迎面' },
+  { t0: 11.9, label: '侧视横穿' },
+  { t0: 16.4, label: '车厢内' },
+  { t0: 26.2, label: '转向艾玛' },
+  { t0: 28.4, label: '回到他' },
+]
+
+/** 只给播放器用的起点表 */
+export const OPENING_SHOT_STARTS: ReadonlyArray<number> =
+  OPENING_SHOTS.map(s => s.t0)
+
 // ---- 镜头 B 列车运动：11.9s 从左驶入，此后全程匀速，不减速、不停 ----
 const T_DEPART = 11.9
 /** 车头右端的入画位置（世界 x；列车从车头往左排） */

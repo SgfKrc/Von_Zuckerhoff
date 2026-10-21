@@ -717,19 +717,18 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 图书室 =================
 
+  // 巡游重排：入场白只交代「这是什么地方 + 哪里不对」。
+  // 「木头是新的，书是旧的」留在入场白（一句就够）；
+  // 「新木头旧书」的推演、灰的分布、梯子踏板磨亮，分别迁到 libraryOpenBook / libraryLadder。
   arriveLibrary: [
-    { t: 'line', sp: 'none', text: '图书室比卧室大得多。书架一直堆到天花板，用一道可以移动的木梯才能够到最高层。' },
+    { t: 'line', sp: 'none', text: '图书室比卧室大得多。书架一直堆到天花板。' },
+    { t: 'line', sp: 'ftz', text: '（书架三十四排。木头是新的，书是旧的。）' },
     { t: 'line', sp: 'none', text: '房间中央摆着一张巨大的桌子，桌面上摊着一张地图。' },
-    { t: 'line', sp: 'ftz', text: '（书架三十四排。木头是新的，可书是旧的。）' },
-    { t: 'line', sp: 'ftz', text: '（新木头，旧书。有人先做柜子，再往里放书。）' },
-    { t: 'line', sp: 'none', text: '屋子里的灰尘很少。纸的味道比灰尘重。' },
-    { t: 'line', sp: 'ftz', text: '（扫得很干净。可书脊上的灰，比地上多。）' },
     { t: 'line', sp: 'emma', text: '您要找什么，少爷？' },
     { t: 'line', sp: 'ftz', text: '随便看看。' },
-    { t: 'line', sp: 'none', text: '艾玛把木梯推到窗边，用手按了按梯脚，试它稳不稳。' },
-    { t: 'line', sp: 'ftz', text: '（她试了两次。第三次才爬上去。）' },
-    { t: 'line', sp: 'none', text: '木梯的踏板中间有一块被磨得发亮。' },
-    { t: 'line', sp: 'ftz', text: '（站久了才会这样。有人在这架梯子上站过很多次。）' },
+    { t: 'line', sp: 'none', text: '艾玛把木梯推到窗边，用手按了按梯脚。' },
+    { t: 'line', sp: 'ftz', text: '（梯脚是稳的。她还是按了两次。）' },
+    { t: 'line', sp: 'ftz', text: '（这里的书看不完。塔楼在峡谷对面。）' },
     { t: 'do', do: [{ toast: '可以调查书架、地图桌，跟艾玛说话。' }] },
   ],
 
@@ -844,17 +843,13 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 走廊与画廊 =================
 
+  // 巡游重排：这一段的 5 句「房间索引」在追加区 4 里拼在本数组前面（见下方 CHAPTER1_GAP）。
+  // 这里只留「数不清的结尾 + 玛尔塔喊饭 + 他心里的塔楼」，走廊的尺寸与画像细节迁到调查点。
   arriveCorridorMain: [
-    { t: 'line', sp: 'none', text: '大走廊比东翼那条宽，也亮一些。两排画像从地板挂到接近天花板。' },
-    { t: 'line', sp: 'ftz', text: '（宽五格。顶高四格。比东翼宽两格。）' },
-    { t: 'line', sp: 'ftz', text: '（两排画像，一共十九幅。）' },
-    { t: 'line', sp: 'none', text: '走廊尽头是拱门，拱门外是白光。' },
-    { t: 'line', sp: 'ftz', text: '（光从外面来。走廊里没有窗。）' },
-    { t: 'line', sp: 'ftz', text: '（可这条走廊是亮的。）' },
-    { t: 'line', sp: 'none', text: '地上的石板是干的。山里的石头，不会这么干。' },
-    { t: 'line', sp: 'none', text: '走廊那头传来玛尔塔的声音，隔着两扇门，只听清了一半。' },
+    { t: 'line', sp: 'ftz', text: '（她不停，也不解释。我数到第十七个。也可能是十九个。）' },
+    { t: 'line', sp: 'none', text: '走廊那头有人喊饭。声音隔着两扇门，只听清一半。' },
     { t: 'line', sp: 'marta', text: '少爷——吃饭了——' },
-    { t: 'line', sp: 'ftz', text: '（喊了三遍。第三遍比前两遍低半度。）' },
+    { t: 'line', sp: 'ftz', text: '（塔楼在峡谷对面。走完这一圈要多久。）' },
     { t: 'do', do: [{ toast: '细看画像，或继续往右去石桥。' }] },
   ],
 
@@ -876,15 +871,19 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 石桥 =================
 
+  // 巡游重排：石桥是最该多看的一站，句数按上限留。
+  // 「四个圆形凹槽」的推演留在 lookTower；「没有青苔」只留成一句目测，
+  // 「有人在扫」的猜测删掉 —— bridgeWind 与 lookTower 已经承担桥的异常。
   arriveBridge: [
-    { t: 'line', sp: 'none', text: '石桥横跨峡谷。风穿过桥洞，发出一种像古老乐器在无人演奏时自己发出的悲鸣。' },
+    { t: 'line', sp: 'none', text: '石桥横跨峡谷。风穿过桥洞，像一件没人演奏的乐器。' },
     { t: 'line', sp: 'none', text: '峡谷对面，那座塔立在山脊边缘。' },
-    { t: 'line', sp: 'ftz', text: '（塔身上有四个巨大的圆形凹槽。像是用来安装钟面的。）' },
-    { t: 'line', sp: 'ftz', text: '（不像楼梯。不像钟楼。）' },
+    { t: 'line', sp: 'ftz', text: '（塔身上有四个巨大的圆形凹槽。）' },
+    { t: 'line', sp: 'emma', text: '那是时计塔，少爷。' },
+    { t: 'line', sp: 'ftz', text: '（时计塔。钟楼不长这样。）' },
     { t: 'line', sp: 'none', text: '桥面很宽，两侧的栏杆齐腰高。石板上没有青苔。' },
-    { t: 'line', sp: 'ftz', text: '（没有青苔。山里的桥，没有青苔。）' },
+    { t: 'line', sp: 'ftz', text: '（山里的桥，没有青苔。）' },
     { t: 'line', sp: 'ftz', text: '（桥面每隔两格有一道接缝。二十三道。）' },
-    { t: 'line', sp: 'ftz', text: '（有人在扫。或者石头里有别的东西，苔长不出来。）' },
+    { t: 'line', sp: 'ftz', text: '（塔就在对面。走完这一圈，才轮得到它。）' },
     { t: 'do', do: [{ toast: '按 Tab 打开图纸，测量这座塔。' }] },
   ],
 
@@ -942,15 +941,16 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 地窖 =================
 
+  // 巡游重排：小铁门与它所在的楼梯必须留在门口这一拍（艾玛后面那句「储藏室」要靠它）。
+  // 十字架的形制迁到 cellarBrokenBarrel；桶列的落差留在入场白（它说明地面不平）。
   arriveCellar: [
     { t: 'line', sp: 'none', text: '地窖的空气又冷又湿，有酒、橡木和某种更古老的气味。' },
     { t: 'line', sp: 'none', text: '酒桶排成三列。最老的一排后面，有一扇很小、很窄、很低的铁门。' },
-    { t: 'line', sp: 'ftz', text: '（铁门上有一个十字架。不是铁十字黑秃鹫。）' },
-    { t: 'line', sp: 'ftz', text: '（只是一个简单的、两条直线垂直交叉的十字架。）' },
-    { t: 'line', sp: 'none', text: '梯子最后一级上有一道磨痕，像有人在这里站过很久。' },
+    { t: 'line', sp: 'ftz', text: '（铁门上有一个十字架。不是黑秃鹫。）' },
+    { t: 'line', sp: 'none', text: '梯子最后一级上有一道磨痕。' },
     { t: 'line', sp: 'ftz', text: '（站在最后一级上，刚好能看见那扇门。）' },
-    { t: 'line', sp: 'none', text: '头顶的木梁上挂着一盏灯。灯罩里有一只死了的蛾子。' },
     { t: 'line', sp: 'ftz', text: '（第三列桶比前两列矮半格。地面不平。）' },
+    { t: 'line', sp: 'ftz', text: '（塔楼在峡谷对面。这底下看不见天。）' },
     { t: 'do', do: [{ toast: '调查那扇铁门。' }] },
   ],
 
@@ -1003,14 +1003,17 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 花园 =================
 
+  // 巡游重排：花园本来就不长，只补一句「他心里的塔」。
+  // 「每隔很久才有人来一次」由 gardenRod 的「漆是新的、竿身没有灰」承担，这里不再重复。
   arriveGarden: [
-    { t: 'line', sp: 'none', text: '后花园比想象中大。草坪修剪过，但修剪得不太整齐，像是每隔很久才有人来一次。' },
+    { t: 'line', sp: 'none', text: '后花园比想象中大。草坪修剪过，剪得不太整齐。' },
     { t: 'line', sp: 'none', text: '角落里有一片小水塘。' },
     { t: 'line', sp: 'ftz', text: '（花园三十二步长。石墙围了三面。）' },
     { t: 'line', sp: 'ftz', text: '（第四面没有墙。是崖。）' },
     { t: 'line', sp: 'none', text: '靠墙有一排剪成方块的灌木，剪口是新的。' },
-    { t: 'line', sp: 'ftz', text: '（剪口新的。人不在。剪刀也不在。）' },
-    { t: 'line', sp: 'none', text: '远处，山脊上的塔露在树梢上面。' },
+    { t: 'line', sp: 'ftz', text: '（剪口是新的。人不在。剪刀也不在。）' },
+    { t: 'line', sp: 'none', text: '远处，那座塔露在树梢上面。' },
+    { t: 'line', sp: 'ftz', text: '（山脊上那座塔。直线过去不到两百步。）' },
     { t: 'do', do: [{ toast: '调查鱼塘和旧竹竿。' }] },
   ],
 
@@ -1075,20 +1078,16 @@ export const SCRIPTS: Record<string, Step[]> = {
 
   // ================= 第一章 · 接待厅 =================
 
+  // 巡游重排：接待厅只留「这是什么房间 + 这间屋子的不对劲」。
+  // 朝西的窗与那层灰、二十年没有客人、那一带还有几户人家 —— 迁到 parlorDraped / parlorAsh。
   arriveParlor: [
-    { t: 'line', sp: 'none', text: '接待厅是个用来让客人等候的房间。' },
+    { t: 'line', sp: 'none', text: '接待厅是让客人等候的房间。' },
     { t: 'line', sp: 'none', text: '三把椅子，一张小桌，一面壁炉，两扇朝西的窗。' },
     { t: 'line', sp: 'emma', text: '这里接待过求婚的人。' },
-    { t: 'line', sp: 'ftz', text: '求婚？' },
-    { t: 'line', sp: 'emma', text: '是的，少爷。' },
-    { t: 'line', sp: 'emma', text: '那一带，还有几户人家。' },
-    { t: 'line', sp: 'ftz', text: '现在呢？' },
     { t: 'line', sp: 'emma', text: '现在没有了。' },
-    { t: 'line', sp: 'none', text: '窗玻璃上有一层均匀的灰。壁炉里是冷的。' },
-    { t: 'line', sp: 'ftz', text: '（椅子是给客人坐的。可这里二十年没有客人。）' },
-    { t: 'line', sp: 'none', text: '墙上没有画像。整座古堡，只有这一间墙上没有画像。' },
-    { t: 'line', sp: 'none', text: '两扇窗朝西。太阳已经落到山后，玻璃上只剩一层灰白。' },
-    { t: 'line', sp: 'ftz', text: '（朝西的窗，冬天会有风。）' },
+    { t: 'line', sp: 'none', text: '墙上没有画像。整座古堡只有这一间没有。' },
+    { t: 'line', sp: 'ftz', text: '（椅子是给客人坐的。可这里很久没有客人。）' },
+    { t: 'line', sp: 'ftz', text: '（朝西的窗。塔楼就在那边。）' },
     { t: 'do', do: [{ flag: ['parlorStory', true] }] },
   ],
 
@@ -1532,14 +1531,17 @@ Object.assign(SCRIPTS, SUGARHOFEN_SCRIPTS)
 const CHAPTER1_GAP_SCRIPTS: Record<string, Step[]> = {
   // ---- 缺口 A：房间索引（原作 L604–L610） ----
   // 只念四个房间名，不做十八个：要的是「数不清」这个体验，不是清单本身。
+  // 巡游重排：这一拍顺带交代「这趟巡游是谁的意思」——艾玛报出赫尔曼大人，
+  // 不解释理由。最后一句「数不清」收在下面那个数组的开头（她不停，也不解释）。
   arriveCorridorMain: [
-    // ① 艾玛报名字：匀速、不停顿、不解释。
-    { t: 'line', sp: 'none', text: '艾玛在前头带路，一路报房间名。不快不慢，像在执行一项精确到秒的任务。' },
+    // ① 这趟巡游的名义。她只报事实。
+    { t: 'line', sp: 'emma', text: '赫尔曼大人让我带您转转。' },
+    // ② 她报名字：匀速、不停顿、不解释。
+    { t: 'line', sp: 'none', text: '她一路报房间名，不快不慢，像在执行一项精确到秒的任务。' },
     { t: 'line', sp: 'emma', text: '起居室。图书室。' },
     { t: 'line', sp: 'emma', text: '音乐室。台球室。' },
-    // ② 主角试图数。③ 数不清，放弃。
+    // ③ 主角试图数。数不清的那一拍接在下面数组的第一句。
     { t: 'line', sp: 'ftz', text: '（……第十一个。第十二个。）' },
-    { t: 'line', sp: 'ftz', text: '（她不停，也不解释。我数到第十七个。也可能是十九个。）' },
     ...(SCRIPTS.arriveCorridorMain ?? []),
   ],
 
@@ -1818,26 +1820,45 @@ const INTERIOR_CLUTTER_SCRIPTS: Record<string, Step[]> = {
   corridorAntlers_again: [
     { t: 'line', sp: 'ftz', text: '（灰没动过。）' },
   ],
+  // 巡游重排后升级为「带信息」的调查点：把入场白删掉的走廊尺寸与「不走的钟」挪到这里。
   corridorClock: [
-    { t: 'line', sp: 'none', text: '挂钟的玻璃门缺了一角。指针停着，停在差一刻十二点。' },
-    { t: 'line', sp: 'ftz', text: '（不是坏了。是有人把它停下来的。）' },
+    { t: 'line', sp: 'none', text: '挂钟钉在走廊正中，离地三格半。玻璃门缺了一角。' },
+    { t: 'line', sp: 'ftz', text: '（走廊顶高四格，宽五格。比东翼那条宽两格。）' },
+    { t: 'line', sp: 'ftz', text: '（指针停在差一刻十二点。摆锤还在，可不摆。）' },
+    { t: 'line', sp: 'ftz', text: '（不是发条松了。发条松了，指针会往下坠。）' },
+    { t: 'line', sp: 'none', text: '我打开玻璃门，伸手进去碰了碰分针。' },
+    { t: 'line', sp: 'ftz', text: '（分针是死的。像被什么夹住了。）' },
+    { t: 'line', sp: 'none', text: '钟壳里没有灰。这条走廊里唯一没有灰的地方。' },
+    { t: 'line', sp: 'ftz', text: '（有人在擦它。擦一座不走的钟。）' },
   ],
   corridorClock_again: [
-    { t: 'line', sp: 'ftz', text: '（差一刻十二点。）' },
+    { t: 'line', sp: 'ftz', text: '（差一刻十二点。钟壳还是干净的。）' },
   ],
+  // 迁进「石板是干的」「走廊没有窗，可它是亮的」——一屋子的干净从这里露出来。
   corridorChina: [
     { t: 'line', sp: 'none', text: '一只杯子碎在走廊中间，白瓷片散开有一臂远。' },
-    { t: 'line', sp: 'ftz', text: '（摔得很重。碎片朝外飞 —— 有人在这里站了一会儿才松手。）' },
+    { t: 'line', sp: 'ftz', text: '（摔得很重。碎片朝外飞。有人在这里站过，才松的手。）' },
+    { t: 'line', sp: 'none', text: '我蹲下去。瓷片底下的石板是干的。' },
+    { t: 'line', sp: 'ftz', text: '（山里的石头不会这么干。这条走廊没有窗，也没有火，可它是亮的。）' },
+    { t: 'line', sp: 'none', text: '碎片上没有灰。边沿仍旧白得发亮。' },
+    { t: 'line', sp: 'ftz', text: '（这只杯子是新的。或者有人擦过每一片。）' },
+    { t: 'line', sp: 'ftz', text: '（摔的人没有回来扫。扫的人却每天都来。）' },
   ],
   corridorChina_again: [
     { t: 'line', sp: 'ftz', text: '（碎片还在。没有人扫。）' },
   ],
+  // 一只鞋：落点不是「谁的鞋」，是「鞋被摆了很多次，摆成一个方向」。
   corridorShoe: [
     { t: 'line', sp: 'none', text: '一只女式皮鞋侧躺在墙脚。鞋跟完好，鞋底几乎没磨。' },
-    { t: 'line', sp: 'ftz', text: '（只差一只。她总不能光着一只脚走出这座堡。）' },
+    { t: 'line', sp: 'ftz', text: '（穿鞋的人没走过多少路。这双鞋是给屋里穿的。）' },
+    { t: 'line', sp: 'none', text: '我把鞋提起来。鞋口朝外，鞋尖对着走廊尽头的拱门。' },
+    { t: 'line', sp: 'ftz', text: '（脱鞋的人往门外走。光着一只脚。）' },
+    { t: 'line', sp: 'none', text: '鞋里有一层薄灰，只有鞋跟那一小块是干净的。' },
+    { t: 'line', sp: 'ftz', text: '（有人把它摆正过。摆了很多次，摆成一个方向。）' },
+    { t: 'line', sp: 'ftz', text: '（艾玛走在我前面。两只鞋都踩在地上，一下，一下。）' },
   ],
   corridorShoe_again: [
-    { t: 'line', sp: 'ftz', text: '（还是那一只。）' },
+    { t: 'line', sp: 'ftz', text: '（鞋尖还是朝着拱门。）' },
   ],
   corridorBook: [
     { t: 'line', sp: 'none', text: '一本硬壳书摊在地板上，书脊朝上鼓着。' },
@@ -1869,19 +1890,34 @@ const INTERIOR_CLUTTER_SCRIPTS: Record<string, Step[]> = {
   libraryBooks_again: [
     { t: 'line', sp: 'ftz', text: '（那摞书没人再动过。）' },
   ],
+  // 巡游重排后升级：接住入场白删掉的「踏板磨亮、有人站过很多次」。
+  // 落点换了方向 —— 不是「有人摔下来」，是「有人把它推开，不让人上去」。
   libraryLadder: [
     { t: 'line', sp: 'none', text: '梯子倒在书架前，一头卡在两排书之间，另一头压着一本摊开的书。' },
     { t: 'line', sp: 'ftz', text: '（从这么高的地方摔下来，整座堡都该听得见。）' },
+    { t: 'line', sp: 'none', text: '踏板中间磨得发亮。' },
+    { t: 'line', sp: 'ftz', text: '（站久了才会这样。有人在这架梯子上站过很多次。）' },
+    { t: 'line', sp: 'ftz', text: '（可它是横着倒下的，不是往前倒的。）' },
+    { t: 'line', sp: 'none', text: '我顺着梯子的方向看过去。最近的书架在它侧面，最高一层空着。' },
+    { t: 'line', sp: 'ftz', text: '（有人在上面把梯子推开，不让人上去。）' },
+    { t: 'line', sp: 'ftz', text: '（推开之后没人扶回来。这个人不打算让下一个人上去。）' },
   ],
   libraryLadder_again: [
-    { t: 'line', sp: 'ftz', text: '（梯子还倒着。）' },
+    { t: 'line', sp: 'ftz', text: '（梯子还横着倒在原地。）' },
   ],
+  // 巡游重排后升级：接住入场白删掉的「新木头旧书」「灰的分布」，落点是「只擦看得见的地方」。
   libraryOpenBook: [
     { t: 'line', sp: 'none', text: '一本书摊在地板上，页角被反复折过。' },
     { t: 'line', sp: 'ftz', text: '（不是书签，是折角。读到一半就放下了，很多次。）' },
+    { t: 'line', sp: 'ftz', text: '（屋里几乎没有灰。纸的味道比灰重。）' },
+    { t: 'line', sp: 'none', text: '我抬头看书架。书脊朝外的那一面，灰积了一层。' },
+    { t: 'line', sp: 'ftz', text: '（地上是干净的。书脊是脏的。）' },
+    { t: 'line', sp: 'ftz', text: '（有人只擦看得见的地方。或者只擦这一本书。）' },
+    { t: 'line', sp: 'none', text: '摊开的那一页压得很平，页边有一道指印，从中间往右抹。' },
+    { t: 'line', sp: 'ftz', text: '（读到一半，用手把这一页按住，不让自己翻过去。）' },
   ],
   libraryOpenBook_again: [
-    { t: 'line', sp: 'ftz', text: '（页角还折在那儿。）' },
+    { t: 'line', sp: 'ftz', text: '（页角还折着。书脊上的灰还在。）' },
   ],
 
   // ---------------- 餐厅 ----------------
@@ -1987,12 +2023,20 @@ const INTERIOR_CLUTTER_SCRIPTS_2: Record<string, Step[]> = {
   parlorClock_again: [
     { t: 'line', sp: 'ftz', text: '（还是慢半刻。）' },
   ],
+  // 巡游重排后升级：接住入场白删掉的「二十年没有客人」「朝西的窗与那层灰」。
+  // 落点从「白布上的手印」改成「手印在布的**内侧**」——盖着的家具，有人偷偷坐过。
   parlorDraped: [
-    { t: 'line', sp: 'none', text: '一件家具蒙着白布，布的褶子里积了灰。掀开一角，底下是黄铜的扶手。' },
-    { t: 'line', sp: 'ftz', text: '（扶手是冰的。这间屋子很久没有客人了。）' },
+    { t: 'line', sp: 'none', text: '窗玻璃上积了一层灰。墙下这件家具蒙着白布，布褶里也是同一层灰。' },
+    { t: 'line', sp: 'none', text: '我掀开一角。白布底下是黄铜扶手，扶手两端各有一个狮头。' },
+    { t: 'line', sp: 'ftz', text: '（扶手是冰的。金属在没人碰的时候，会比屋子还冷。）' },
+    { t: 'line', sp: 'ftz', text: '（这一间二十年没有客人。来求婚的人，没有一个回来过。）' },
+    { t: 'line', sp: 'none', text: '布的内侧有一个手印。五个指头张得很开，按在扶手正上方。' },
+    { t: 'line', sp: 'ftz', text: '（手印是从里面按的。有人掀开布，坐进去过，再把布放下来。）' },
+    { t: 'line', sp: 'ftz', text: '（布褶里的灰是均匀的。只有这一块被抹开过。）' },
+    { t: 'line', sp: 'ftz', text: '（坐的人不擦灰。坐完就走，把布铺回原样。）' },
   ],
   parlorDraped_again: [
-    { t: 'line', sp: 'ftz', text: '（白布上多了一个手印。是新的。）' },
+    { t: 'line', sp: 'ftz', text: '（布内侧的手印还在。不是按在外面的。）' },
   ],
   parlorOpenBook: [
     { t: 'line', sp: 'none', text: '一本诗集摊在地上，读到的那一页折了角。' },
@@ -2001,21 +2045,37 @@ const INTERIOR_CLUTTER_SCRIPTS_2: Record<string, Step[]> = {
   parlorOpenBook_again: [
     { t: 'line', sp: 'ftz', text: '（折角还在。）' },
   ],
+  // 巡游重排后升级：接住入场白删掉的「壁炉里是冷的」。
+  // 落点：灰是冷的，纸是温的 —— 今天生过火，又把它压灭了。
   parlorAsh: [
-    { t: 'line', sp: 'none', text: '壁炉里只剩一层白灰，冷透了。灰里压着半张没烧完的信纸。' },
+    { t: 'line', sp: 'none', text: '壁炉里只剩一层白灰。灰是冷的，柴架也冷。' },
+    { t: 'line', sp: 'ftz', text: '（很久没生过火。灰结成块，底下没有黑色。）' },
+    { t: 'line', sp: 'none', text: '灰里压着半张没烧完的信纸。纸边卷起来，字迹朝下扣在灰里。' },
     { t: 'line', sp: 'ftz', text: '（烧信的人很有耐心。每一张都烧到只剩一个角。）' },
+    { t: 'line', sp: 'none', text: '我把那张纸挑出来。纸是温的。' },
+    { t: 'line', sp: 'ftz', text: '（灰是冷的，纸是温的。）' },
+    { t: 'line', sp: 'ftz', text: '（今天生过火。生过火，又把它压灭了。）' },
   ],
   parlorAsh_again: [
-    { t: 'line', sp: 'ftz', text: '（灰是冷的。）' },
+    { t: 'line', sp: 'ftz', text: '（那张纸已经凉了。）' },
   ],
 
   // ---------------- 地窖 ----------------
+  // 巡游重排后升级：接住入场白删掉的「两条直线垂直交叉的十字架」。
+  // 入场白那句「灯罩里有一只死了的蛾子」不再迁移（地窖的潮气已经由水痕与湿冷承担）。
+  // 落点：稻草上有脚印，只有进去的，没有出来的。
   cellarBrokenBarrel: [
     { t: 'line', sp: 'none', text: '一只桶从中间崩开了，桶板歪向两边，稻草从缝里漏了一地。' },
     { t: 'line', sp: 'ftz', text: '（不是摔的。是里面的东西涨开，把它顶裂的。）' },
+    { t: 'line', sp: 'ftz', text: '（桶里没有酒味。稻草是干的。）' },
+    { t: 'line', sp: 'none', text: '我把一块桶板翻过来。板的内侧有一个十字，是用炭画的。' },
+    { t: 'line', sp: 'ftz', text: '（两条直线，垂直交叉。跟铁门上那个一样。）' },
+    { t: 'line', sp: 'none', text: '稻草上有脚印。从桶边一直走到墙根，脚印在墙根断掉。' },
+    { t: 'line', sp: 'ftz', text: '（墙根没有再往前。人不是走进墙里的。人是蹲下去的。）' },
+    { t: 'line', sp: 'ftz', text: '（我数了数脚印。只有进去的，没有出来的。）' },
   ],
   cellarBrokenBarrel_again: [
-    { t: 'line', sp: 'ftz', text: '（稻草上有新的脚印。）' },
+    { t: 'line', sp: 'ftz', text: '（脚印还是只有进去的。）' },
   ],
   cellarBroom: [
     { t: 'line', sp: 'none', text: '一把扫帚斜靠在墙上，柄上缠着麻绳，帚头的草散了大半。' },

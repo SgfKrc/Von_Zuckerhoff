@@ -211,6 +211,54 @@ const C = {
   bone: '#d8cfc0',
 } as const
 
+/**
+ * 弗里德里希的配色（对照 public/portraits/ftz.webp 提炼）。
+ * 头发是深红偏铜，不是亮橙红：受光也只到 #9c3c26，铜色只用来封 1px 的边；
+ * 皮肤是偏冷的浅褐，亮部不许上一档白 —— 上一版脸是死白的，配上圆发冠就成了蒜。
+ */
+const FTZ = {
+  hairEdge: '#2a0a08',
+  hairLo: '#38100b',
+  hairMid: '#551810',
+  hairLit: '#78261a',
+  hairHi: '#9c3c26',
+  hairRim: '#b96b43',
+  skin: '#a98a72',
+  skinHi: '#c0a187',
+  skinLo: '#755c4b',
+  skinShade: '#554338',
+  eyeWhite: '#9c9284',
+  iris: '#5b6b75',
+  irisLo: '#33424c',
+  pupil: '#14191c',
+  lid: '#2f1c18',
+  brow: '#3a120e',
+  lip: '#6b3a34',
+  lipLo: '#45231f',
+} as const
+
+/**
+ * 艾玛的配色（对照 public/portraits/emma.webp）：银白偏淡紫的头发是她的识别特征。
+ * 上一版把她的头发画成了深棕 —— 那等于换了一个人。
+ */
+const EMMA = {
+  hairHi: '#efeaf7',
+  hair: '#cfc8dc',
+  hairLo: '#a99fbe',
+  hairDark: '#8a7fa0',
+  hairDeep: '#6f6588',
+  capHi: '#f4f1f8',
+  cap: '#e2dcec',
+  capLo: '#bdb4cd',
+  ribbon: '#6b6284',
+  eye: '#7d5aa6',
+  eyeLo: '#4f3a72',
+  bow: '#121018',
+  shirt: '#e6e1ec',
+  shirtLo: '#b9b2c6',
+  dress: '#131019',
+} as const
+
 // ------------------------------------------------------------
 // 小工具
 // ------------------------------------------------------------
@@ -683,8 +731,9 @@ function paintVictoriaHead(g: Ctx, box: Box, mood: number, warm: number): void {
   const upH = Math.max(1, Math.min(Math.round(h * 0.024), Math.round(mw * 0.36)))
   const loH = Math.max(1, Math.min(Math.round(h * 0.036), Math.round(mw * 0.55)))
   const lw = Math.max(1, Math.min(3, Math.round(h * 0.006)))
-  // 嘴角上扬的幅度：只是"一点"，不是大笑（最多唇高的四分之一）
-  const lift = Math.max(1, Math.round(smile * Math.min(loH * 0.5, h * 0.010)))
+  // 嘴角上扬的幅度：只是"一点"，不是大笑（最多唇高的四分之一）。
+  // 推近到最后也不许真的笑出来 —— 只有原来的 40%（「似乎微微上扬了一点」）。
+  const lift = Math.max(1, Math.round(smile * Math.min(loH * 0.5, h * 0.010) * 0.4))
   for (let i = 0; i < upH; i++) {
     const v = i / Math.max(1, upH - 1)
     const half = mw * (0.40 + 0.60 * Math.sin(v * Math.PI * 0.5))
@@ -1471,93 +1520,183 @@ function paintHallSilhouette(g: Ctx, t: number, u: number): void {
 function paintEmmaFlash(g: Ctx, t: number, u: number): void {
   // 全黑底（记忆里没有墙，也没有火）
   rect(g, 0, 0, CF_W, CF_H, '#000000')
-  // 一片很暗的光斑：她的脸只在这一点光里
+  // 一片很暗的光斑：她的脸只在这一点光里（偏冷 —— 这是记忆，不是炉火）
   const cx = 224
   const cy = 96
-  for (let sy = 16; sy < 196; sy++) {
-    const v = clamp01((sy - 16) / 180)
-    const hw = 92 * Math.sin(Math.PI * clamp01(v * 1.05))
-    const a = 0.04 + 0.10 * Math.sin(Math.PI * v)
+  for (let sy = 12; sy < 200; sy++) {
+    const v = clamp01((sy - 12) / 188)
+    const hw = 96 * Math.sin(Math.PI * clamp01(v * 1.05))
+    const a = 0.035 + 0.085 * Math.sin(Math.PI * v)
     if (a <= 0.004) continue
-    g.fillStyle = `rgba(92,72,64,${a.toFixed(3)})`
+    g.fillStyle = `rgba(84,80,98,${a.toFixed(3)})`
     g.fillRect(Math.round(cx - hw), sy, Math.round(hw * 2), 1)
   }
 
   // ---- 她的头 ----
-  const headTop = 52          // 帽顶
-  const faceTop = 74          // 发际线
-  const faceH = 68            // 脸高
-  const faceW = 44            // 脸宽
-  const hairL = cx - 36
-  const hairR = cx + 36
-  // 头发：从发际线垂到肩（左右两束），中间是脸
-  for (let sy = headTop + 8; sy < headTop + 124; sy++) {
-    const v = (sy - headTop - 8) / 116
-    const half = 34 + 8 * Math.sin(Math.PI * clamp01(v * 0.92))
-    rect(g, cx - half, sy, 13, 1, '#2a1e18')
-    rect(g, cx + half - 13, sy, 13, 1, '#221812')
-    // 头顶的头发
-    if (v < 0.26) rect(g, cx - half, sy, half * 2, 1, '#2a1e18')
-  }
-  // 头顶的头发（压住帽檐下面）
-  for (let sy = headTop + 6; sy < headTop + 26; sy++) {
-    rect(g, hairL + 2, sy, hairR - hairL - 4, 1, '#241a14')
-  }
-  // 女仆帽：白色的一圈，中间略高（压得扁一点，才像帽子不像蛋糕）
-  rect(g, cx - 30, headTop + 6, 60, 9, '#b9b0a4')
-  rect(g, cx - 30, headTop + 6, 60, 2, '#d8d0c4')
-  rect(g, cx - 20, headTop + 1, 40, 6, '#c6bdb0')
-  rect(g, cx - 20, headTop + 1, 40, 2, '#ded6c8')
-  rect(g, cx - 30, headTop + 14, 60, 1, '#8a8378')
-  // 帽带（一条深色的，勒在帽子下面）
-  rect(g, cx - 28, headTop + 16, 56, 2, '#5a5048')
+  const faceTop = 74           // 发际线
+  const faceH = 66             // 脸高
+  const faceW = 48             // 脸宽
+  const faceBot = faceTop + faceH
 
-  // 脸：椭圆（宽 faceW、高 faceH），左受光
+  // ---- 1) 后面的长发：银白偏淡紫，从帽下一直垂到肩 ----
+  // 剪影是波浪的（左右两条外缘各走各的相位）—— 一条直边会读成头巾
+  const hairTopY = 58
+  const hairBotY = 200
+  for (let y = hairTopY; y < hairBotY; y++) {
+    const v = clamp01((y - hairTopY) / (hairBotY - hairTopY))
+    const half = 30 + 25 * Math.sin(Math.PI * clamp01(0.16 + v * 0.84))
+    if (half <= 1) continue
+    const wl = Math.round(Math.sin(y * 0.17) * 1.5)
+    const wr = Math.round(Math.sin(y * 0.15 + 2.2) * 1.5)
+    // 主体：左受光（冷白）、右沉进紫灰
+    rect(g, cx - half + wl, y, (half + wr) * 2, 1, EMMA.hairLo)
+    rect(g, cx - half + wl, y, (half + wr) * 1.15, 1, EMMA.hair)
+    rect(g, cx + half * 0.42 + wr, y, half * 0.58, 1, EMMA.hairDark)
+    if (v < 0.22) rect(g, cx - half + wl, y, (half + wr) * 2, 1, mix(EMMA.hair, EMMA.hairLo, 0.35))
+  }
+  // 发丝：顺着外缘走的几道亮线（银发靠这几道才不是一块灰）。
+  // 右侧是背光的一半，只能用更深的紫灰画发丝 —— 那里点白会变成一根根划痕。
+  for (let i = 0; i < 4; i++) {
+    const side = i < 2 ? -1 : 1
+    const base = i === 0 ? 0.34 : i === 1 ? 0.66 : i === 2 ? 0.46 : 0.76
+    for (let y = hairTopY + 20; y < hairBotY - 6; y++) {
+      const v = clamp01((y - hairTopY) / (hairBotY - hairTopY))
+      const half = 30 + 25 * Math.sin(Math.PI * clamp01(0.16 + v * 0.84))
+      const x = cx + side * half * (base + 0.04 * Math.sin(y * 0.13 + i))
+      if (side < 0) px(g, x, y, base < 0.5 ? EMMA.hairHi : EMMA.hair)
+      else px(g, x, y, base < 0.5 ? EMMA.hairDeep : EMMA.hairDark)
+    }
+  }
+
+  // ---- 2) 脸：椭圆（下巴略圆），左受光 ----
   for (let r = 0; r < faceH; r++) {
     const v = r / (faceH - 1)
-    const half = (faceW / 2) * Math.sin(Math.PI * clamp01(0.12 + v * 0.84))
+    const half = (faceW / 2) * Math.sin(Math.PI * clamp01(0.16 + v * 0.80)) * (v > 0.78 ? 1 - (v - 0.78) * 0.70 : 1)
     if (half <= 0.4) continue
     const y = faceTop + r
-    rect(g, cx - half, y, half * 2, 1, C.skin)
-    rect(g, cx - half, y, Math.max(1, half * 0.5), 1, C.skinHi)
-    rect(g, cx + half * 0.40, y, half * 0.60, 1, C.skinLo)
+    rect(g, cx - half, y, half * 2, 1, '#c6b6bb')
+    rect(g, cx - half, y, Math.max(1, half * 0.52), 1, '#dccdd0')
+    // 右半边：先一档过渡，再沉下去（一刀切的竖边会读成面具）
+    rect(g, cx + half * 0.30, y, half * 0.22, 1, '#b8a5aa')
+    rect(g, cx + half * 0.52, y, half * 0.48, 1, '#a08c93')
+    rect(g, cx + half * 0.80, y, half * 0.20, 1, '#8f7b84')
+    // 发际线：脸的最上沿压暗一档（不是一条横带）
+    if (r < 3) rect(g, cx - half, y, half * 2, 1, '#a89096')
   }
-  // 鬓角：脸两侧垂下的一缕头发
-  rect(g, cx - 25, faceTop + 6, 3, 34, '#2a1e18')
-  rect(g, cx + 22, faceTop + 6, 3, 34, '#221812')
 
-  // 眼睛：垂下的（上眼睑压到只剩 1px 的缝，看不清瞳孔）
-  const eyeY = faceTop + 34
+  // ---- 3) 前面的两束头发：从帽下垂到肩，压住脸的两侧 ----
+  for (const s of [-1, 1]) {
+    const bx = cx + s * 28
+    for (let k = 0; k < 108; k++) {
+      const v = k / 108
+      const w = Math.max(3, Math.round(10 - v * 3))
+      const x = bx + s * (k * 0.05 + Math.sin(k * 0.09 + (s > 0 ? 1.4 : 0)) * 2)
+      const tint = s < 0 ? EMMA.hair : EMMA.hairLo
+      rect(g, x - w / 2, faceTop + 10 + k, w, 1, tint)
+      // 1px 的深色收边：发束之间才有缝
+      px(g, x - w / 2, faceTop + 10 + k, EMMA.hairDark)
+      px(g, x + w / 2 - 1, faceTop + 10 + k, EMMA.hairDeep)
+    }
+  }
+
+  // ---- 4) 白色蕾丝女仆帽：荷叶边（不是黑帽）----
+  // 帽体：贴着头的半圆（帽顶略窄），下缘跟着头顶的弧走
+  for (let x = -34; x <= 34; x++) {
+    const a = Math.abs(x) / 34
+    const yTop = Math.round(42 + 11 * Math.pow(a, 2.2))
+    const yBot = Math.round(57 + 3 * Math.pow(a, 1.6))
+    rect(g, cx + x, yTop, 1, Math.max(1, yBot - yTop), EMMA.cap)
+    rect(g, cx + x, yTop, 1, 1, EMMA.capHi)
+    rect(g, cx + x, yBot - 1, 1, 1, EMMA.capLo)
+  }
+  // 帽面的三道褶（短弧，不是竖条纹）
+  for (const fx of [-21, -2, 17]) {
+    for (let k = 0; k < 12; k++) {
+      px(g, cx + fx + Math.round(Math.sin(k * 0.22) * 2), 47 + k, EMMA.capLo)
+    }
+  }
+  // 荷叶边：帽底一圈小鼓包（交错深浅，才像蕾丝不像锯齿）
+  for (let x = -36; x <= 34; x += 5) {
+    const a = Math.abs(x + 2) / 36
+    const baseY = Math.round(57 + 3 * Math.pow(clamp01(a), 1.6))
+    const dy = (Math.floor((x + 36) / 5) % 2 === 0) ? 2 : 1
+    rect(g, cx + x, baseY, 5, dy, EMMA.cap)
+    rect(g, cx + x, baseY + dy - 1, 5, 1, EMMA.capLo)
+    px(g, cx + x, baseY, EMMA.capHi)
+  }
+  // 帽下的一道暗边：白帽子压在银发上，必须有一条分界
+  rect(g, cx - 32, 61, 64, 1, EMMA.ribbon)
+  rect(g, cx - 24, 62, 48, 1, 'rgba(138,127,160,0.42)')
+  // 帽子两侧的系带（细、垂在耳前）
+  rect(g, cx - 36, 56, 2, 20, EMMA.capLo)
+  rect(g, cx + 34, 56, 2, 20, EMMA.capLo)
+
+  // ---- 5) 眼睛：垂下的（闪回里只留一条上眼睑线，但颜色是紫的）----
+  const eyeY = faceTop + 24
   for (const ex of [cx - 13, cx + 13]) {
-    rect(g, ex - 7, eyeY, 14, 2, '#3a2418')
-    rect(g, ex - 6, eyeY + 2, 12, 1, '#7a5a4a')
-    px(g, ex - 4, eyeY + 2, '#2a1c16')
-    // 睫毛的阴影
-    rect(g, ex - 7, eyeY - 1, 14, 1, '#2a1c16')
+    // 上眼睑线：压得很低，几乎合上
+    rect(g, ex - 8, eyeY, 16, 2, EMMA.eyeLo)
+    // 虹膜：紫（不是黑点）—— 压到只剩 1px 的一条
+    rect(g, ex - 7, eyeY + 2, 13, 1, EMMA.eye)
+    px(g, ex - 6, eyeY + 2, EMMA.hairHi)
+    // 眼下的影
+    rect(g, ex - 7, eyeY + 3, 13, 1, 'rgba(120,96,110,0.45)')
+    // 睫毛
+    px(g, ex - 8, eyeY + 1, EMMA.bow)
+    px(g, ex + 7, eyeY + 1, EMMA.bow)
   }
-  // 眉（低垂的）
-  rect(g, cx - 20, eyeY - 7, 12, 1, '#3a2a22')
-  rect(g, cx + 8, eyeY - 7, 12, 1, '#3a2a22')
+  // 眉：细、低垂
+  rect(g, cx - 20, eyeY - 7, 12, 1, '#7a6672')
+  rect(g, cx + 8, eyeY - 7, 12, 1, '#7a6672')
   // 鼻
-  rect(g, cx - 1, eyeY + 5, 2, 8, C.skinHi)
-  px(g, cx - 1, eyeY + 13, '#8a7466')
-  px(g, cx + 1, eyeY + 13, '#8a7466')
+  rect(g, cx - 1, eyeY + 6, 2, 8, '#d2c2c5')
+  px(g, cx - 2, eyeY + 14, '#8d787f')
+  px(g, cx + 1, eyeY + 14, '#8d787f')
   // 嘴：闭合的一条平线（她没有说话）
-  rect(g, cx - 8, eyeY + 19, 17, 1, '#7a4a44')
-  rect(g, cx - 6, eyeY + 20, 13, 1, '#9a6a60')
+  rect(g, cx - 8, eyeY + 20, 17, 1, '#8a6a72')
+  rect(g, cx - 6, eyeY + 21, 13, 1, '#a98a90')
 
-  // 颈与领口
-  rect(g, cx - 8, faceTop + faceH - 4, 16, 16, C.skinLo)
-  rect(g, cx - 8, faceTop + faceH - 4, 6, 16, C.skin)
-  // 白领
-  rect(g, cx - 16, faceTop + faceH + 10, 32, 7, '#b9b0a4')
-  rect(g, cx - 16, faceTop + faceH + 10, 32, 1, '#d8d0c4')
-  // 裙子 / 肩
-  for (let i = 0; i < 22; i++) {
-    const half = 30 + i * 2.2
-    rect(g, cx - half, faceTop + faceH + 16 + i, half * 2, 1, '#12111a')
+  // ---- 6) 颈与领口：白衬衫 + 黑蝴蝶结 + 黑裙 ----
+  // 颈：短一点，别拉成一根柱子
+  rect(g, cx - 7, faceBot - 12, 14, 16, '#a8929a')
+  rect(g, cx - 7, faceBot - 12, 5, 16, '#c2aeb4')
+  // 白衬衫的立领
+  rect(g, cx - 15, faceBot - 1, 30, 7, EMMA.shirt)
+  rect(g, cx - 15, faceBot - 1, 30, 1, '#f4f0f8')
+  rect(g, cx - 15, faceBot + 5, 30, 1, EMMA.shirtLo)
+  // 领口的 V（白领中间收进去，露出一点颈）
+  for (let i = 0; i < 4; i++) {
+    rect(g, cx - 4 + i, faceBot + 1 + i, Math.max(1, 8 - i * 2), 1, '#a8929a')
   }
-  rect(g, cx - 34, faceTop + faceH + 16, 68, 1, '#1e1c28')
+  // 黑蝴蝶结：两片翅膀（从结向外张开的三角）+ 一个结
+  const bowY = faceBot + 2
+  rect(g, cx - 18, bowY, 13, 2, EMMA.bow)
+  rect(g, cx - 15, bowY + 2, 10, 2, EMMA.bow)
+  rect(g, cx - 12, bowY + 4, 7, 2, EMMA.bow)
+  rect(g, cx + 5, bowY, 13, 2, EMMA.bow)
+  rect(g, cx + 5, bowY + 2, 10, 2, EMMA.bow)
+  rect(g, cx + 5, bowY + 4, 7, 2, EMMA.bow)
+  rect(g, cx - 18, bowY, 13, 1, '#2a2434')
+  rect(g, cx + 5, bowY, 13, 1, '#2a2434')
+  rect(g, cx - 4, bowY - 1, 9, 8, '#1c1722')
+  rect(g, cx - 4, bowY - 1, 9, 1, '#3a3248')
+  // 黑裙 / 肩（从领口向外展开）
+  for (let i = 0; i < 26; i++) {
+    const half = 26 + i * 2.4
+    rect(g, cx - half, faceBot + 9 + i, half * 2, 1, EMMA.dress)
+    rect(g, cx - half, faceBot + 9 + i, 2, 1, '#1c1824')
+  }
+  // 白围裙（女仆装的那一块）：下缘是荷叶边
+  for (let y = faceBot + 8; y < faceBot + 34; y++) {
+    const t = (y - faceBot - 8) / 26
+    const half = 7 + t * 9
+    rect(g, cx - half, y, half * 2, 1, EMMA.shirtLo)
+    rect(g, cx - half, y, 1, 1, EMMA.shirt)
+  }
+  for (let x = -16; x <= 14; x += 5) {
+    rect(g, cx + x, faceBot + 34, 5, 2, EMMA.shirtLo)
+    px(g, cx + x, faceBot + 35, EMMA.capLo)
+  }
 
   // 边缘压黑：让这张脸从黑里浮出来（不是贴上去的）
   const vig = g.createRadialGradient(cx, cy, 34, cx, cy, 150)
@@ -1579,6 +1718,61 @@ function paintEmmaFlash(g: Ctx, t: number, u: number): void {
 // 镜头 6 · 他的脸（22–25s）
 // ============================================================
 
+/** 他的脸型（半宽 / 相对 faceW）：额头宽、颧骨最高、下颌一路收到尖下巴 */
+const HIS_FACE: ReadonlyArray<readonly [number, number]> = [
+  [0.000, 0.200],
+  [0.030, 0.335],
+  [0.075, 0.400],
+  [0.140, 0.432],
+  [0.210, 0.442],
+  [0.290, 0.443],
+  [0.380, 0.434],
+  [0.480, 0.408],
+  [0.575, 0.372],
+  [0.665, 0.335],
+  [0.750, 0.285],
+  [0.830, 0.215],
+  [0.900, 0.142],
+  [0.960, 0.068],
+  [1.000, 0.006],
+]
+
+/**
+ * 头发外缘：上缘与下缘都按「相对 cx 的 dx」给关键点。
+ * 上缘的峰偏向左边（dx=-12），右边扫得更低 —— 一顶对称的圆盖就是一颗蒜。
+ * 下缘：两侧停在耳际，只有两缕（dx≈-34 / +34）垂到颌线。
+ */
+const HIS_HAIR_TOP: ReadonlyArray<readonly [number, number]> = [
+  [-66, 70], [-58, 52], [-46, 38], [-32, 28], [-14, 22], [0, 24],
+  [14, 30], [28, 40], [42, 50], [54, 58], [64, 64],
+]
+const HIS_HAIR_BOT: ReadonlyArray<readonly [number, number]> = [
+  [-66, 110], [-58, 120], [-46, 128], [-38, 148], [-28, 133], [-16, 140], [0, 144],
+  [16, 138], [26, 134], [38, 154], [46, 132], [56, 120], [64, 108],
+]
+
+/**
+ * 一绺刘海 / 一缕垂发：上宽下窄、两侧 1px 深色收边，发梢是平口的。
+ * 不要用三角收尖 —— 尖角在 384×216 上就是一根刺。
+ */
+function hairLock(
+  g: Ctx, x: number, y0: number, w: number, len: number, lean: number,
+  top: string, bot: string, edge: string,
+): void {
+  let lastW = 2
+  for (let k = 0; k < len; k++) {
+    const t = k / Math.max(1, len - 1)
+    const ww = Math.max(2, Math.round(w * (1 - 0.45 * t)))
+    const xx = x + lean * k
+    lastW = ww
+    rect(g, xx - ww / 2, y0 + k, ww, 1, mix(top, bot, t * 0.9))
+    px(g, xx - ww / 2, y0 + k, edge)
+    px(g, xx + ww / 2 - 1, y0 + k, edge)
+  }
+  // 发梢：一行平口的深色（不是尖角）
+  rect(g, x + lean * (len - 1) - lastW / 2, y0 + len - 1, lastW, 1, edge)
+}
+
 function paintHisFace(g: Ctx, t: number, u: number): void {
   // 背景：大厅的暗，右上有一点火光的漏
   vGrad(g, 0, CF_H, '#060408', '#160d10', 1)
@@ -1589,96 +1783,206 @@ function paintHisFace(g: Ctx, t: number, u: number): void {
   g.fillRect(0, 0, CF_W, CF_H)
 
   const cx = 184
-  const top = 28
-  const hh = 172
-  const faceW = 82
-  const faceTop = top + 30
-  const faceH = 116
+  const faceW = 76
+  const faceH = 104
+  const faceTop = 60
 
-  // 脖子与肩（画在脸后面，宽度比脸宽，才不会在脸侧露出一块）
-  for (let i = 0; i < 60; i++) {
-    const v = i / 60
-    const half = 30 + v * 56
-    rect(g, cx - half, faceTop + faceH * 0.82 + i, half * 2, 1, '#0b080c')
-    rect(g, cx - half, faceTop + faceH * 0.82 + i, Math.max(1, half * 0.22), 1, '#181016')
+  // ---- 脖子与肩（先画，脸压在上面）----
+  // 脖子要窄、要长；肩从下颌以下才展开 —— 肩线抬到下巴边就成了"大头娃娃"
+  for (let i = 0; i < 62; i++) {
+    const v = i / 61
+    const half = 14 + 66 * smooth(0.42, 1, v)
+    const y = faceTop + faceH * 0.80 + i
+    rect(g, cx - half, y, half * 2, 1, '#0b080c')
+    // 火光的边：只有左边那一条
+    g.fillStyle = `rgba(150,80,36,${(0.16 * (1 - v * 0.6)).toFixed(3)})`
+    g.fillRect(Math.round(cx - half), y, 1, 1)
+    rect(g, cx - half + 1, y, Math.max(1, half * 0.16), 1, '#181016')
   }
 
-  // 脸：椭圆（下巴略尖），左受光
-  for (let r = 0; r < faceH; r++) {
-    const v = r / (faceH - 1)
-    const half = (faceW / 2) * Math.sin(Math.PI * clamp01(0.10 + v * 0.90)) * (v > 0.72 ? 1 - (v - 0.72) * 1.1 : 1)
-    if (half <= 0.4) continue
-    const y = faceTop + r
-    rect(g, cx - half, y, half * 2, 1, C.skin)
-    rect(g, cx - half, y, Math.max(1, half * 0.58), 1, C.skinHi)
-    rect(g, cx + half * 0.34, y, half * 0.66, 1, C.skinLo)
-    if (v > 0.80) rect(g, cx - half * 0.6, y, half * 1.2, 1, '#8a7364')
+  // ---- 头发：整块外形（上宽下窄，两侧垂到耳际）----
+  // 不再逐行画锯齿 —— 那是蒜瓣的来源。整块先立起来，再在块内画发绺。
+  const HAIR_L = -66
+  const HAIR_R = 64
+  const hairTopOf = (dx: number): number => {
+    // 顶上两撮不对称的翘起 + 3px 的固定列噪声
+    return Math.round(
+      prof(HIS_HAIR_TOP, dx)
+      - 6 * Math.max(0, 1 - Math.abs(dx + 31) / 11)
+      - 3.5 * Math.max(0, 1 - Math.abs(dx - 18) / 9)
+      - 2.2 * hash(Math.floor(dx / 3) * 37 + 5),
+    )
   }
-
-  // ---- 头发：短、乱、从发际线压下来（不是一顶帽子）----
-  const hairTop = faceTop - 26
-  const hairBottom = faceTop + 14
-  for (let y = hairTop; y < hairBottom; y++) {
-    const v = (y - hairTop) / (hairBottom - hairTop)
-    // 顶部窄、两侧宽，下缘（太阳穴）略收
-    const half = (faceW / 2) * (0.70 + 0.36 * Math.sin(Math.PI * clamp01(v * 0.92 + 0.06)))
-    rect(g, cx - half, y, half * 2, 1, v < 0.38 ? '#5e1f14' : '#43130e')
-    // 左侧受光（火光在左下）
-    rect(g, cx - half, y, Math.max(1, half * 0.30), 1, '#8e3220')
-    if (y < hairTop + 2) rect(g, cx - half, y, half * 2, 1, '#a03e26')
+  const hairBotOf = (dx: number): number => Math.round(prof(HIS_HAIR_BOT, dx))
+  // 1) 块体：逐列铺，左受光（火光在左下）、右沉进暗里
+  for (let dx = HAIR_L; dx <= HAIR_R; dx++) {
+    const x = cx + dx
+    const y0 = hairTopOf(dx)
+    const y1 = hairBotOf(dx)
+    if (y1 <= y0) continue
+    const across = dx / 64
+    const lit = clamp01(0.68 - across * 0.82)
+    const base = mix(FTZ.hairLo, FTZ.hairLit, lit)
+    rect(g, x, y0, 1, y1 - y0, base)
+    // 顶缘一档亮（蓬松的头发会在轮廓上接光）
+    const topH = Math.max(2, Math.round((y1 - y0) * 0.22))
+    rect(g, x, y0, 1, topH, mix(base, FTZ.hairHi, 0.20 + 0.30 * lit))
+    // 发梢沉下去
+    const botH = Math.max(2, Math.round((y1 - y0) * 0.18))
+    rect(g, x, y1 - botH, 1, botH, mix(base, FTZ.hairEdge, 0.55))
   }
-  // 鬓角：两缕从太阳穴垂到耳前（长短不一）
-  for (const s of [-1, 1]) {
-    const bx = cx + s * (faceW / 2) * 0.84
-    const len = 30 + Math.round(hash(s + 3) * 10)
-    for (let k = 0; k < len; k++) {
-      const w = Math.max(2, 6 - k * 0.10)
-      rect(g, bx - w / 2 + s * k * 0.06, hairBottom - 8 + k, w, 1, k < len * 0.4 ? '#4f1a10' : '#38100a')
+  // 2) 块内的发绺分界：5 条斜向的流畅线（从头顶往下），左亮右暗
+  const SEP: ReadonlyArray<readonly [number, number, number]> = [
+    [-42, 0.34, 1.0], [-22, 0.16, 2.2], [0, -0.02, 3.1], [22, -0.18, 4.0], [42, -0.32, 5.2],
+  ]
+  for (let s = 0; s < SEP.length; s++) {
+    const [x0, lean, phase] = SEP[s]
+    for (let y = 26; y < 164; y++) {
+      const tt = (y - 26) / 138
+      const dx = x0 + lean * (y - 26) + Math.sin(tt * 2.6 + phase) * 3.2
+      if (dx < HAIR_L + 1 || dx > HAIR_R - 1) continue
+      if (y <= hairTopOf(dx) + 2 || y >= hairBotOf(dx) - 3) continue
+      px(g, cx + dx, y, FTZ.hairEdge)
+      // 分界线左侧是这一绺的受光面（只给左半边）
+      if (dx < 12) px(g, cx + dx - 1, y, FTZ.hairHi)
+      if (dx < -8 && hash(y * 3 + s) > 0.55) px(g, cx + dx - 2, y, FTZ.hairRim)
     }
   }
-  // 额前的碎发（不规则地垂下几缕）
-  for (let i = 0; i < 6; i++) {
-    const x = cx - faceW / 2 + 6 + i * (faceW / 6)
-    const h2 = 6 + Math.round(hash(i * 11 + 3) * 12)
-    for (let k = 0; k < h2; k++) {
-      const lean = Math.sin(k * 0.5 + i) * 1.5
-      px(g, x + lean, faceTop - 2 + k, k < h2 * 0.4 ? '#5e1f14' : '#3f120c')
+  // 3) 外缘：逐行找左右两极，各封 1px 深色边（左缘再点一道铜色）
+  for (let y = 18; y < 172; y++) {
+    let xl = 9999
+    let xr = -9999
+    for (let dx = HAIR_L; dx <= HAIR_R; dx++) {
+      if (y > hairTopOf(dx) && y < hairBotOf(dx)) {
+        if (dx < xl) xl = dx
+        if (dx > xr) xr = dx
+      }
     }
+    if (xr < xl) continue
+    px(g, cx + xl, y, FTZ.hairEdge)
+    px(g, cx + xr, y, FTZ.hairEdge)
+    if (y > 46 && y < 150) px(g, cx + xl + 1, y, FTZ.hairRim)
   }
 
-  // ---- 眼睛：没有焦点（瞳孔不聚，也不画高光）----
-  const eyeY = faceTop + faceH * 0.40
-  const eyeDX = 21
+  // ---- 脸：瘦长的椭圆，下巴尖（左受光 → 右背光 → 下颌压暗）----
+  const SHADE_STOPS: ReadonlyArray<number> = [0.00, 0.18, 0.40, 0.60, 0.79, 1.00]
+  rowsOnScreen(faceTop, faceH, (sy, v) => {
+    const half = prof(HIS_FACE, v) * faceW
+    if (half <= 0.4) return
+    const fx = cx - half
+    const full = half * 2
+    // 六档过渡：四档会在脸上留下一道道竖条
+    for (let b = 0; b < SHADE_STOPS.length; b++) {
+      const p0 = SHADE_STOPS[b]
+      const p1 = b + 1 < SHADE_STOPS.length ? SHADE_STOPS[b + 1] : 1
+      const k = clamp01(p0)
+      const col = k < 0.5 ? mix(FTZ.skinHi, FTZ.skin, k * 2) : mix(FTZ.skin, FTZ.skinLo, (k - 0.5) * 2)
+      rect(g, fx + full * p0, sy, full * (p1 - p0) + 0.5, 1, col)
+    }
+    // 发际线：脸的最上沿压暗一档（别做成一条横带）
+    if (v < 0.035) rect(g, fx, sy, full, 1, mix(FTZ.skinLo, FTZ.skin, 0.35))
+    // 下颌 / 下巴：从 0.72 起整行压暗，收出一个尖下巴（别压成一把胡子）
+    if (v > 0.72) {
+      const k = clamp01((v - 0.72) / 0.26)
+      rect(g, fx, sy, full, 1, mix(FTZ.skin, FTZ.skinShade, 0.04 + k * 0.30))
+    }
+  })
+
+  // ---- 发际线 + 刘海：一条会垂下来的发边（三绺的垂势），不是一排齐齿 ----
+  // 只盖住脸的上沿（每一列从皮肤的顶边往上 3px 起），所以头骨顶上的蓬松轮廓不会被抹平
+  const FRINGE_DIP = (dx: number): number =>
+    7.5 * Math.exp(-Math.pow((dx + 14) / 10, 2))
+    + 6 * Math.exp(-Math.pow((dx - 10) / 9, 2))
+    + 4 * Math.exp(-Math.pow((dx - 30) / 7, 2))
+  for (let dx = -40; dx <= 40; dx++) {
+    const a = Math.abs(dx) / 40
+    const yH = Math.round(
+      61 + 10 * Math.pow(a, 1.7) + FRINGE_DIP(dx) + 1.5 * hash(Math.floor(dx / 2) * 29 + 7),
+    )
+    // 这一列上皮肤的顶边（没有脸的地方就贴着发块走）
+    const need = Math.abs(dx) / faceW
+    let vv = 0
+    while (vv < 0.5 && prof(HIS_FACE, vv) < need) vv += 0.01
+    const yFace = faceTop + vv * faceH
+    const y0 = Math.max(26, Math.round(yFace) - 3)
+    if (yH <= y0 + 1) continue
+    const lit = clamp01(0.62 - (dx / 64) * 0.8)
+    const base = mix(FTZ.hairLo, FTZ.hairLit, lit)
+    rect(g, cx + dx, y0, 1, yH - y0, base)
+    // 发边的 1px 深色 + 上面一档受光（头发在额头上的那道影）
+    px(g, cx + dx, yH - 1, FTZ.hairEdge)
+    if (dx < 12) px(g, cx + dx, yH - 3, mix(base, FTZ.hairHi, 0.55))
+    // 发际线压在皮肤上的那道细影
+    px(g, cx + dx, yH + 1, 'rgba(40,22,18,0.45)')
+  }
+  // 两撮较长的发绺：从发边斜着扫下来（这一笔是 ftz 立绘的分法）
+  hairLock(g, cx - 3, 58, 16, 26, -0.55, FTZ.hairLit, FTZ.hairMid, FTZ.hairEdge)
+  hairLock(g, cx + 20, 60, 9, 16, 0.30, FTZ.hairMid, FTZ.hairLo, FTZ.hairEdge)
+  hairLock(g, cx - 28, 64, 7, 14, -0.20, FTZ.hairLo, FTZ.hairEdge, FTZ.hairEdge)
+
+  // ---- 眼睛：细长、蓝灰、上眼睑线明确（瞳孔不聚 = 没有焦点）----
+  const eyeY = faceTop + faceH * 0.400
+  const eyeDX = faceW * 0.25
   const eyeW = 20
+  const eyeH = 5
   for (const ex of [cx - eyeDX, cx + eyeDX]) {
-    // 眼窝的暗
-    rect(g, ex - eyeW / 2 - 2, eyeY - 4, eyeW + 4, 12, '#a08a78')
-    // 眼白压暗（侧光下眼白不会是白的）
-    rect(g, ex - eyeW / 2, eyeY, eyeW, 5, '#877c70')
-    // 虹膜：灰蓝，无高光
-    rect(g, ex - 6, eyeY, 12, 5, '#3d4a52')
-    rect(g, ex - 4, eyeY + 1, 8, 4, '#1a2024')
-    // 上眼睑：压得很低
-    rect(g, ex - eyeW / 2 - 2, eyeY - 2, eyeW + 4, 2, '#3a2418')
-    // 下眼睑的阴影
-    rect(g, ex - eyeW / 2, eyeY + 5, eyeW, 1, '#7a6050')
+    // 眼窝的影（不是一块亮皮肤）
+    rect(g, ex - eyeW / 2 - 2, eyeY - 5, eyeW + 4, 12, mix(FTZ.skin, FTZ.skinShade, 0.22))
+    // 眼白：压暗、偏冷
+    rect(g, ex - eyeW / 2, eyeY, eyeW, eyeH, FTZ.eyeWhite)
+    // 虹膜：蓝灰（上半亮一档），瞳孔大而钝（不聚光）
+    rect(g, ex - 7, eyeY, 14, eyeH, FTZ.irisLo)
+    rect(g, ex - 7, eyeY, 14, 2, FTZ.iris)
+    rect(g, ex - 2, eyeY, 5, eyeH, FTZ.pupil)
+    // 上眼睑线：明确的一道，眼尾再压出去 2px（那一下才有神）
+    rect(g, ex - eyeW / 2 - 2, eyeY - 2, eyeW + 4, 2, FTZ.lid)
+    px(g, ex - eyeW / 2 - 2, eyeY - 3, FTZ.lid)
+    px(g, ex + eyeW / 2 + 1, eyeY - 1, FTZ.lid)
+    // 下眼睑
+    rect(g, ex - eyeW / 2, eyeY + eyeH, eyeW, 1, mix(FTZ.skinLo, FTZ.skin, 0.4))
   }
-  // 眉：压低、几乎是平的
-  rect(g, cx - eyeDX - 13, eyeY - 9, 24, 2, '#4a1c16')
-  rect(g, cx + eyeDX - 11, eyeY - 9, 24, 2, '#4a1c16')
+  // 眉：粗、平、压低（他在皱眉）—— 细眉会让这张脸立刻变回"姑娘"
+  const browY = eyeY - 12
+  for (const s of [-1, 1]) {
+    const bx = cx + s * eyeDX
+    rect(g, bx - 13, browY, 21, 2, FTZ.brow)
+    // 内端再压一点（眉心的那道皱）
+    rect(g, bx - s * 10, browY + 2, 7, 1, FTZ.brow)
+    px(g, bx + s * 9, browY - 1, FTZ.brow)
+  }
+  // 颧骨下的那道影：从眼尾斜着落到下颌（这张脸要有骨头，不能是一块橡皮）
+  for (const s of [-1, 1]) {
+    const bx = cx + s * eyeDX
+    for (let k = 0; k < 14; k++) {
+      px(g, bx + s * (10 + k * 0.55), eyeY + 8 + k,
+        mix(FTZ.skinLo, FTZ.skinShade, 0.25 + k * 0.02))
+    }
+  }
 
-  // 鼻：窄高光 + 鼻底阴影
-  rect(g, cx - 1, faceTop + faceH * 0.44, 2, faceH * 0.20, C.skinHi)
-  rect(g, cx - 5, faceTop + faceH * 0.64, 10, 2, '#8a7466')
-  px(g, cx - 4, faceTop + faceH * 0.64 + 2, '#6a5448')
-  px(g, cx + 4, faceTop + faceH * 0.64 + 2, '#6a5448')
-  // 嘴：一条平线（没有笑，也没有说话）
-  rect(g, cx - 12, faceTop + faceH * 0.78, 24, 2, '#6a3a34')
-  rect(g, cx - 10, faceTop + faceH * 0.78 + 2, 20, 1, '#8a5a4a')
+  // ---- 鼻：窄、偏冷的一道高光 + 鼻尖 + 鼻底的一道软影 ----
+  const noseTop = faceTop + faceH * 0.435
+  const noseBot = faceTop + faceH * 0.625
+  rect(g, cx - 1, noseTop, 3, noseBot - noseTop, mix(FTZ.skinHi, FTZ.skin, 0.25))
+  rect(g, cx + 2, noseTop, 1, noseBot - noseTop, mix(FTZ.skinLo, FTZ.skinShade, 0.35))
+  // 鼻尖：横向的一小段（鼻子的圆头）
+  rect(g, cx - 5, noseBot - 2, 10, 2, FTZ.skinHi)
+  // 鼻底：只比肤色暗一档的短影（做长了会读成牙齿）
+  rect(g, cx - 6, noseBot, 12, 1, mix(FTZ.skinLo, FTZ.skinShade, 0.35))
+  px(g, cx - 5, noseBot, FTZ.skinShade)
+  px(g, cx + 4, noseBot, FTZ.skinShade)
+
+  // ---- 嘴：一条平线（没有笑，也没有说话）----
+  const mouthY = faceTop + faceH * 0.795
+  rect(g, cx - 13, mouthY, 26, 2, FTZ.lip)
+  rect(g, cx - 11, mouthY + 2, 22, 1, mix(FTZ.lipLo, FTZ.lip, 0.4))
+  px(g, cx - 13, mouthY, FTZ.lipLo)
+  px(g, cx + 12, mouthY, FTZ.lipLo)
+  // 下唇下面的一道影：让下巴与嘴分开
+  rect(g, cx - 10, mouthY + 4, 20, 1, mix(FTZ.skinLo, FTZ.skinShade, 0.5))
 
   // 右边一半被黑影吞掉（光只到左半张脸）
-  for (let x = cx + 26; x < CF_W; x++) {
-    const a = smooth(cx + 26, cx + 108, x) * 0.74
+  for (let x = cx + 22; x < CF_W; x++) {
+    const a = smooth(cx + 22, cx + 104, x) * 0.76
     if (a <= 0.004) continue
     g.fillStyle = `rgba(2,1,3,${a.toFixed(3)})`
     g.fillRect(x, 0, 1, CF_H)
@@ -1828,36 +2132,121 @@ function paintBroochShot(g: Ctx, t: number, u: number): void {
   vignette(g, 0.62, 192, 110)
 }
 
-/** ③ 红发被火光染亮 */
+/**
+ * ③ 红发被火光染亮 —— 极近的侧拍：发际线、鬓角、耳朵的上缘。
+ * 上一版是五条抽象的波浪，看不出是谁的头发；这一版把「耳际」拍进来：
+ * 左下是太阳穴与耳朵（大半沉在暗里），头发从他脑后斜着垂下来，
+ * 束与束之间是 1px 的黑缝，受火的那一侧封一道铜色的边。
+ */
 function paintHairShot(g: Ctx, t: number, u: number): void {
-  vGrad(g, 0, CF_H, '#0a0507', '#1a0b09', 1)
-  // 四大束头发：每束是宽的波浪，束与束之间是黑缝
-  const strands = 5
-  for (let s = 0; s < strands; s++) {
-    const baseX = -20 + s * 96
-    const bend = 0.5 + hash(s * 13 + 3) * 0.5
-    const w0 = 54 + hash(s * 17 + 5) * 26
-    for (let r = 0; r < 220; r++) {
-      const y = r - 6
-      if (y < 0 || y >= CF_H) continue
-      const cx = baseX + Math.sin(r * 0.017 + s * 1.9) * 22 * bend + r * 0.16
-      const w = w0 * (0.86 + 0.14 * Math.sin(r * 0.02 + s))
-      // 束的颜色：左侧暗、中间主色、右侧受火光的边
-      const x0 = Math.round(cx - w / 2)
-      rect(g, x0, y, w, 1, s % 2 === 0 ? '#4a130d' : '#3a0e0a')
-      rect(g, x0, y, Math.max(1, w * 0.22), 1, '#5e1a10')
-      // 束内的发丝：两道更亮的纵线
-      rect(g, x0 + w * 0.30, y, Math.max(1, w * 0.10), 1, '#7e2614')
-      if (r % 7 < 5) rect(g, x0 + w * 0.62, y, Math.max(1, w * 0.07), 1, '#6a1e12')
-      // 火光的边：只有靠右下的一侧
-      const lit = clamp01((cx + y) / 620 - 0.05)
-      if (lit > 0.2) {
-        const a = lit * (0.5 + 0.16 * Math.sin(t * 2.2 + s + r * 0.04))
-        rect(g, x0 + w - Math.max(2, Math.round(w * 0.16)), y, Math.max(2, Math.round(w * 0.16)), 1, `rgba(216,102,42,${clamp01(a).toFixed(3)})`)
-        if (lit > 0.55 && hash(s * 7 + r) > 0.45) px(g, x0 + w - 2, y, `rgba(255,186,104,${(lit * 0.55).toFixed(3)})`)
+  vGrad(g, 0, CF_H, '#0a0507', '#1c0c09', 1)
+
+  // 发际线：从左缘的太阳穴一路斜到右下画外（这条线以下才是脸）
+  const hairLine = (x: number): number => 96 + 128 * Math.pow(clamp01(x / 214), 1.55)
+
+  // ---- 1) 头发：斜向的发绺（从左上扫到右下），底色是深红棕 ----
+  rect(g, 0, 0, CF_W, CF_H, FTZ.hairLo)
+  const BANDS: ReadonlyArray<readonly [number, number, number, number]> = [
+    // [起点 x, 束宽, 弯度, 相位]
+    [-56, 62, 16, 0.0],
+    [-2, 58, 22, 1.1],
+    [54, 62, 18, 2.2],
+    [112, 66, 14, 3.3],
+    [172, 70, 12, 4.4],
+    [236, 74, 10, 5.5],
+    [304, 78, 8, 6.6],
+  ]
+  for (let s = 0; s < BANDS.length; s++) {
+    const [x0, w0, bend, phase] = BANDS[s]
+    for (let y = -6; y < CF_H; y++) {
+      const v = y / CF_H
+      // 每束都往右下斜：y 每走 1px，x 走 0.5px
+      const cx2 = x0 + y * 0.52 + bend * Math.sin(v * 1.9 + phase)
+      const w = w0 * (0.9 + 0.1 * Math.sin(v * 2.7 + phase))
+      const x0i = Math.round(cx2 - w / 2)
+      const wi = Math.round(w)
+      if (x0i > CF_W || x0i + wi < 0) continue
+      if (y > hairLine(cx2) + 2) continue
+      // 束：中间主色（越靠上越亮一档）、两侧各 1px 深色缝
+      const litTop = clamp01(1 - y / 260)
+      const body = mix(FTZ.hairLo, FTZ.hairLit, 0.25 + litTop * 0.55)
+      rect(g, x0i, y, wi, 1, body)
+      rect(g, x0i, y, Math.max(1, Math.round(wi * 0.10)), 1, FTZ.hairEdge)
+      rect(g, x0i + wi - Math.max(1, Math.round(wi * 0.10)), y, Math.max(1, Math.round(wi * 0.10)), 1, FTZ.hairEdge)
+      // 束内的一档亮发丝（斜着走，不是一条竖线）
+      rect(g, x0i + Math.round(wi * 0.32), y, Math.max(1, Math.round(wi * 0.14)), 1, mix(body, FTZ.hairHi, 0.5))
+      // 火光的边：靠右下的一侧，越近越亮
+      const lit = clamp01((cx2 * 0.45 + y * 0.85) / 330 - 0.30)
+      if (lit > 0.10) {
+        const a = lit * (0.42 + 0.14 * Math.sin(t * 2.2 + s * 0.7))
+        rect(g, x0i + wi - Math.max(2, Math.round(wi * 0.13)), y, Math.max(2, Math.round(wi * 0.13)), 1,
+          `rgba(206,108,50,${clamp01(a).toFixed(3)})`)
+        if (lit > 0.60 && hash(s * 13 + y * 3) > 0.55) {
+          px(g, x0i + wi - 2, y, `rgba(255,182,106,${(lit * 0.5).toFixed(3)})`)
+        }
       }
     }
   }
+
+  // ---- 2) 太阳穴与脸颊：发际线以下的一块皮肤（大半在暗里，只有耳朵接光）----
+  for (let y = 96; y < CF_H; y++) {
+    const xEnd = Math.round(210 * Math.pow(clamp01((y - 96) / 124), 1 / 1.55))
+    if (xEnd <= 0) continue
+    // 三段：靠发际线的一线暖光 → 中间 → 往下的暗
+    const deep = mix(FTZ.skin, '#2e1f1a', 0.60)
+    rect(g, 0, y, xEnd, 1, deep)
+    rect(g, 0, y, Math.max(1, xEnd * 0.26), 1, mix(deep, FTZ.skin, 0.40))
+    rect(g, 0, y, Math.max(1, xEnd * 0.10), 1, mix(deep, FTZ.skinLo, 0.55))
+  }
+  // 发际线落在皮肤上的那道影（2px，压住交界）
+  for (let x = 0; x < 240; x++) {
+    const y = Math.round(hairLine(x) + Math.sin(x * 0.11) * 1.5)
+    if (y >= CF_H) break
+    rect(g, x, y, 1, 2, 'rgba(26,14,12,0.60)')
+  }
+
+  // ---- 3) 耳朵：只给到「耳际」—— 耳朵压在画面下缘，只露上缘（不画耳甲，
+  //      一个亮的椭圆配一个黑洞，读起来就是一只眼睛）----
+  const earX = 58
+  const earY = 230
+  const erx = 25
+  const ery = 44
+  for (let r = 0; r < 80; r++) {
+    const v = (r - ery) / ery
+    const half = Math.round(erx * Math.sqrt(Math.max(0, 1 - v * v)))
+    if (half <= 0) continue
+    const y = earY - ery + r
+    if (y < 0 || y >= CF_H) continue
+    rect(g, earX - half, y, half * 2, 1, mix('#4a332a', FTZ.skinLo, 0.20))
+  }
+  // 外耳轮：上缘的一道细亮（火从右下打上来，只擦到耳廓的背面）
+  for (let r = 0; r < 26; r++) {
+    const v = (r - ery) / ery
+    const half = Math.round(erx * Math.sqrt(Math.max(0, 1 - v * v)))
+    if (half <= 1) continue
+    const y = earY - ery + r
+    if (y < 0 || y >= CF_H) continue
+    px(g, earX + half - 1, y, mix(FTZ.skinLo, FTZ.skin, 0.55))
+    if (r < 6) px(g, earX - half + 1, y, mix(FTZ.skinLo, FTZ.skin, 0.35))
+  }
+  // 耳后的一道深影：把耳朵与脸分开（不是描边）
+  for (let r = 0; r < 40; r++) {
+    const y = earY - ery + r
+    if (y < 0 || y >= CF_H) continue
+    const v = (r - ery) / ery
+    const half = Math.round(erx * Math.sqrt(Math.max(0, 1 - v * v)))
+    if (half <= 1) continue
+    px(g, earX - half - 1, y, 'rgba(14,8,7,0.7)')
+  }
+
+  // ---- 4) 发边往皮肤上落的一道软影（3px，让交界不是一刀切）----
+  for (let x = 0; x < 170; x++) {
+    const y = Math.round(hairLine(x))
+    if (y + 1 >= CF_H) break
+    rect(g, x, y + 1, 1, 2, 'rgba(24,13,11,0.35)')
+    px(g, x, y + 3, 'rgba(24,13,11,0.18)')
+  }
+
   // 火光从右下打来：一片暖色的晕
   const warm = g.createRadialGradient(300, 200, 8, 300, 200, 210)
   warm.addColorStop(0, 'rgba(255,150,64,0.24)')
@@ -2219,44 +2608,87 @@ function paintNearShot(g: Ctx, t: number): void {
   g.fillStyle = cool
   g.fillRect(0, 0, CF_W, CF_H)
 
-  // 脸（也含头发）。嘴角在推近的后半段抬到 1 ——「像在笑」。
-  const mood = 0.35 + 0.5 * smooth(45.6, 49.4, t)
+  // 脸（也含头发）。嘴角在推近的后半段抬到上限 ——「似乎微微上扬了一点」。
+  const mood = 0.30 + 0.45 * smooth(45.6, 49.4, t)
   paintVictoriaHead(g, box, mood, 0.85)
 
-  // 上下各压一道渐暗：下巴沉进黑里，画面只剩嘴唇那一块亮（字也压得住）
-  for (let y = 138; y < CF_H; y++) {
-    const a = smooth(138, CF_H - 6, y) * 0.72
+  // ---- 去饱和：越近越没有颜色（1.0 → 0.45）----
+  // 'saturation' 混合 + 中灰：把彩度压到 0，再用 alpha 决定压到多少。
+  // 嘴唇的鲜红就是在这里退成砖红 / 褐红的 —— 只靠压暗，只会压出一张更深的血口。
+  const near = clamp01((t - NEAR_T0) / (NEAR_T1 - NEAR_T0))
+  const desat = 0.55 * smooth(0.05, 0.90, near)
+  if (desat > 0.004) {
+    g.save()
+    g.globalCompositeOperation = 'saturation'
+    g.fillStyle = `rgba(128,128,128,${desat.toFixed(3)})`
+    g.fillRect(0, 0, CF_W, CF_H)
+    g.restore()
+    // 冷：一层极淡的青灰压上去（红退成冷灰里的砖红）
+    g.fillStyle = `rgba(36,46,62,${(0.10 * smooth(0.15, 1, near)).toFixed(3)})`
+    g.fillRect(0, 0, CF_W, CF_H)
+  }
+
+  // 上下各压一道渐暗：只给嘴唇留一条横缝（越近越窄，字也压得住）
+  const slitTop = 92 - 22 * near
+  for (let y = 0; y < slitTop; y++) {
+    const a = Math.pow(1 - y / slitTop, 1.35) * (0.80 + 0.10 * near)
     if (a <= 0.004) continue
     g.fillStyle = `rgba(0,0,0,${a.toFixed(3)})`
     g.fillRect(0, y, CF_W, 1)
   }
-  for (let y = 0; y < 26; y++) {
-    const a = (1 - y / 26) * 0.55
+  const slitBot = 126 + 8 * near
+  for (let y = slitBot; y < CF_H; y++) {
+    const a = Math.pow((y - slitBot) / (CF_H - slitBot), 0.90) * (0.90 + 0.06 * near)
     if (a <= 0.004) continue
-    g.fillStyle = `rgba(0,0,0,${a.toFixed(3)})`
+    g.fillStyle = `rgba(0,0,0,${Math.min(1, a).toFixed(3)})`
     g.fillRect(0, y, CF_W, 1)
   }
 
-  // 极近时：把四周压暗，只剩嘴唇那一块亮（像镜头贴上去的暗角）
+  // 暗角：随推近加强 —— 最后只剩中间一条横缝是亮的（像镜头贴在画布上）
   const zoomIn = clamp01((t - 49.0) / 4)
-  if (zoomIn > 0.01) {
-    const grad = g.createRadialGradient(192, 112, 18, 192, 112, 172)
+  const vigIn = 12 + 26 * near
+  const vigOut = 178 - 96 * near
+  {
+    // 竖着压扁的椭圆暗角：圆形的暗角到不了「一条缝」
+    g.save()
+    g.translate(192, 112)
+    g.scale(1, 0.46)
+    const grad = g.createRadialGradient(0, 0, vigIn, 0, 0, vigOut)
     grad.addColorStop(0, 'rgba(0,0,0,0)')
-    grad.addColorStop(0.45, `rgba(0,0,0,${(zoomIn * 0.14).toFixed(3)})`)
-    grad.addColorStop(0.78, `rgba(0,0,0,${(zoomIn * 0.52).toFixed(3)})`)
-    grad.addColorStop(1, `rgba(0,0,0,${(zoomIn * 0.86).toFixed(3)})`)
+    grad.addColorStop(0.34, `rgba(0,0,0,${(0.04 + 0.24 * near).toFixed(3)})`)
+    grad.addColorStop(0.66, `rgba(0,0,0,${(0.26 + 0.36 * near).toFixed(3)})`)
+    grad.addColorStop(1, `rgba(0,0,0,${(0.72 + 0.26 * near).toFixed(3)})`)
     g.fillStyle = grad
-    g.fillRect(0, 0, CF_W, CF_H)
+    g.fillRect(-420, -420, 840, 840)
+    g.restore()
+  }
+  if (zoomIn > 0.01) {
     // 左右两条竖直的暗带：两侧的红发退到暗里，画面只剩中间那张嘴
-    for (let x = 0; x < 72; x++) {
-      const a = zoomIn * 0.72 * (1 - x / 72)
+    for (let x = 0; x < 78; x++) {
+      const a = zoomIn * 0.78 * (1 - x / 78)
       if (a <= 0.004) continue
       g.fillStyle = `rgba(0,0,0,${a.toFixed(3)})`
       g.fillRect(x, 0, 1, CF_H)
       g.fillRect(CF_W - 1 - x, 0, 1, CF_H)
     }
-  } else {
-    vignette(g, 0.42, 192, 104)
+  }
+
+  // 最后 3 秒：整体再降 25% 亮度（嘴唇也沉下去）
+  const dark = 0.25 * smooth(NEAR_T1 - 3, NEAR_T1, t)
+  if (dark > 0.004) {
+    g.fillStyle = `rgba(0,0,0,${dark.toFixed(3)})`
+    g.fillRect(0, 0, CF_W, CF_H)
+  }
+
+  // 胶片颗粒：稀疏、低对比、逐帧不同（hash 是确定性的，同一秒每次画出来一样）
+  const frame = Math.floor(t * 18)
+  for (let i = 0; i < 520; i++) {
+    const gx = Math.floor(hash(i * 3 + frame * 911) * CF_W)
+    const gy = Math.floor(hash(i * 7 + frame * 577 + 1) * CF_H)
+    const light = hash(i * 11 + frame * 131) > 0.52
+    const a = 0.018 + hash(i * 13 + frame * 313) * 0.045
+    g.fillStyle = light ? `rgba(255,244,228,${a.toFixed(3)})` : `rgba(0,0,0,${a.toFixed(3)})`
+    g.fillRect(gx, gy, 1, 1)
   }
 }
 
