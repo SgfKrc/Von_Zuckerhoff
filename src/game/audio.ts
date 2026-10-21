@@ -408,6 +408,8 @@ class SoundEngine {
     const t = ctx.currentTime
     // 汽笛是多节点图（失谐双振荡 + 带通 + 混响），走自己的构造函数
     if (name === 'whistle') { this.whistle(ctx, t); return }
+    // 打字机击键：极短的低沉按压声，走自己的构造函数
+    if (name === 'type') { this.typeClick(ctx, t); return }
     const g = ctx.createGain()
     g.connect(this.master!)
     const o = ctx.createOscillator()
@@ -457,6 +459,56 @@ class SoundEngine {
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.2)
         o.start(t); o.stop(t + 0.21)
     }
+  }
+
+  /**
+   * 打字机击键（type）：低沉的一下，像指节敲在木头上，而不是高频「嗒」。
+   *
+   * 第一版用 800–1600Hz 方波 + 带通，实测听感太清脆、会从 BGM 上「跳」出来
+   * （高频短脉冲对音乐中低频的遮蔽极强，听上去像把 BGM 戳断了）。
+   * 现在改成压在低中频：
+   * - 时长 18–25ms（随机）
+   * - 音源：200–360Hz 三角波，音高再 ±8% 随机 —— 不抖的话每一下同高，连起来像节拍器
+   * - 频率在 20 多毫秒内滑到 0.65 倍：做出「敲下去被阻尼」的闷响
+   * - 低通 1100Hz 再削一道三角波的高次谐波，让它稳稳垫在 BGM 下面
+   * - 峰值音量 0.020–0.026（比门 / 翻页都轻）
+   *
+   * 回收沿用 disposeGraphOnEnded 模式：主振荡器 ended 时把振荡器、低通、增益
+   * 整条链一次 disconnect，每响一次都不留下节点。（打字机每 3 个字响一次，
+   * 一秒不到十响，但连续几小时对话下来节点数必须回到零。）
+   */
+  private typeClick(ctx: AudioContext, t: number): void {
+    const dur = 0.018 + Math.random() * 0.007                              // 18–25ms
+    const f0 = (200 + Math.random() * 160) * (0.92 + Math.random() * 0.16) // 200–360Hz，±8%
+    const peak = 0.020 + Math.random() * 0.006                             // 0.020–0.026
+
+    const o = ctx.createOscillator()
+    o.type = 'triangle'
+    o.frequency.setValueAtTime(f0, t)
+    // 短促下滑：低频体 + 阻尼感，比固定音高更像一次「按压」
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.65, t + dur)
+
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(1100, t)
+    lp.Q.value = 0.7
+
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(peak, t + 0.002)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+
+    o.connect(lp)
+    lp.connect(g)
+    g.connect(this.master!)
+
+    const nodes: AudioNode[] = [o, lp, g]
+    o.addEventListener('ended', () => {
+      for (const node of nodes) { try { node.disconnect() } catch { /* ignore */ } }
+    }, { once: true })
+
+    o.start(t)
+    o.stop(t + dur + 0.004)
   }
 
   /** 音效混响：沿用 bgm.ts 的脉冲响应算法，整个生命周期只建一个 Convolver */

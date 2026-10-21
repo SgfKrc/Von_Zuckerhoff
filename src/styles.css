@@ -181,6 +181,16 @@ html, body, #root {
   50% { transform: translateY(3px); opacity: 1; }
 }
 
+/* 打字机：▼ 只在整句出完之后才挂载。先淡入 0.2s，再交回原有的 bob 呼吸，
+   免得「箭头突然跳出来」比字还抢眼。 */
+.dialog-next.enter {
+  animation: dialog-next-in .2s ease-out both, bob 1.1s .2s infinite;
+}
+@keyframes dialog-next-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .choices {
   width: min(760px, 92vw);
   display: flex;
