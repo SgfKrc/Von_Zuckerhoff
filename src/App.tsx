@@ -17,6 +17,7 @@ import { Achievements } from './ui/Achievements'
 import { Inventory } from './ui/Inventory'
 import { BlueprintRepair } from './ui/BlueprintRepair'
 import { TowerMeasure } from './ui/TowerMeasure'
+import { EtiquetteQuiz } from './ui/EtiquetteQuiz'
 import { Toasts } from './ui/Toasts'
 import { Snd } from './game/audio'
 import './styles.css'
@@ -36,7 +37,12 @@ export default function App() {
   // 调试入口：?start=1 直接开始；?map=hall 跳场景；?bp=1 同时开图纸
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
-    if (!q.has('start')) return
+    if (!q.has('start')) {
+      // 单独调小游戏（?ui=quiz）：不进游戏，直接把那本礼仪书铺在标题画面上。
+      // 不写开场剧本：验收 1 关心的是「三题可答、答完出总分」。
+      if (q.get('ui') === 'quiz') setFlag('etiquetteQuizActive', true)
+      return
+    }
     newGame()
     const map = q.get('map')
     if (map) {
@@ -73,6 +79,7 @@ export default function App() {
         if (ui === 'save') setShowSave(true)
         if (ui === 'ach') setShowAch(true)
         if (ui === 'tower') setFlag('towerMeasureActive', true)
+        if (ui === 'quiz') setFlag('etiquetteQuizActive', true)
         // 调试：?item=letter,brooch,sugar 直接发放物品；?ui=inv 打开背包
         const items = q.get('item')
         if (items) {
@@ -188,6 +195,7 @@ export default function App() {
       {mode === 'explore' && inventoryOpen && <Inventory />}
       <BlueprintRepair />
       <TowerMeasure />
+      <EtiquetteQuiz />
       <Toasts />
     </div>
   )

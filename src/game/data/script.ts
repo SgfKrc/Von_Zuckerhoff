@@ -1552,3 +1552,64 @@ const CHAPTER1_GAP_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, CHAPTER1_GAP_SCRIPTS)
+
+// ============================================================
+// 追加区 5：场景 11 · 礼仪课（原作 L787–L891）
+// ------------------------------------------------------------
+// 流程：
+//   etiquetteClass  下午的餐厅 · 长桌 · 那根「不是用来打人的」木棍 → 出题
+//     └ do [{ quiz: 'etiquette' }] → EtiquetteQuiz.tsx 接管画面：
+//         三道选择题（座位 / 两位公爵 / 年限与血缘都一样）
+//         + 皇帝全称（第 4 题，纯展示，组件里自己逐字打）
+//   答完写 flags.etiquetteScore（0–3），再接：
+//   etiquetteAfter  她的脸很近（压迫感）+ 年龄之谜（不给答案）
+//
+// 口吻照 NARRATIVE_DESIGN §7：艾玛只陈述、不劝阻；主角独白一律全角括号。
+// 礼仪分先埋线，第六章千面之月的宴会上才结账。
+// 本区只在文件末尾追加，上面的字一个都不动。
+// ============================================================
+
+const ETIQUETTE_SCRIPTS: Record<string, Step[]> = {
+  // ---- 开场：下午的餐厅（L787–L799） ----
+  etiquetteClass: [
+    { t: 'line', sp: 'none', text: '下午的阳光斜着切进餐厅。长桌上摊着《贵族礼仪规范》，封面压着双头鹰徽记。' },
+    { t: 'line', sp: 'ftz', text: '（罗严克拉姆王朝的徽记。帝国统一之前的东西。）' },
+    { t: 'line', sp: 'none', text: '艾玛站在长桌一侧，手里拿一根细长的木棍。' },
+    { t: 'line', sp: 'emma', text: '不是用来打人的，少爷。是用来指着书上的图。' },
+    { t: 'line', sp: 'ftz', text: '这一节不能跳过吗。在船厂吃饭，没有人管我用哪只手拿叉子。' },
+    { t: 'line', sp: 'emma', text: '基尔的船厂不是祖克霍夫家的宴会厅。' },
+    { t: 'line', sp: 'none', text: '她把木棍横过来，点在书页的第一幅图上。然后抬起眼睛。' },
+    { t: 'line', sp: 'emma', text: '我先问。您答。' },
+    { t: 'do', do: [{ quiz: 'etiquette' }] },
+  ],
+
+  // ---- 再交互：书合上了 ----
+  etiquetteClass_again: [
+    { t: 'line', sp: 'none', text: '礼仪书合上了，压在长桌中央。木棍搁在书脊上。' },
+    { t: 'line', sp: 'emma', text: '今天的课已经上完了，少爷。' },
+    { t: 'line', sp: 'ftz', text: '（她说第二节是社交礼仪。她说的时候，我看着那根木棍。）' },
+  ],
+
+  // ---- 收尾：脸很近 + 年龄之谜（L829–L845） ----
+  etiquetteAfter: [
+    { t: 'line', sp: 'none', text: '她把书合上，扣好铜搭扣。' },
+    { t: 'line', sp: 'none', text: '然后她没有退开。' },
+    { t: 'line', sp: 'ftz', text: '（她的脸很近。近到我能看清银色卷发上每一缕光泽的走向。）' },
+    { t: 'line', sp: 'ftz', text: '（近到能感觉到她呼吸的温度，落在我的手背上。）' },
+    { t: 'line', sp: 'none', text: '灰色的瞳孔里没有情绪。没有不耐烦，也没有温和。' },
+    { t: 'line', sp: 'ftz', text: '（像一把没出鞘的刀，抵在喉咙上。刀没出鞘，可我知道它在。）' },
+    { t: 'line', sp: 'ftz', text: '你到底多大。' },
+    { t: 'line', sp: 'emma', text: '很久，少爷。' },
+    { t: 'line', sp: 'ftz', text: '很久是多久。' },
+    { t: 'line', sp: 'emma', text: '足够久。' },
+    { t: 'line', sp: 'none', text: '她直起身，把木棍收回袖子里。' },
+    { t: 'line', sp: 'ftz', text: '（她的皮肤没有皱纹。头发里没有一根灰白。动作里没有任何衰老的痕迹。）' },
+    { t: 'line', sp: 'ftz', text: '（她看起来最多二十五岁。）' },
+    { t: 'line', sp: 'ftz', text: '（——像那些画像上的人。被时间忘在某一年，再也走不动的。）' },
+    { t: 'line', sp: 'emma', text: '第二节。社交礼仪。' },
+    { t: 'line', sp: 'none', text: '他闭上了眼睛。' },
+    { t: 'line', sp: 'ftz', text: '（见鬼。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, ETIQUETTE_SCRIPTS)

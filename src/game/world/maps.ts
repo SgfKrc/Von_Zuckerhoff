@@ -571,6 +571,9 @@ const dining: GameMap = {
     { id: 'emmaDine', x: 21, y: 10, sprite: 'emma_up', solid: true, interact: 'talkEmmaDining' },
     { id: 'hermannDine', x: 12, y: 2, sprite: 'hermann_down', solid: true, interact: 'talkHermannDining' },
     { id: 'silver', x: 7, y: 5, sprite: 'notice', solid: false, interact: 'diningSilver' },
+    // 场景 11：长桌下侧正中那张小桌，摊着《贵族礼仪规范》。下午的礼仪课在这里上。
+    // 刻意避开 (7,5) 的银器调查点：交互取最近目标，叠在一起会互相抢。
+    { id: 'etiquetteTable', x: 7, y: 7, sprite: 'tableSmall', solid: true, interact: 'etiquetteClass' },
   ],
   portals: [
     { x: 1, y: 12, to: 'corridorMain', tx: 20, ty: 8, dir: 'left' },

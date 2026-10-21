@@ -240,6 +240,47 @@ export function setModal(m: string | null): void {
   useGame.setState({ modal: m })
 }
 
+// ---------------- 礼仪课小游戏 ----------------
+
+/**
+ * 礼仪分。累加，不封顶：这一轮最多 3（三道题），
+ * 第六章的宴会会读这个数，往后还可能有别的场合往里加。
+ */
+export function addEtiquette(n: number): void {
+  if (!Number.isFinite(n) || n === 0) return
+  const s = useGame.getState()
+  const cur = typeof s.flags.etiquetteScore === 'number' ? s.flags.etiquetteScore : 0
+  useGame.setState({ flags: { ...s.flags, etiquetteScore: cur + n } })
+}
+
+/** 小游戏接管的 flag：store 只管立旗，画面由对应的 UI 组件自己认领 */
+const QUIZ_FLAGS: Record<string, string> = {
+  etiquette: 'etiquetteQuizActive',
+}
+
+/** 从剧本里打开一场问答（Effect.quiz） */
+export function startQuiz(kind: string): void {
+  const flag = QUIZ_FLAGS[kind]
+  if (!flag) return
+  // 不弹 toast：面板本身就是反馈，toast 会被 overlay 压住一半
+  setFlag(flag, true)
+}
+
+/**
+ * 礼仪课答完：写分、给成就、把画面交还给剧本。
+ * 调用顺序：finishEtiquette(分数) → startScript('etiquetteAfter')。
+ * 满分 3 给「像样的继承人」；0-2 分什么也不给，第六章自己会算账。
+ */
+export function finishEtiquette(score: number): void {
+  const n = clamp(Math.round(score), 0, 3)
+  setFlag('etiquetteQuizActive', false)
+  setFlag('etiquetteDone', true)
+  addEtiquette(n)
+  setModal(null)
+  if (n >= 3) unlockAch('etiquettePerfect')
+  addToast(`礼仪课 · 记录 ${n} / 3`, 'info')
+}
+
 // ---------------- 成就 ----------------
 
 function loadAchievements(): string[] {
@@ -374,6 +415,9 @@ function applyEffects(effects: Effect[]): string | null {
     if (e.blueprint === 'open') setBlueprint(true)
     if (e.blueprint === 'close') setBlueprint(false)
     if (e.blueprint === 'toggle') toggleBlueprint()
+    // 礼仪课：打开问答小游戏 / 往礼仪分里加数
+    if (e.quiz) startQuiz(e.quiz)
+    if (typeof e.etiquette === 'number') addEtiquette(e.etiquette)
   }
   return jump
 }

@@ -137,6 +137,18 @@ export interface Effect {
   blueprint?: 'open' | 'close' | 'toggle'
   /** 背包增减：[物品 id, 数量]。数量 >0 入包（去重），<0 出包 */
   item?: [ItemId, number]
+  /**
+   * 打开一场问答小游戏（礼仪课）。
+   * 只负责把 flag 立起来：小游戏组件监听 flag，自己接管画面。
+   * 目前只有 'etiquette'，留成字符串是为了别的小游戏也能走同一条路。
+   */
+  quiz?: string
+  /**
+   * 礼仪分：累加到 flags.etiquetteScore。
+   * 第六章千面之月的宴会上用得到（分数低会被当成糖贩子的后代）。
+   * 小游戏是运行时算的分，所以除了剧本，EtiquetteQuiz 也直接调这个入口。
+   */
+  etiquette?: number
 }
 
 export type EndingId =

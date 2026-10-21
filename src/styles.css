@@ -814,3 +814,248 @@ html, body, #root {
   display: block;
   filter: drop-shadow(0 0 16px rgba(0, 0, 0, .9));
 }
+
+/* ==========================================================
+   礼仪课（场景 11）：哥特面板里摊开的一页《贵族礼仪规范》
+   面板沿用 #0b0d10 / #2a303c / 金色标题；书页是米色的纸。
+   ========================================================== */
+.etq-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 42%, rgba(14, 16, 20, .78), rgba(4, 5, 8, .95) 72%);
+}
+.etq-panel {
+  position: relative;
+  width: min(640px, 94vw);
+  max-height: 94vh;
+  background: #0b0d10;
+  border: 1px solid #2a303c;
+  border-top: 2px solid var(--gold);
+  padding: 16px 20px 8px;
+  box-shadow: 0 20px 64px rgba(0, 0, 0, .75);
+}
+.etq-title {
+  text-align: center;
+  color: var(--gold);
+  font-size: 15px;
+  letter-spacing: 8px;
+  text-indent: 8px;
+}
+.etq-sub {
+  text-align: center;
+  color: #6f6656;
+  font-size: 10px;
+  letter-spacing: 3px;
+  margin: 5px 0 13px;
+}
+
+/* ---- 书页 ---- */
+.etq-page {
+  position: relative;
+  overflow: hidden;
+  min-height: 300px;
+  padding: 30px 34px 26px 40px;
+  color: #3a3630;
+  border: 1px solid #a89e88;
+  background:
+    repeating-linear-gradient(0deg, rgba(92, 78, 52, .045) 0 1px, transparent 1px 27px),
+    linear-gradient(102deg, #efe8d7 0%, #eae2cf 48%, #e2d8c2 100%);
+  box-shadow:
+    inset 0 0 46px rgba(120, 98, 58, .22),
+    inset -14px 0 22px rgba(110, 90, 54, .10),
+    0 4px 14px rgba(0, 0, 0, .35);
+}
+/* 书脊那一侧的暗边 */
+.etq-page::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 16px;
+  background: linear-gradient(90deg, rgba(88, 72, 44, .30), rgba(88, 72, 44, 0));
+  pointer-events: none;
+}
+/* 页脚的一道细线 */
+.etq-page::after {
+  content: '';
+  position: absolute;
+  left: 40px; right: 34px; bottom: 15px;
+  border-top: 1px solid rgba(122, 104, 68, .28);
+  pointer-events: none;
+}
+
+/* 艾玛手里那根细木棍投在书页上的影子 */
+.etq-rod {
+  position: absolute;
+  top: -16px;
+  right: 32px;
+  width: 4px;
+  height: 270px;
+  transform-origin: 50% 6%;
+  background: linear-gradient(180deg,
+    rgba(24, 20, 12, .58),
+    rgba(24, 20, 12, .32) 56%,
+    rgba(24, 20, 12, .06) 88%,
+    rgba(24, 20, 12, 0));
+  filter: blur(.7px);
+  transition: transform .14s ease-out;
+  pointer-events: none;
+}
+
+.etq-folio {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #8a7c60;
+  border-bottom: 1px solid rgba(122, 104, 68, .30);
+  padding-bottom: 6px;
+  margin-bottom: 17px;
+}
+
+/* ---- 题目 ---- */
+.etq-ask {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: 1px;
+  color: #6d6350;
+}
+.etq-q {
+  margin: 0 0 18px;
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: .5px;
+  color: #2a2620;
+}
+
+/* ---- 三个选项 ---- */
+.etq-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.etq-opt {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #3a3630;
+  background: rgba(255, 252, 244, .42);
+  border: 1px solid rgba(122, 104, 68, .30);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background .14s, border-color .14s, box-shadow .14s;
+}
+.etq-opt:hover {
+  background: rgba(200, 160, 64, .14);
+  border-color: #9a7c34;
+}
+.etq-opt.sel {
+  background: rgba(200, 160, 64, .20);
+  border-color: #8a6a1c;
+  box-shadow: inset 3px 0 0 #8a6a1c;
+}
+.etq-no {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 0 3px;
+  font-size: 10px;
+  text-align: center;
+  color: #6d6350;
+  border: 1px solid #9a8c70;
+}
+.etq-opt.sel .etq-no {
+  background: #6d5a2a;
+  border-color: #6d5a2a;
+  color: #f2ece0;
+}
+
+/* ---- 结果 ---- */
+.etq-result, .etq-score { margin-top: 4px; }
+.etq-line {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.etq-line.ok { color: #3d4a3a; }
+.etq-line.bad { color: #7c2a2a; }
+.etq-line.emma { color: #4a4437; }
+.etq-line.narr { color: #6d6350; font-size: 13px; }
+.etq-line.note { color: #8a7c60; font-size: 12px; }
+.etq-answer {
+  margin: 14px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(122, 104, 68, .35);
+  font-size: 12px;
+  letter-spacing: .5px;
+  color: #6d5a2a;
+}
+
+/* ---- 总分 ---- */
+.etq-score {
+  text-align: center;
+  padding: 42px 0 26px;
+}
+.etq-score-num {
+  margin-bottom: 18px;
+  font-size: 54px;
+  line-height: 1.1;
+  letter-spacing: 2px;
+  color: #2a2620;
+}
+.etq-score-num span { font-size: 18px; color: #8a7c60; }
+.etq-score .etq-line { text-align: center; }
+
+/* ---- 第 4 题：皇帝全称（逐字打） ---- */
+.etq-emperor { padding-top: 2px; }
+.etq-title-big {
+  margin: 16px 0 18px;
+  min-height: 122px;
+  font-size: 17px;
+  line-height: 2.1;
+  letter-spacing: 1.5px;
+  color: #2a2620;
+  text-align: justify;
+  word-break: break-word;
+}
+.etq-verdict {
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(122, 104, 68, .35);
+}
+.etq-caret {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: #6d5a2a;
+  animation: etq-blink .9s steps(1) infinite;
+}
+@keyframes etq-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.etq-foot {
+  min-height: 22px;
+  padding: 10px 4px 2px;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: #a89e88;
+}
+
+@media (max-width: 560px) {
+  .etq-page { padding: 24px 20px 22px 26px; }
+  .etq-page::after { left: 26px; right: 20px; }
+  .etq-title-big { font-size: 15px; }
+}
