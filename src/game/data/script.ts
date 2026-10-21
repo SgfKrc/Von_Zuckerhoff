@@ -1499,3 +1499,56 @@ const SUGARHOFEN_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, SUGARHOFEN_SCRIPTS)
+
+// ============================================================
+// 追加区 4：第一章的两处低成本缺口
+// 依据 docs/story/CHAPTER1_GAP.md 第三节（补丁 A / 补丁 B）
+// ------------------------------------------------------------
+// 本区只在文件末尾追加，上面的字一个都不动。
+//   缺口 A：场景 8 的「房间索引」——必须插在 arriveCorridorMain 的**开头**，
+//          所以先取旧数组、在前面拼 5 句再覆盖回去。Object.assign 在模块
+//          加载时执行，早于任何 startScript，覆盖是安全的。
+//   缺口 B：场景 10 的「母亲」——新脚本 talkEmmaMother，
+//          挂在 hall 新增的 emmaHall 实体上（maps.ts）。
+// 口吻照 NARRATIVE_DESIGN §7：艾玛 ≤12 字、只陈述、不劝阻；
+// 主角独白一律全角括号；本区一个感叹号都没有。
+// ============================================================
+
+const CHAPTER1_GAP_SCRIPTS: Record<string, Step[]> = {
+  // ---- 缺口 A：房间索引（原作 L604–L610） ----
+  // 只念四个房间名，不做十八个：要的是「数不清」这个体验，不是清单本身。
+  arriveCorridorMain: [
+    // ① 艾玛报名字：匀速、不停顿、不解释。
+    { t: 'line', sp: 'none', text: '艾玛在前头带路，一路报房间名。不快不慢，像在执行一项精确到秒的任务。' },
+    { t: 'line', sp: 'emma', text: '起居室。图书室。' },
+    { t: 'line', sp: 'emma', text: '音乐室。台球室。' },
+    // ② 主角试图数。③ 数不清，放弃。
+    { t: 'line', sp: 'ftz', text: '（……第十一个。第十二个。）' },
+    { t: 'line', sp: 'ftz', text: '（她不停，也不解释。我数到第十七个。也可能是十九个。）' },
+    ...(SCRIPTS.arriveCorridorMain ?? []),
+  ],
+
+  // ---- 缺口 B：母亲（原作 L746–L782，关键句 L766） ----
+  talkEmmaMother: [
+    // 他先提早餐那句「很复杂的人」。
+    { t: 'line', sp: 'ftz', text: '早餐的时候，你说我母亲是很复杂的人。' },
+    { t: 'line', sp: 'ftz', text: '可以多告诉我一些吗？' },
+    // 沉默：久到弗里德里希以为她不会回答了。
+    { t: 'line', sp: 'none', text: '艾玛没有立刻回答。也没有抬头。' },
+    { t: 'line', sp: 'none', text: '久到弗里德里希以为她不会回答了。' },
+    // 原句拆成三行念出来（L766）。
+    { t: 'line', sp: 'emma', text: '您母亲，' },
+    { t: 'line', sp: 'emma', text: '她是唯一一个' },
+    { t: 'line', sp: 'emma', text: '让赫尔曼大人笑过的人。' },
+    // 他追问，她不再说。
+    { t: 'line', sp: 'ftz', text: '她做了什么，他才笑？' },
+    { t: 'line', sp: 'none', text: '艾玛没有再说别的。' },
+    // 他自己看画像，找不到「真实」的痕迹（L770–L772）。
+    { t: 'line', sp: 'ftz', text: '（画上的女人在笑。嘴角只有一点点。）' },
+    { t: 'line', sp: 'ftz', text: '（我在这张脸上找了很久。找不到「真实」的痕迹。）' },
+    // 落点：明天去看塔楼（L776）。
+    { t: 'line', sp: 'ftz', text: '（明天，我要去看那座塔楼。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, CHAPTER1_GAP_SCRIPTS)

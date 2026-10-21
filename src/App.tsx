@@ -44,7 +44,9 @@ export default function App() {
         const g = useGame.getState()
         g.dialog && advance()
         useGame.setState({ dialog: null, mode: 'explore', chapterCard: null })
-        setFlag('seen_' + map, true)
+        // 默认把该地图的入场脚本标记成「已看过」，免得调试时每次都被对话挡住。
+        // 加 &fresh=1 就保留入场脚本 —— 想验证 arriveXxx 这类脚本时用它。
+        if (!q.has('fresh')) setFlag('seen_' + map, true)
         setFlag('gateOpen', true)
         setFlag('hallOpen', true)
         setFlag('cellarOpen', true)

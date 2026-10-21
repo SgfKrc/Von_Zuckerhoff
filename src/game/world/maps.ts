@@ -407,6 +407,9 @@ const hall: GameMap = {
   ],
   entities: [
     { id: 'victoria', x: 12, y: 3, sprite: 'bigPainting', solid: false, tall: true, interact: 'lookVictoria' },
+    // 艾玛站在维多利亚画像前面（y5 空行，画像在 y3；玩家从 y6 走上来按 E）。
+    // 缺口 B 的「母亲」那段挂在她身上，见 script.ts 追加区 4 的 talkEmmaMother。
+    { id: 'emmaHall', x: 12, y: 5, sprite: 'emma_down', solid: true, interact: 'talkEmmaMother' },
     { id: 'ancestors', x: 4, y: 3, sprite: 'bigPainting', solid: false, tall: true, interact: 'hallAncestors' },
     { id: 'ancestors2', x: 20, y: 3, sprite: 'bigPainting', solid: false, tall: true, interact: 'hallAncestors' },
     { id: 'candL', x: 2, y: 5, sprite: 'candelabra', solid: true, tall: true, interact: 'lightCandle' },
