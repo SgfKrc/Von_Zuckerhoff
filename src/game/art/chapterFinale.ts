@@ -16,8 +16,8 @@
 //   2  5.0–10.0  远景横移：东弗里斯兰的黑森林，月光从云缝里漏下来
 //   3 10.0–15.0  更远：莱茵河，水黑如墨，只有极细的月光碎点
 //   4 15.0–19.0  回到室内：他在壁炉前的侧影，火光从下方打上来
-//   5 19.0–22.0  艾玛的闪回：她垂下眼睛，嘴没有动
-//   6 22.0–25.0  他的脸：侧光，眼睛没有焦点
+//   5 19.0–22.0  艾玛的闪回：她放在膝上的那只手（不画脸 —— 手停在膝上，什么也没做）
+//   6 22.0–25.0  他的剪影（不画脸、也不画头发 —— 只有外轮廓与左缘的一条光）
 //   7 25.0–31.0  三个快切（各 2s）：指尖的墨 / 胸口的银胸针 / 火染红的发
 //   8 31.0–36.0  仰视：大厅中央的他，背后是三幅画像
 //   9 36.0–39.0  他的背影，慢慢走向画像
@@ -213,8 +213,11 @@ const C = {
 
 /**
  * 弗里德里希的配色（对照 public/portraits/ftz.webp 提炼）。
- * 头发是深红偏铜，不是亮橙红：受光也只到 #9c3c26，铜色只用来封 1px 的边；
- * 皮肤是偏冷的浅褐，亮部不许上一档白 —— 上一版脸是死白的，配上圆发冠就成了蒜。
+ * 头发是深红偏铜，不是亮橙红：受光也只到 #9c3c26，铜色只用来封 1px 的边。
+ *
+ * 这里没有「眼睛的颜色」—— 镜头 6 改成纯剪影之后，他的脸一帧都不出现。
+ * 曾经那一组 eyeWhite / iris / pupil / lid / brow 已经删掉：
+ * 留着就会被下一版拿去画一张又像纸人的脸。
  */
 const FTZ = {
   hairEdge: '#2a0a08',
@@ -227,19 +230,14 @@ const FTZ = {
   skinHi: '#c0a187',
   skinLo: '#755c4b',
   skinShade: '#554338',
-  eyeWhite: '#9c9284',
-  iris: '#5b6b75',
-  irisLo: '#33424c',
-  pupil: '#14191c',
-  lid: '#2f1c18',
-  brow: '#3a120e',
-  lip: '#6b3a34',
-  lipLo: '#45231f',
 } as const
 
 /**
  * 艾玛的配色（对照 public/portraits/emma.webp）：银白偏淡紫的头发是她的识别特征。
  * 上一版把她的头发画成了深棕 —— 那等于换了一个人。
+ *
+ * 同样没有「眼睛的颜色」：镜头 5 只看得到帽檐下的阴影与一条闭合的唇线。
+ * 那一块阴影里不能有任何颜色，所以 eye / eyeLo 也一并删掉了。
  */
 const EMMA = {
   hairHi: '#efeaf7',
@@ -251,8 +249,6 @@ const EMMA = {
   cap: '#e2dcec',
   capLo: '#bdb4cd',
   ribbon: '#6b6284',
-  eye: '#7d5aa6',
-  eyeLo: '#4f3a72',
   bow: '#121018',
   shirt: '#e6e1ec',
   shirtLo: '#b9b2c6',
@@ -1514,494 +1510,602 @@ function paintHallSilhouette(g: Ctx, t: number, u: number): void {
 }
 
 // ============================================================
-// 镜头 5 · 艾玛的闪回（19–22s）
+// 镜头 5 · 艾玛的闪回（19–22s）· 她放在膝上的那只手
 // ============================================================
+//
+// 上一版画的是帽檐下的一条唇线。方向对（不画脸），形状还是错：
+// 画面正中那一小块亮部，缺一个"头"的轮廓做参照，读成一颗球。
+//
+// 换成一个更好画、也更有叙事力的局部：**一只放在膝上的手**。
+//
+// 「她不曾后悔」是转述。转述只说出了内容，说不出语气 ——
+// 而一个人转述别人最重要的一句话时，她手上是没有动作的：
+// 手停在膝上，什么也没做。那只"什么也没做的手"，
+// 比任何半张脸都更能说明"她当时很平静"。
+//
+// 手比脸省事得多，只要不把它画成"一堆圆柱"：
+//   ① 明暗按**绝对的行**分一组横带（上亮下暗），手背、四指、拇指共用同一组带 ——
+//      整只手才是一个受光的平面。按"每根手指自己的上下缘"去分带，
+//      四根手指就各自变成一根圆柱，立刻是一排排骨；
+//   ② 四根手指并拢：指根处只隔 2px 的黑缝，长度差做足（中指最长，小指只有食指的六成）；
+//   ③ 拇指从掌根斜着岔出去（粗、短、方向不同）——
+//      有了这一岔，整块形状才从"钉耙"变成"手"。
+//
+// 画面里只有四样东西，全部压得很低：
+//   ① 手（唯一真正亮起来的东西，也只亮在左上方：窗光）；
+//   ② 手背下面那块黑裙（上方的斜摆 + 膝上的隆起，几道斜向折痕）；
+//   ③ 手腕处露出的一圈白色蕾丝袖口（荷叶边，只露一点点）；
+//   ④ 手的右侧，压得很暗的一角白围裙（蕾丝边）。
+//
+// 光从左上（窗）来：手背的上缘亮，往下、往右都沉进暗里 —— 连指尖的轮廓都不给。
+// 没有动作，没有表情，也没有任何"她在说什么"的暗示。
+
+/** 手背的梯形：近腕窄、指根宽。 */
+const EMMA_HAND = {
+  wristX: 106,
+  knuckleX: 176,
+  wristTop: 104,
+  wristBot: 142,
+  knuckleTop: 112,
+  knuckleBot: 169,
+} as const
+
+/**
+ * 四根手指：[指根中心 y, 指尖 x, 指根厚度, 末端下弯]。
+ * 从尺侧到桡侧（画面从上到下）：小指、无名指、中指、食指。
+ * 指根间距 15、厚度 13 —— 中间留出一道 2px 的黑缝，再宽就成了排骨。
+ */
+const EMMA_FINGERS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [118, 204, 13, 4],     // 小指
+  [133, 224, 13, 4],     // 无名指
+  [148, 236, 13.5, 4.5], // 中指
+  [163, 220, 13, 5],     // 食指
+]
+
+/** 拇指：从掌根下缘伸出去，方向与四指明显分叉 —— 这一岔是"手"的读法 */
+const EMMA_THUMB = { rootX: 134, rootY: 150, tipX: 172, tipY: 178, thick: 20 } as const
+
+/**
+ * 皮肤的三条横带（**绝对的行号**）：上缘亮、中间一大片、下缘沉下去。
+ * 手背、四指、拇指共用 —— 这是整只手读成一个平面的关键。
+ */
+const EMMA_SKIN_BANDS: ReadonlyArray<readonly [number, number, string]> = [
+  [0, 118, '#b6a6a0'],
+  [118, 128, '#ac9c96'],
+  [128, 144, '#9b8b85'],
+  [144, 154, '#8b7c76'],
+  [154, CF_H, '#77686a'],
+]
 
 function paintEmmaFlash(g: Ctx, t: number, u: number): void {
-  // 全黑底（记忆里没有墙，也没有火）
+  // 记忆里没有墙，也没有火：整幅画面从黑里来。
   rect(g, 0, 0, CF_W, CF_H, '#000000')
-  // 一片很暗的光斑：她的脸只在这一点光里（偏冷 —— 这是记忆，不是炉火）
-  const cx = 224
-  const cy = 96
-  for (let sy = 12; sy < 200; sy++) {
-    const v = clamp01((sy - 12) / 188)
-    const hw = 96 * Math.sin(Math.PI * clamp01(v * 1.05))
-    const a = 0.035 + 0.085 * Math.sin(Math.PI * v)
-    if (a <= 0.004) continue
-    g.fillStyle = `rgba(84,80,98,${a.toFixed(3)})`
-    g.fillRect(Math.round(cx - hw), sy, Math.round(hw * 2), 1)
+  void t
+
+  // 离窗越远越沉：整只手（手背 + 四指 + 拇指）用同一个函数，
+  // 这样手背与手指的接缝上不会出现一条突然的竖线。
+  const handDark = (x: number): number => {
+    const k = smooth(0.02, 1, clamp01((x - EMMA_HAND.wristX) / 140))
+    return k * 0.46
   }
 
-  // ---- 她的头 ----
-  const faceTop = 74           // 发际线
-  const faceH = 66             // 脸高
-  const faceW = 48             // 脸宽
-  const faceBot = faceTop + faceH
+  // ---- 0) 一点冷光：记忆的光不从任何地方来，只在手背上留着一层 ----
+  const halo = g.createRadialGradient(142, 138, 6, 142, 138, 180)
+  halo.addColorStop(0, 'rgba(104,98,120,0.100)')
+  halo.addColorStop(0.55, 'rgba(88,84,104,0.036)')
+  halo.addColorStop(1, 'rgba(88,84,104,0)')
+  g.fillStyle = halo
+  g.fillRect(0, 0, CF_W, CF_H)
 
-  // ---- 1) 后面的长发：银白偏淡紫，从帽下一直垂到肩 ----
-  // 剪影是波浪的（左右两条外缘各走各的相位）—— 一条直边会读成头巾
-  const hairTopY = 58
-  const hairBotY = 200
-  for (let y = hairTopY; y < hairBotY; y++) {
-    const v = clamp01((y - hairTopY) / (hairBotY - hairTopY))
-    const half = 30 + 25 * Math.sin(Math.PI * clamp01(0.16 + v * 0.84))
-    if (half <= 1) continue
-    const wl = Math.round(Math.sin(y * 0.17) * 1.5)
-    const wr = Math.round(Math.sin(y * 0.15 + 2.2) * 1.5)
-    // 主体：左受光（冷白）、右沉进紫灰
-    rect(g, cx - half + wl, y, (half + wr) * 2, 1, EMMA.hairLo)
-    rect(g, cx - half + wl, y, (half + wr) * 1.15, 1, EMMA.hair)
-    rect(g, cx + half * 0.42 + wr, y, half * 0.58, 1, EMMA.hairDark)
-    if (v < 0.22) rect(g, cx - half + wl, y, (half + wr) * 2, 1, mix(EMMA.hair, EMMA.hairLo, 0.35))
+  // ---- 1) 她膝上的黑裙 ----
+  // 一整块布：上方的斜摆从左上压下来，膝上那一段被顶起一点（中间高、两边低）。
+  // 布与背景都是黑的，只靠折痕分开 —— 记忆里没有墙，只有布。
+  const clothTop = (x: number): number => 58 + x * 0.20 + 3 * Math.sin(x * 0.026 + 0.7)
+  const kneeTop = (x: number): number => 176 - 26 * Math.sin(clamp01((x - 20) / 280) * Math.PI)
+  for (let x = 0; x < 320; x++) {
+    const rightFade = x > 292 ? clamp01(1 - (x - 292) / 28) : 1
+    if (rightFade <= 0.03) continue
+    const yb = Math.round(clothTop(x))
+    const yk = Math.round(kneeTop(x))
+    // 上方的斜摆：左上受光一档，往右下退
+    if (yb > 0) {
+      rect(g, x, 0, 1, Math.max(1, yb * 0.46), mix('#12101a', '#211c2b', (1 - x / 240) * 0.62 * rightFade))
+      rect(g, x, yb * 0.46, 1, Math.max(1, yb - yb * 0.46), mix('#12101a', '#08070d', 0.3 + (x / 320) * 0.5))
+      // 斜摆的下缘：垂下去之前的那个转折
+      rect(g, x, yb - 2, 1, 2, mix('#0b0910', '#000000', rightFade))
+    }
+    // 布垂在中间的一段：最暗（没有任何光到这里）
+    rect(g, x, yb, 1, Math.max(1, yk - yb), mix('#0c0a12', '#050409', rightFade))
+    // 膝：被膝盖顶起来的那一段，上缘接一点窗光，再往下就沉了
+    if (yk < CF_H) {
+      const kneeH = CF_H - yk
+      rect(g, x, yk, 1, Math.max(1, kneeH * 0.18), mix('#201b2c', '#0f0d16', 1 - rightFade * 0.7))
+      rect(g, x, yk + kneeH * 0.18, 1, Math.max(1, kneeH * 0.42), mix('#151120', '#080610', 1 - rightFade * 0.6))
+      rect(g, x, yk + kneeH * 0.60, 1, Math.max(1, kneeH * 0.40), mix('#0c0a12', '#040306', 1 - rightFade * 0.4))
+    }
   }
-  // 发丝：顺着外缘走的几道亮线（银发靠这几道才不是一块灰）。
-  // 右侧是背光的一半，只能用更深的紫灰画发丝 —— 那里点白会变成一根根划痕。
-  for (let i = 0; i < 4; i++) {
-    const side = i < 2 ? -1 : 1
-    const base = i === 0 ? 0.34 : i === 1 ? 0.66 : i === 2 ? 0.46 : 0.76
-    for (let y = hairTopY + 20; y < hairBotY - 6; y++) {
-      const v = clamp01((y - hairTopY) / (hairBotY - hairTopY))
-      const half = 30 + 25 * Math.sin(Math.PI * clamp01(0.16 + v * 0.84))
-      const x = cx + side * half * (base + 0.04 * Math.sin(y * 0.13 + i))
-      if (side < 0) px(g, x, y, base < 0.5 ? EMMA.hairHi : EMMA.hair)
-      else px(g, x, y, base < 0.5 ? EMMA.hairDeep : EMMA.hairDark)
+  // 折痕：顺着布的走向（约 15°）走，亮一道、暗一道
+  const creases: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
+    // [x0, y0, 长度, 斜率, 厚度, 颜色]
+    [-16, 10, 210, 0.26, 3, '#1e1a2b'],
+    [-16, 46, 160, 0.30, 2, '#07060b'],
+    [34, -8, 150, 0.52, 3, '#1b1727'],
+    [150, -10, 110, 0.46, 2, '#09070e'],
+    [0, 78, 160, 0.20, 3, '#191524'],
+    [58, 126, 120, 0.16, 3, '#151120'],
+    [214, 14, 80, 0.44, 2, '#1a1626'],
+    // 手压出来的褶（在手的下方）：布被这只手压住，往两边挤
+    [92, 186, 120, 0.12, 3, '#1d1828'],
+    [102, 196, 130, 0.10, 2, '#141020'],
+    [124, 204, 110, 0.08, 2, '#0a0810'],
+  ]
+  for (const [x0, y0, len, slope, thick, col] of creases) {
+    for (let i = 0; i < len; i++) {
+      const x = x0 + i
+      if (x < 0 || x >= 320) continue
+      rect(g, x, y0 + i * slope, 1, thick, col)
     }
   }
 
-  // ---- 2) 脸：椭圆（下巴略圆），左受光 ----
-  for (let r = 0; r < faceH; r++) {
-    const v = r / (faceH - 1)
-    const half = (faceW / 2) * Math.sin(Math.PI * clamp01(0.16 + v * 0.80)) * (v > 0.78 ? 1 - (v - 0.78) * 0.70 : 1)
-    if (half <= 0.4) continue
-    const y = faceTop + r
-    rect(g, cx - half, y, half * 2, 1, '#c6b6bb')
-    rect(g, cx - half, y, Math.max(1, half * 0.52), 1, '#dccdd0')
-    // 右半边：先一档过渡，再沉下去（一刀切的竖边会读成面具）
-    rect(g, cx + half * 0.30, y, half * 0.22, 1, '#b8a5aa')
-    rect(g, cx + half * 0.52, y, half * 0.48, 1, '#a08c93')
-    rect(g, cx + half * 0.80, y, half * 0.20, 1, '#8f7b84')
-    // 发际线：脸的最上沿压暗一档（不是一条横带）
-    if (r < 3) rect(g, cx - half, y, half * 2, 1, '#a89096')
+  // ---- 2) 手腕处的白色袖口：深色袖子 + 一圈蕾丝荷叶边 ----
+  for (let x = 0; x < 104; x++) {
+    const yT = Math.round(96 + x * 0.06)
+    const yB = Math.round(152 + x * 0.04)
+    const n = clamp01(x / 104)
+    rect(g, x, yT, 1, yB - yT, mix('#1c1622', '#0c0a11', n))
+    // 袖子上的两道横褶（顺着胳膊走）
+    rect(g, x, yT + 13, 1, 2, mix('#2a2236', '#151020', n))
+    rect(g, x, yB - 13, 1, 2, mix('#141020', '#08060c', n))
+  }
+  // 荷叶边：一圈贴着腕子的白蕾丝（自由边朝左、三瓣，上下两端收进袖子里）
+  for (let y = 96; y < 152; y++) {
+    const env = Math.sin(clamp01((y - 96) / 56) * Math.PI)
+    if (env < 0.14) continue
+    const ph = (y - 96) / 56
+    const bulge = (2.6 + 2.2 * Math.sin(ph * Math.PI * 3 + 0.4)) * env
+    const xR = 114
+    const xL = Math.round(xR - 11 - bulge)
+    const shine = y < 122 ? 1 : clamp01(1 - (y - 122) / 32)
+    for (let x = xL; x <= xR; x++) {
+      const nearEdge = x < xL + 2
+      px(g, x, y, nearEdge
+        ? mix('#cdc6dc', '#8d86a0', 1 - shine)
+        : mix('#a8a1b8', '#736c86', clamp01((y - 96) / 56)))
+    }
+    // 蕾丝上的针孔与瓣尖的一道亮：一针一针，不是一条白布
+    if (y % 4 === 0) px(g, xL + 3, y, '#5f5872')
+    if (y % 7 === 3) px(g, xL, y, shine > 0.5 ? '#ded9ea' : '#847d97')
+  }
+  // 袖口在腕子上投下的一道影（蕾丝压在皮肤上）
+  for (let y = 102; y < 148; y++) {
+    g.fillStyle = 'rgba(6,4,9,0.22)'
+    g.fillRect(114, y, 3, 1)
   }
 
-  // ---- 3) 前面的两束头发：从帽下垂到肩，压住脸的两侧 ----
-  for (const s of [-1, 1]) {
-    const bx = cx + s * 28
-    for (let k = 0; k < 108; k++) {
-      const v = k / 108
-      const w = Math.max(3, Math.round(10 - v * 3))
-      const x = bx + s * (k * 0.05 + Math.sin(k * 0.09 + (s > 0 ? 1.4 : 0)) * 2)
-      const tint = s < 0 ? EMMA.hair : EMMA.hairLo
-      rect(g, x - w / 2, faceTop + 10 + k, w, 1, tint)
-      // 1px 的深色收边：发束之间才有缝
-      px(g, x - w / 2, faceTop + 10 + k, EMMA.hairDark)
-      px(g, x + w / 2 - 1, faceTop + 10 + k, EMMA.hairDeep)
+  // ---- 3) 手背：一个梯形 ----
+  const span = EMMA_HAND.knuckleX - EMMA_HAND.wristX
+  const topAt = (x: number): number => {
+    const p = clamp01((x - EMMA_HAND.wristX) / span)
+    return EMMA_HAND.wristTop + (EMMA_HAND.knuckleTop - EMMA_HAND.wristTop) * p + 1.4 * Math.sin(p * Math.PI)
+  }
+  const botAt = (x: number): number => {
+    const p = clamp01((x - EMMA_HAND.wristX) / span)
+    return EMMA_HAND.wristBot + (EMMA_HAND.knuckleBot - EMMA_HAND.wristBot) * Math.pow(p, 0.85) + 1.8 * Math.sin(p * Math.PI)
+  }
+  const bandFill = (x: number, yT: number, yB: number): void => {
+    for (const [b0, b1, col] of EMMA_SKIN_BANDS) {
+      const a = Math.max(b0, yT)
+      const b = Math.min(b1, yB)
+      if (b <= a) continue
+      rect(g, x, a, 1, b - a, col)
+    }
+    // 每条色带的边界上打两行棋盘：像素画的软过渡。
+    // 硬切的分界会让皮肤读成一块木头 —— 这一步是把"块面"化成"肉"的关键。
+    for (let i = 1; i < EMMA_SKIN_BANDS.length; i++) {
+      const edge = EMMA_SKIN_BANDS[i][0]
+      const here = EMMA_SKIN_BANDS[i][2]
+      const prev = EMMA_SKIN_BANDS[i - 1][2]
+      for (let k = -1; k <= 1; k++) {
+        const yy = Math.round(edge) + k
+        if (yy < yT || yy >= yB) continue
+        if (((x + yy) & 1) !== 0) continue
+        g.fillStyle = k <= 0 ? here : prev
+        g.fillRect(x, yy, 1, 1)
+      }
+    }
+  }
+  for (let x = EMMA_HAND.wristX; x <= EMMA_HAND.knuckleX; x++) {
+    const yT = topAt(x)
+    const yB = botAt(x)
+    if (yB <= yT) continue
+    bandFill(x, yT, yB)
+    // 上缘的一道亮线：掌骨在皮肤下面顶着，接着窗光
+    // 下缘 1px 收黑：手背与膝上的布之间那道缝
+    px(g, x, Math.round(yB) - 1, '#221b18')
+    // 沿长度方向压暗（与四指、拇指同一条曲线）
+    const dk = handDark(x)
+    if (dk > 0.004) {
+      g.fillStyle = `rgba(10,7,9,${dk.toFixed(3)})`
+      g.fillRect(x, Math.round(yT), 1, Math.max(1, Math.round(yB) - Math.round(yT)))
+    }
+  }
+  // 手背上的一道旧疤（很浅，只是那一块皮反光不一样 —— 这只手有历史）
+  for (let i = 0; i < 13; i++) {
+    const x = Math.round(124 + i)
+    const y = Math.round(126 + i * 0.62)
+    px(g, x, y, mix('#c4aea4', '#e4d0ba', 0.38))
+    if (i > 2 && i < 9) px(g, x, y + 1, 'rgba(74,60,52,0.26)')
+  }
+
+  // ---- 4) 四指：并拢的四根，指根之间只隔 2px 的黑缝 ----
+  const FINGER_X0 = 171
+  const fingerAt = (fi: number, x: number): readonly [number, number] | null => {
+    const [rootY, tipX, thick, bend] = EMMA_FINGERS[fi]
+    if (x < FINGER_X0 || x > tipX) return null
+    const s = (x - FINGER_X0) / Math.max(1, tipX - FINGER_X0)
+    // 指尖是一个半圆：最后 5px 的厚度按椭圆收（削尖会读成爪子，削平方会读成木头）
+    const capR = 6
+    const capX = tipX - capR
+    const cap = x > capX ? Math.max(0.30, Math.sqrt(Math.max(0.02, 1 - Math.pow((x - capX) / capR, 2)))) : 1
+    const th = thick * (1 - 0.10 * s) * cap
+    // 手指整体向右下沉一点；最后四成行程再往下钩 —— 这是"自然微曲"
+    const drop = (x - FINGER_X0) * (0.04 + fi * 0.016) + bend * Math.pow(clamp01((s - 0.56) / 0.44), 2)
+    const cy = rootY + drop
+    return [cy - th / 2, cy + th / 2]
+  }
+  // 指缝先铺一层暗：四条手指之间的 2px 黑缝就是它露出来的部分
+  for (let x = 186; x <= 242; x++) {
+    let yT = 999
+    let yB = -999
+    for (let fi = 0; fi < 4; fi++) {
+      const r = fingerAt(fi, x)
+      if (!r) continue
+      if (r[0] < yT) yT = r[0]
+      if (r[1] > yB) yB = r[1]
+    }
+    if (yB <= yT) continue
+    rect(g, x, yT, 1, yB - yT, '#2b201a')
+  }
+  for (let fi = 0; fi < 4; fi++) {
+    const tipX = EMMA_FINGERS[fi][1]
+    for (let x = FINGER_X0; x <= tipX; x++) {
+      const r = fingerAt(fi, x)
+      if (!r) continue
+      if (r[1] - r[0] < 1.2) continue
+      bandFill(x, r[0], r[1])
+      // 上缘的一道细亮：指背接住窗光（到指尖就断）
+
+      const dk = handDark(x)
+      if (dk > 0.004) {
+        g.fillStyle = `rgba(10,7,9,${dk.toFixed(3)})`
+        g.fillRect(x, Math.round(r[0]), 1, Math.max(1, Math.round(r[1]) - Math.round(r[0])))
+      }
+    }
+    // 指节：每根手指一道小弧（只一道，不是一圈一圈的竹节）
+    const kx = Math.round(FINGER_X0 + (tipX - FINGER_X0) * 0.40)
+    const r = fingerAt(fi, kx)
+    if (r) {
+      const th = r[1] - r[0]
+      rect(g, kx, r[0] + th * 0.24, 1, Math.max(1, th * 0.46), 'rgba(46,34,27,0.46)')
+    }
+    // 指缝：只有 1px 的一道深棕（2px 的纯黑会把手指切成排骨）
+    if (fi < 3) {
+      const tipNext = EMMA_FINGERS[fi + 1][1]
+      const xEnd = Math.min(tipX, tipNext) - 1
+      for (let x = 190; x <= xEnd; x++) {
+        const rA = fingerAt(fi, x)
+        const rB = fingerAt(fi + 1, x)
+        if (!rA || !rB) continue
+        const yGap = (rA[1] + rB[0]) / 2
+        const q = clamp01((x - 190) / Math.max(1, xEnd - 190))
+        px(g, x, yGap, mix('#33261e', '#150f0d', q))
+        if (q > 0.5) px(g, x, yGap - 1, `rgba(52,40,33,${(0.34 * q).toFixed(3)})`)
+      }
+    }
+    // 掌指关节：指根处的一个鼓包（手背上那四道凸起）
+    const r0 = fingerAt(fi, 176)
+    if (r0) { px(g, 168, r0[0] + 1, mix('#b9a9a3', '#e2cfc0', 0.22)); px(g, 169, r0[0] + 1, mix('#b9a9a3', '#ddcabb', 0.16)) }
+  }
+
+  // ---- 5) 拇指：从掌根斜着岔出去 ----
+  const T = EMMA_THUMB
+  const tSpan = T.tipX - T.rootX
+  const thumbCy = (s: number): number => T.rootY + (T.tipY - T.rootY) * (1 - Math.pow(1 - s, 1.4))
+  const thumbTh = (s: number): number => {
+    // 拇指尖也是半圆：最后 5px 的厚度按椭圆收
+    const capS = 1 - 6 / tSpan
+    const cap = s > capS ? Math.max(0.36, Math.sqrt(Math.max(0.02, 1 - Math.pow((s - capS) / (1 - capS), 2)))) : 1
+    return T.thick * (1 - 0.10 * s) * cap
+  }
+  for (let x = T.rootX; x <= T.tipX; x++) {
+    const s = (x - T.rootX) / tSpan
+    const th = thumbTh(s)
+    const cy = thumbCy(s)
+    const yT = cy - th / 2
+    if (th < 1.2) continue
+    bandFill(x, yT, yT + th)
+    const dk = handDark(x)
+    if (dk > 0.004) {
+      g.fillStyle = `rgba(10,7,9,${dk.toFixed(3)})`
+      g.fillRect(x, Math.round(yT), 1, Math.max(1, Math.round(th)))
+    }
+  }
+  // 拇指的指节（只有一道：拇指少一节）
+  {
+    const tk = Math.round(T.rootX + tSpan * 0.48)
+    const s = (tk - T.rootX) / tSpan
+    const th = thumbTh(s)
+    const cy = thumbCy(s)
+    rect(g, tk, cy - th * 0.24, 1, Math.max(1, th * 0.42), 'rgba(46,34,27,0.38)')
+  }
+  // 拇指根：与手背之间的一道缝（斜的，顺着掌根）
+  for (let k = 0; k < 14; k++) {
+    px(g, 148 + k * 0.6, 146 + k * 0.42, 'rgba(32,24,19,0.22)')
+  }
+
+
+  // 手压在膝上：手底下那道接触阴影（不画它，手就是飘在布上面的）
+  const fingerBottom = (x: number): number => {
+    let b = -999
+    for (let fi = 0; fi < 4; fi++) {
+      const r = fingerAt(fi, x)
+      if (r && r[1] > b) b = r[1]
+    }
+    return b
+  }
+  const thumbBottom = (x: number): number => {
+    if (x < T.rootX || x > T.tipX) return -999
+    const s = (x - T.rootX) / tSpan
+    return thumbCy(s) + thumbTh(s) / 2
+  }
+  for (let x = 104; x < 246; x++) {
+    const bottom = x < FINGER_X0 ? botAt(x) : Math.max(fingerBottom(x), thumbBottom(x))
+    if (bottom >= CF_H - 1) continue
+    for (let k = 0; k < 4; k++) {
+      g.fillStyle = `rgba(0,0,0,${(0.30 - k * 0.07).toFixed(3)})`
+      g.fillRect(x, Math.round(bottom) + k, 1, 1)
     }
   }
 
-  // ---- 4) 白色蕾丝女仆帽：荷叶边（不是黑帽）----
-  // 帽体：贴着头的半圆（帽顶略窄），下缘跟着头顶的弧走
-  for (let x = -34; x <= 34; x++) {
-    const a = Math.abs(x) / 34
-    const yTop = Math.round(42 + 11 * Math.pow(a, 2.2))
-    const yBot = Math.round(57 + 3 * Math.pow(a, 1.6))
-    rect(g, cx + x, yTop, 1, Math.max(1, yBot - yTop), EMMA.cap)
-    rect(g, cx + x, yTop, 1, 1, EMMA.capHi)
-    rect(g, cx + x, yBot - 1, 1, 1, EMMA.capLo)
-  }
-  // 帽面的三道褶（短弧，不是竖条纹）
-  for (const fx of [-21, -2, 17]) {
-    for (let k = 0; k < 12; k++) {
-      px(g, cx + fx + Math.round(Math.sin(k * 0.22) * 2), 47 + k, EMMA.capLo)
-    }
-  }
-  // 荷叶边：帽底一圈小鼓包（交错深浅，才像蕾丝不像锯齿）
-  for (let x = -36; x <= 34; x += 5) {
-    const a = Math.abs(x + 2) / 36
-    const baseY = Math.round(57 + 3 * Math.pow(clamp01(a), 1.6))
-    const dy = (Math.floor((x + 36) / 5) % 2 === 0) ? 2 : 1
-    rect(g, cx + x, baseY, 5, dy, EMMA.cap)
-    rect(g, cx + x, baseY + dy - 1, 5, 1, EMMA.capLo)
-    px(g, cx + x, baseY, EMMA.capHi)
-  }
-  // 帽下的一道暗边：白帽子压在银发上，必须有一条分界
-  rect(g, cx - 32, 61, 64, 1, EMMA.ribbon)
-  rect(g, cx - 24, 62, 48, 1, 'rgba(138,127,160,0.42)')
-  // 帽子两侧的系带（细、垂在耳前）
-  rect(g, cx - 36, 56, 2, 20, EMMA.capLo)
-  rect(g, cx + 34, 56, 2, 20, EMMA.capLo)
-
-  // ---- 5) 眼睛：垂下的（闪回里只留一条上眼睑线，但颜色是紫的）----
-  const eyeY = faceTop + 24
-  for (const ex of [cx - 13, cx + 13]) {
-    // 上眼睑线：压得很低，几乎合上
-    rect(g, ex - 8, eyeY, 16, 2, EMMA.eyeLo)
-    // 虹膜：紫（不是黑点）—— 压到只剩 1px 的一条
-    rect(g, ex - 7, eyeY + 2, 13, 1, EMMA.eye)
-    px(g, ex - 6, eyeY + 2, EMMA.hairHi)
-    // 眼下的影
-    rect(g, ex - 7, eyeY + 3, 13, 1, 'rgba(120,96,110,0.45)')
-    // 睫毛
-    px(g, ex - 8, eyeY + 1, EMMA.bow)
-    px(g, ex + 7, eyeY + 1, EMMA.bow)
-  }
-  // 眉：细、低垂
-  rect(g, cx - 20, eyeY - 7, 12, 1, '#7a6672')
-  rect(g, cx + 8, eyeY - 7, 12, 1, '#7a6672')
-  // 鼻
-  rect(g, cx - 1, eyeY + 6, 2, 8, '#d2c2c5')
-  px(g, cx - 2, eyeY + 14, '#8d787f')
-  px(g, cx + 1, eyeY + 14, '#8d787f')
-  // 嘴：闭合的一条平线（她没有说话）
-  rect(g, cx - 8, eyeY + 20, 17, 1, '#8a6a72')
-  rect(g, cx - 6, eyeY + 21, 13, 1, '#a98a90')
-
-  // ---- 6) 颈与领口：白衬衫 + 黑蝴蝶结 + 黑裙 ----
-  // 颈：短一点，别拉成一根柱子
-  rect(g, cx - 7, faceBot - 12, 14, 16, '#a8929a')
-  rect(g, cx - 7, faceBot - 12, 5, 16, '#c2aeb4')
-  // 白衬衫的立领
-  rect(g, cx - 15, faceBot - 1, 30, 7, EMMA.shirt)
-  rect(g, cx - 15, faceBot - 1, 30, 1, '#f4f0f8')
-  rect(g, cx - 15, faceBot + 5, 30, 1, EMMA.shirtLo)
-  // 领口的 V（白领中间收进去，露出一点颈）
-  for (let i = 0; i < 4; i++) {
-    rect(g, cx - 4 + i, faceBot + 1 + i, Math.max(1, 8 - i * 2), 1, '#a8929a')
-  }
-  // 黑蝴蝶结：两片翅膀（从结向外张开的三角）+ 一个结
-  const bowY = faceBot + 2
-  rect(g, cx - 18, bowY, 13, 2, EMMA.bow)
-  rect(g, cx - 15, bowY + 2, 10, 2, EMMA.bow)
-  rect(g, cx - 12, bowY + 4, 7, 2, EMMA.bow)
-  rect(g, cx + 5, bowY, 13, 2, EMMA.bow)
-  rect(g, cx + 5, bowY + 2, 10, 2, EMMA.bow)
-  rect(g, cx + 5, bowY + 4, 7, 2, EMMA.bow)
-  rect(g, cx - 18, bowY, 13, 1, '#2a2434')
-  rect(g, cx + 5, bowY, 13, 1, '#2a2434')
-  rect(g, cx - 4, bowY - 1, 9, 8, '#1c1722')
-  rect(g, cx - 4, bowY - 1, 9, 1, '#3a3248')
-  // 黑裙 / 肩（从领口向外展开）
-  for (let i = 0; i < 26; i++) {
-    const half = 26 + i * 2.4
-    rect(g, cx - half, faceBot + 9 + i, half * 2, 1, EMMA.dress)
-    rect(g, cx - half, faceBot + 9 + i, 2, 1, '#1c1824')
-  }
-  // 白围裙（女仆装的那一块）：下缘是荷叶边
-  for (let y = faceBot + 8; y < faceBot + 34; y++) {
-    const t = (y - faceBot - 8) / 26
-    const half = 7 + t * 9
-    rect(g, cx - half, y, half * 2, 1, EMMA.shirtLo)
-    rect(g, cx - half, y, 1, 1, EMMA.shirt)
-  }
-  for (let x = -16; x <= 14; x += 5) {
-    rect(g, cx + x, faceBot + 34, 5, 2, EMMA.shirtLo)
-    px(g, cx + x, faceBot + 35, EMMA.capLo)
+  // ---- 6) 手的右侧：压得很暗的一角白围裙（只露一块，带蕾丝边）----
+  const apronTop = (x: number): number => 194 - (x - 284) * 0.62
+  for (let x = 284; x < CF_W; x++) {
+    const t2 = clamp01((x - 284) / (CF_W - 284))
+    const sag = Math.round(2.4 * Math.abs(Math.sin((x - 284) * 0.16)))
+    const yb = Math.round(apronTop(x)) - sag
+    if (yb >= CF_H) continue
+    rect(g, x, yb, 1, CF_H - yb, mix('#8b8499', '#443e55', t2))
+    rect(g, x, yb, 1, Math.max(1, (CF_H - yb) * 0.18), mix('#ada6bd', '#565069', t2))
+    // 蕾丝边：上缘一排小针（白是灰的，记忆里没有纯白）
+    px(g, x, yb, '#b8b1c6')
+    px(g, x, yb + 1, '#9a93aa')
+    if ((x - 284) % 4 === 0) px(g, x, yb - 1, '#d4cee2')
+    if ((x - 284) % 4 === 2) px(g, x, yb + 2, '#6a6378')
   }
 
-  // 边缘压黑：让这张脸从黑里浮出来（不是贴上去的）
-  const vig = g.createRadialGradient(cx, cy, 34, cx, cy, 150)
+  // ---- 7) 边缘压黑：这只手是从黑里浮出来的 ----
+  const vig = g.createRadialGradient(146, 140, 58, 146, 140, 286)
   vig.addColorStop(0, 'rgba(0,0,0,0)')
-  vig.addColorStop(0.62, 'rgba(0,0,0,0.30)')
-  vig.addColorStop(1, 'rgba(0,0,0,0.96)')
+  vig.addColorStop(0.48, 'rgba(0,0,0,0.12)')
+  vig.addColorStop(1, 'rgba(0,0,0,0.72)')
   g.fillStyle = vig
   g.fillRect(0, 0, CF_W, CF_H)
+
   // 闪回本身的淡入淡出：前 0.5s 浮出，最后 0.5s 沉回去
   const a = (1 - smooth(0, 0.5, u)) + smooth(0.82, 1, u)
   if (a > 0.002) {
     g.fillStyle = `rgba(0,0,0,${clamp01(a).toFixed(3)})`
     g.fillRect(0, 0, CF_W, CF_H)
   }
-  void t
 }
 
 // ============================================================
-// 镜头 6 · 他的脸（22–25s）
+// 镜头 6 · 他的剪影（22–25s）· 不画脸，也不画头发
 // ============================================================
+//
+// 「他不明白。」
+//
+// 前三版都失败了，而三次失败指向同一件事：**在用色块拼一个后脑**。
+//   ① 画脸（红发 + 蓝灰细眼 + 平嘴）→ 一头蒜；
+//   ② 只画后颈与红发（不画脸）→ 一颗红栗子；
+//   ③ 收窄成卵形 + 压暗右缘 + 加肩 → 洋葱 / 头盔。
+// 参数怎么调都没用：卵形 + 发绺 = 洋葱，这条等式跟颜色、比例、明暗都无关。
+//
+// 所以这一版把**内部全部删掉**，只留外轮廓：
+//
+//   · 内部是 #070509 的纯黑 —— 没有发绺、没有衣褶、没有领口、没有露出的后颈。
+//     画面里唯一被画出来的东西是「边界」，而「人」正是被这条边界认出来的。
+//   · 轮廓按「头 → 颈 → 肩 → 背」四段写死在两张关键点表里（左右各一张，
+//     所以剪影天生不对称）：
+//       头  50px 高、40px 宽 —— 顶略平、后脑略鼓、最高点偏前（他低着头）
+//       颈  收进 17px 的一段（头宽的 0.43），而且只有 4 行
+//       肩  从 27px 撑到 108px 只用了 16 行 —— 人身上最陡的一条线
+//       背  肩之下几乎不再变宽（108 → 133），只微微外扩：展开，不是撑成斗篷
+//     前胸（左缘）几乎是直的，后背（右缘）一路向右下鼓 —— 弓背、低头、
+//     重心偏左，这三件事全部由这两条线的「差」读出来。
+//   · 头发只在**轮廓上**做：颅顶的弧线上 3 处 2–3px 宽、2px 高的小凸起，
+//     间距也不等 —— 只打乱头骨，绝不画成一排等高的尖角。
+//   · 光只有一条：左缘（壁炉在他左前方）一道 rgba(206,108,50,·) 的暖描边，
+//     越往下越亮、到颅顶几乎消失；轮廓外侧再铺一层极淡的暖雾（左 0.06、
+//     右与顶 0.02–0.04）。有了这层雾，人是「从光里浮出来的」，
+//     而不是「贴在墙上的一张黑纸片」。
+//
+// 为什么这条路能成：轮廓是人对「人」最强的识别线索 —— 一个正确的剪影，
+// 内部一个像素都不画，也一眼读成人；而一个内部画得很细的卵形，
+// 读成的还是洋葱。这和 gate 的远景、木刻蒙太奇第七张（窗外的城堡）
+// 是同一种画法：**剪影 + 一条光**。
 
-/** 他的脸型（半宽 / 相对 faceW）：额头宽、颧骨最高、下颌一路收到尖下巴 */
-const HIS_FACE: ReadonlyArray<readonly [number, number]> = [
-  [0.000, 0.200],
-  [0.030, 0.335],
-  [0.075, 0.400],
-  [0.140, 0.432],
-  [0.210, 0.442],
-  [0.290, 0.443],
-  [0.380, 0.434],
-  [0.480, 0.408],
-  [0.575, 0.372],
-  [0.665, 0.335],
-  [0.750, 0.285],
-  [0.830, 0.215],
-  [0.900, 0.142],
-  [0.960, 0.068],
-  [1.000, 0.006],
+/**
+ * 剪影的左缘（[屏幕 y, 最左的 x]）。
+ * 从上往下读：颅顶 → 前额 → 耳前 → 下颌 → 颈前 → 斜方肌 → 胸前。
+ * 肩点（y=155）以后它只再往左走 7px 就到画面底 —— 前胸是一条直下来的线，
+ * 光从这一边来，所以这一边必须给得干净。
+ */
+const HIS_SIL_LEFT: ReadonlyArray<readonly [number, number]> = [
+  [78, 150], [80, 148], [82, 146], [85, 145], [89, 144], [94, 144],
+  [100, 144], [106, 145], [112, 146], [118, 148], [124, 151], [128, 153],
+  [132, 157], [136, 157], [139, 154],        // ← 颈：11 行就到底，他是低着头的
+  [142, 149], [145, 139], [148, 129],        // ← 斜方肌：从这里猛地撑开
+  [151, 121], [155, 115],
+  [166, 112], [180, 110], [195, 109], [216, 108],
 ]
 
 /**
- * 头发外缘：上缘与下缘都按「相对 cx 的 dx」给关键点。
- * 上缘的峰偏向左边（dx=-12），右边扫得更低 —— 一顶对称的圆盖就是一颗蒜。
- * 下缘：两侧停在耳际，只有两缕（dx≈-34 / +34）垂到颌线。
+ * 剪影的右缘（[屏幕 y, 最右的 x]）。
+ * 这一侧是远侧的颅骨（后脑）：往下收得比左缘慢，肩之后又一路向右下胀 ——
+ * 右缘与左缘的差，就是「弓起来的背」。
  */
-const HIS_HAIR_TOP: ReadonlyArray<readonly [number, number]> = [
-  [-66, 70], [-58, 52], [-46, 38], [-32, 28], [-14, 22], [0, 24],
-  [14, 30], [28, 40], [42, 50], [54, 58], [64, 64],
-]
-const HIS_HAIR_BOT: ReadonlyArray<readonly [number, number]> = [
-  [-66, 110], [-58, 120], [-46, 128], [-38, 148], [-28, 133], [-16, 140], [0, 144],
-  [16, 138], [26, 134], [38, 154], [46, 132], [56, 120], [64, 108],
+const HIS_SIL_RIGHT: ReadonlyArray<readonly [number, number]> = [
+  [78, 172], [80, 174], [82, 176], [85, 178], [89, 180], [94, 182],
+  [100, 183], [106, 182], [112, 181], [118, 180], [124, 178], [128, 176],
+  [132, 173], [136, 174], [139, 180],
+  [142, 189], [145, 199], [148, 208],        // ← 肩点
+  [151, 215], [155, 222],
+  [166, 230], [180, 234], [195, 237], [216, 240],
 ]
 
 /**
- * 一绺刘海 / 一缕垂发：上宽下窄、两侧 1px 深色收边，发梢是平口的。
- * 不要用三角收尖 —— 尖角在 384×216 上就是一根刺。
+ * 边缘光的亮度沿高度（[屏幕 y, 0..1]）。
+ * 火在左前方、在地面附近：y=216 处最亮，到颅顶（y=78）只剩 0.06 ——
+ * 「到头顶几乎消失」是这一帧的规矩，不然就是给剪影描了一圈假边。
  */
-function hairLock(
-  g: Ctx, x: number, y0: number, w: number, len: number, lean: number,
-  top: string, bot: string, edge: string,
-): void {
-  let lastW = 2
-  for (let k = 0; k < len; k++) {
-    const t = k / Math.max(1, len - 1)
-    const ww = Math.max(2, Math.round(w * (1 - 0.45 * t)))
-    const xx = x + lean * k
-    lastW = ww
-    rect(g, xx - ww / 2, y0 + k, ww, 1, mix(top, bot, t * 0.9))
-    px(g, xx - ww / 2, y0 + k, edge)
-    px(g, xx + ww / 2 - 1, y0 + k, edge)
-  }
-  // 发梢：一行平口的深色（不是尖角）
-  rect(g, x + lean * (len - 1) - lastW / 2, y0 + len - 1, lastW, 1, edge)
-}
+const HIS_RIM: ReadonlyArray<readonly [number, number]> = [
+  [78, 0.06], [100, 0.10], [124, 0.16], [140, 0.27],
+  [152, 0.42], [164, 0.60], [178, 0.78], [196, 0.92], [216, 1.00],
+]
 
 function paintHisFace(g: Ctx, t: number, u: number): void {
-  // 背景：大厅的暗，右上有一点火光的漏
-  vGrad(g, 0, CF_H, '#060408', '#160d10', 1)
-  const leak = g.createRadialGradient(330, 180, 10, 330, 180, 220)
-  leak.addColorStop(0, 'rgba(210,110,44,0.20)')
-  leak.addColorStop(1, 'rgba(210,110,44,0)')
-  g.fillStyle = leak
+  const BODY = '#070509'
+  const TOP = 78
+
+  // ---- 0) 背景：一面被壁炉烤热的墙（火在地面上，越往上越黑）----
+  // 这一层必须比剪影亮，剪影才立得住；但也只能亮一点点，
+  // 亮了就成了「一块黑纸贴在一面墙上」。
+  vGrad(g, 0, CF_H, '#0b0806', '#2a1912', 1)
+  // 壁炉那一团暖光：左下角，很大、很软。他不是站在火里，是站在火前。
+  // 光团要压得离人远一点 —— 太亮就吃掉了左缘那道边，剪影前面就只剩一团橙。
+  const breath = 0.010 * Math.sin(t * 1.15) + 0.007 * Math.sin(t * 2.7 + 1.3)
+  const fire = g.createRadialGradient(8, 226, 6, 8, 226, 186)
+  fire.addColorStop(0, `rgba(220,118,50,${(0.16 + breath).toFixed(3)})`)
+  fire.addColorStop(0.40, 'rgba(158,78,34,0.075)')
+  fire.addColorStop(0.75, 'rgba(108,50,26,0.024)')
+  fire.addColorStop(1, 'rgba(96,46,22,0)')
+  g.fillStyle = fire
   g.fillRect(0, 0, CF_W, CF_H)
-
-  const cx = 184
-  const faceW = 76
-  const faceH = 104
-  const faceTop = 60
-
-  // ---- 脖子与肩（先画，脸压在上面）----
-  // 脖子要窄、要长；肩从下颌以下才展开 —— 肩线抬到下巴边就成了"大头娃娃"
-  for (let i = 0; i < 62; i++) {
-    const v = i / 61
-    const half = 14 + 66 * smooth(0.42, 1, v)
-    const y = faceTop + faceH * 0.80 + i
-    rect(g, cx - half, y, half * 2, 1, '#0b080c')
-    // 火光的边：只有左边那一条
-    g.fillStyle = `rgba(150,80,36,${(0.16 * (1 - v * 0.6)).toFixed(3)})`
-    g.fillRect(Math.round(cx - half), y, 1, 1)
-    rect(g, cx - half + 1, y, Math.max(1, half * 0.16), 1, '#181016')
-  }
-
-  // ---- 头发：整块外形（上宽下窄，两侧垂到耳际）----
-  // 不再逐行画锯齿 —— 那是蒜瓣的来源。整块先立起来，再在块内画发绺。
-  const HAIR_L = -66
-  const HAIR_R = 64
-  const hairTopOf = (dx: number): number => {
-    // 顶上两撮不对称的翘起 + 3px 的固定列噪声
-    return Math.round(
-      prof(HIS_HAIR_TOP, dx)
-      - 6 * Math.max(0, 1 - Math.abs(dx + 31) / 11)
-      - 3.5 * Math.max(0, 1 - Math.abs(dx - 18) / 9)
-      - 2.2 * hash(Math.floor(dx / 3) * 37 + 5),
-    )
-  }
-  const hairBotOf = (dx: number): number => Math.round(prof(HIS_HAIR_BOT, dx))
-  // 1) 块体：逐列铺，左受光（火光在左下）、右沉进暗里
-  for (let dx = HAIR_L; dx <= HAIR_R; dx++) {
-    const x = cx + dx
-    const y0 = hairTopOf(dx)
-    const y1 = hairBotOf(dx)
-    if (y1 <= y0) continue
-    const across = dx / 64
-    const lit = clamp01(0.68 - across * 0.82)
-    const base = mix(FTZ.hairLo, FTZ.hairLit, lit)
-    rect(g, x, y0, 1, y1 - y0, base)
-    // 顶缘一档亮（蓬松的头发会在轮廓上接光）
-    const topH = Math.max(2, Math.round((y1 - y0) * 0.22))
-    rect(g, x, y0, 1, topH, mix(base, FTZ.hairHi, 0.20 + 0.30 * lit))
-    // 发梢沉下去
-    const botH = Math.max(2, Math.round((y1 - y0) * 0.18))
-    rect(g, x, y1 - botH, 1, botH, mix(base, FTZ.hairEdge, 0.55))
-  }
-  // 2) 块内的发绺分界：5 条斜向的流畅线（从头顶往下），左亮右暗
-  const SEP: ReadonlyArray<readonly [number, number, number]> = [
-    [-42, 0.34, 1.0], [-22, 0.16, 2.2], [0, -0.02, 3.1], [22, -0.18, 4.0], [42, -0.32, 5.2],
-  ]
-  for (let s = 0; s < SEP.length; s++) {
-    const [x0, lean, phase] = SEP[s]
-    for (let y = 26; y < 164; y++) {
-      const tt = (y - 26) / 138
-      const dx = x0 + lean * (y - 26) + Math.sin(tt * 2.6 + phase) * 3.2
-      if (dx < HAIR_L + 1 || dx > HAIR_R - 1) continue
-      if (y <= hairTopOf(dx) + 2 || y >= hairBotOf(dx) - 3) continue
-      px(g, cx + dx, y, FTZ.hairEdge)
-      // 分界线左侧是这一绺的受光面（只给左半边）
-      if (dx < 12) px(g, cx + dx - 1, y, FTZ.hairHi)
-      if (dx < -8 && hash(y * 3 + s) > 0.55) px(g, cx + dx - 2, y, FTZ.hairRim)
-    }
-  }
-  // 3) 外缘：逐行找左右两极，各封 1px 深色边（左缘再点一道铜色）
-  for (let y = 18; y < 172; y++) {
-    let xl = 9999
-    let xr = -9999
-    for (let dx = HAIR_L; dx <= HAIR_R; dx++) {
-      if (y > hairTopOf(dx) && y < hairBotOf(dx)) {
-        if (dx < xl) xl = dx
-        if (dx > xr) xr = dx
-      }
-    }
-    if (xr < xl) continue
-    px(g, cx + xl, y, FTZ.hairEdge)
-    px(g, cx + xr, y, FTZ.hairEdge)
-    if (y > 46 && y < 150) px(g, cx + xl + 1, y, FTZ.hairRim)
-  }
-
-  // ---- 脸：瘦长的椭圆，下巴尖（左受光 → 右背光 → 下颌压暗）----
-  const SHADE_STOPS: ReadonlyArray<number> = [0.00, 0.18, 0.40, 0.60, 0.79, 1.00]
-  rowsOnScreen(faceTop, faceH, (sy, v) => {
-    const half = prof(HIS_FACE, v) * faceW
-    if (half <= 0.4) return
-    const fx = cx - half
-    const full = half * 2
-    // 六档过渡：四档会在脸上留下一道道竖条
-    for (let b = 0; b < SHADE_STOPS.length; b++) {
-      const p0 = SHADE_STOPS[b]
-      const p1 = b + 1 < SHADE_STOPS.length ? SHADE_STOPS[b + 1] : 1
-      const k = clamp01(p0)
-      const col = k < 0.5 ? mix(FTZ.skinHi, FTZ.skin, k * 2) : mix(FTZ.skin, FTZ.skinLo, (k - 0.5) * 2)
-      rect(g, fx + full * p0, sy, full * (p1 - p0) + 0.5, 1, col)
-    }
-    // 发际线：脸的最上沿压暗一档（别做成一条横带）
-    if (v < 0.035) rect(g, fx, sy, full, 1, mix(FTZ.skinLo, FTZ.skin, 0.35))
-    // 下颌 / 下巴：从 0.72 起整行压暗，收出一个尖下巴（别压成一把胡子）
-    if (v > 0.72) {
-      const k = clamp01((v - 0.72) / 0.26)
-      rect(g, fx, sy, full, 1, mix(FTZ.skin, FTZ.skinShade, 0.04 + k * 0.30))
-    }
-  })
-
-  // ---- 发际线 + 刘海：一条会垂下来的发边（三绺的垂势），不是一排齐齿 ----
-  // 只盖住脸的上沿（每一列从皮肤的顶边往上 3px 起），所以头骨顶上的蓬松轮廓不会被抹平
-  const FRINGE_DIP = (dx: number): number =>
-    7.5 * Math.exp(-Math.pow((dx + 14) / 10, 2))
-    + 6 * Math.exp(-Math.pow((dx - 10) / 9, 2))
-    + 4 * Math.exp(-Math.pow((dx - 30) / 7, 2))
-  for (let dx = -40; dx <= 40; dx++) {
-    const a = Math.abs(dx) / 40
-    const yH = Math.round(
-      61 + 10 * Math.pow(a, 1.7) + FRINGE_DIP(dx) + 1.5 * hash(Math.floor(dx / 2) * 29 + 7),
-    )
-    // 这一列上皮肤的顶边（没有脸的地方就贴着发块走）
-    const need = Math.abs(dx) / faceW
-    let vv = 0
-    while (vv < 0.5 && prof(HIS_FACE, vv) < need) vv += 0.01
-    const yFace = faceTop + vv * faceH
-    const y0 = Math.max(26, Math.round(yFace) - 3)
-    if (yH <= y0 + 1) continue
-    const lit = clamp01(0.62 - (dx / 64) * 0.8)
-    const base = mix(FTZ.hairLo, FTZ.hairLit, lit)
-    rect(g, cx + dx, y0, 1, yH - y0, base)
-    // 发边的 1px 深色 + 上面一档受光（头发在额头上的那道影）
-    px(g, cx + dx, yH - 1, FTZ.hairEdge)
-    if (dx < 12) px(g, cx + dx, yH - 3, mix(base, FTZ.hairHi, 0.55))
-    // 发际线压在皮肤上的那道细影
-    px(g, cx + dx, yH + 1, 'rgba(40,22,18,0.45)')
-  }
-  // 两撮较长的发绺：从发边斜着扫下来（这一笔是 ftz 立绘的分法）
-  hairLock(g, cx - 3, 58, 16, 26, -0.55, FTZ.hairLit, FTZ.hairMid, FTZ.hairEdge)
-  hairLock(g, cx + 20, 60, 9, 16, 0.30, FTZ.hairMid, FTZ.hairLo, FTZ.hairEdge)
-  hairLock(g, cx - 28, 64, 7, 14, -0.20, FTZ.hairLo, FTZ.hairEdge, FTZ.hairEdge)
-
-  // ---- 眼睛：细长、蓝灰、上眼睑线明确（瞳孔不聚 = 没有焦点）----
-  const eyeY = faceTop + faceH * 0.400
-  const eyeDX = faceW * 0.25
-  const eyeW = 20
-  const eyeH = 5
-  for (const ex of [cx - eyeDX, cx + eyeDX]) {
-    // 眼窝的影（不是一块亮皮肤）
-    rect(g, ex - eyeW / 2 - 2, eyeY - 5, eyeW + 4, 12, mix(FTZ.skin, FTZ.skinShade, 0.22))
-    // 眼白：压暗、偏冷
-    rect(g, ex - eyeW / 2, eyeY, eyeW, eyeH, FTZ.eyeWhite)
-    // 虹膜：蓝灰（上半亮一档），瞳孔大而钝（不聚光）
-    rect(g, ex - 7, eyeY, 14, eyeH, FTZ.irisLo)
-    rect(g, ex - 7, eyeY, 14, 2, FTZ.iris)
-    rect(g, ex - 2, eyeY, 5, eyeH, FTZ.pupil)
-    // 上眼睑线：明确的一道，眼尾再压出去 2px（那一下才有神）
-    rect(g, ex - eyeW / 2 - 2, eyeY - 2, eyeW + 4, 2, FTZ.lid)
-    px(g, ex - eyeW / 2 - 2, eyeY - 3, FTZ.lid)
-    px(g, ex + eyeW / 2 + 1, eyeY - 1, FTZ.lid)
-    // 下眼睑
-    rect(g, ex - eyeW / 2, eyeY + eyeH, eyeW, 1, mix(FTZ.skinLo, FTZ.skin, 0.4))
-  }
-  // 眉：粗、平、压低（他在皱眉）—— 细眉会让这张脸立刻变回"姑娘"
-  const browY = eyeY - 12
-  for (const s of [-1, 1]) {
-    const bx = cx + s * eyeDX
-    rect(g, bx - 13, browY, 21, 2, FTZ.brow)
-    // 内端再压一点（眉心的那道皱）
-    rect(g, bx - s * 10, browY + 2, 7, 1, FTZ.brow)
-    px(g, bx + s * 9, browY - 1, FTZ.brow)
-  }
-  // 颧骨下的那道影：从眼尾斜着落到下颌（这张脸要有骨头，不能是一块橡皮）
-  for (const s of [-1, 1]) {
-    const bx = cx + s * eyeDX
-    for (let k = 0; k < 14; k++) {
-      px(g, bx + s * (10 + k * 0.55), eyeY + 8 + k,
-        mix(FTZ.skinLo, FTZ.skinShade, 0.25 + k * 0.02))
-    }
-  }
-
-  // ---- 鼻：窄、偏冷的一道高光 + 鼻尖 + 鼻底的一道软影 ----
-  const noseTop = faceTop + faceH * 0.435
-  const noseBot = faceTop + faceH * 0.625
-  rect(g, cx - 1, noseTop, 3, noseBot - noseTop, mix(FTZ.skinHi, FTZ.skin, 0.25))
-  rect(g, cx + 2, noseTop, 1, noseBot - noseTop, mix(FTZ.skinLo, FTZ.skinShade, 0.35))
-  // 鼻尖：横向的一小段（鼻子的圆头）
-  rect(g, cx - 5, noseBot - 2, 10, 2, FTZ.skinHi)
-  // 鼻底：只比肤色暗一档的短影（做长了会读成牙齿）
-  rect(g, cx - 6, noseBot, 12, 1, mix(FTZ.skinLo, FTZ.skinShade, 0.35))
-  px(g, cx - 5, noseBot, FTZ.skinShade)
-  px(g, cx + 4, noseBot, FTZ.skinShade)
-
-  // ---- 嘴：一条平线（没有笑，也没有说话）----
-  const mouthY = faceTop + faceH * 0.795
-  rect(g, cx - 13, mouthY, 26, 2, FTZ.lip)
-  rect(g, cx - 11, mouthY + 2, 22, 1, mix(FTZ.lipLo, FTZ.lip, 0.4))
-  px(g, cx - 13, mouthY, FTZ.lipLo)
-  px(g, cx + 12, mouthY, FTZ.lipLo)
-  // 下唇下面的一道影：让下巴与嘴分开
-  rect(g, cx - 10, mouthY + 4, 20, 1, mix(FTZ.skinLo, FTZ.skinShade, 0.5))
-
-  // 右边一半被黑影吞掉（光只到左半张脸）
-  for (let x = cx + 22; x < CF_W; x++) {
-    const a = smooth(cx + 22, cx + 104, x) * 0.76
-    if (a <= 0.004) continue
-    g.fillStyle = `rgba(2,1,3,${a.toFixed(3)})`
+  // 右边的墙离火最远：逐列压到黑
+  for (let x = 226; x < CF_W; x++) {
+    const a = smooth(226, 384, x) * 0.14
+    if (a <= 0.003) continue
+    g.fillStyle = `rgba(4,3,5,${a.toFixed(3)})`
     g.fillRect(x, 0, 1, CF_H)
   }
-  // 火光在颧骨与下颌上的一线暖
-  for (let x = cx - 40; x < cx + 10; x++) {
-    const a = 0.14 * (1 - Math.abs(x - (cx - 16)) / 34)
-    if (a <= 0.004) continue
-    g.fillStyle = `rgba(226,132,62,${a.toFixed(3)})`
-    g.fillRect(x, Math.round(faceTop + faceH * 0.70), 1, Math.round(faceH * 0.10))
+  // 四角再沉一点。放在剪影之前 —— 暗角不能吃掉它的边缘光。
+  vignette(g, 0.30, 152, 150)
+
+  // 每行的左右缘先算一遍：雾、描边、剪影本体都要用，不能逐层重算
+  const lefts = new Int16Array(CF_H - TOP)
+  const rights = new Int16Array(CF_H - TOP)
+  for (let y = TOP; y < CF_H; y++) {
+    // 头骨那一段（y ≤ 104）不做成一条几何弧：个别行向内凹 1px。
+    // 头发是长在轮廓上的 —— 一个完美的穹顶，才会逼着人往「头盔」上想。
+    // 只向内凹、不向外刺：外缘的参差交给上面那几处碎发，两边同时长毛会读成「爆炸头」。
+    let wobL = 0
+    let wobR = 0
+    if (y >= 86 && y <= 104) {
+      if (hash(y * 13 + 7) > 0.85) wobL = 1
+      if (hash(y * 17 + 11) > 0.85) wobR = -1
+    }
+    lefts[y - TOP] = Math.round(prof(HIS_SIL_LEFT, y)) + wobL
+    rights[y - TOP] = Math.round(prof(HIS_SIL_RIGHT, y)) + wobR
   }
-  // 空气的灰
-  for (let i = 0; i < 8; i++) {
-    const x = (hash(i * 7 + 3) * CF_W + u * 4) % CF_W
-    const y = 30 + hash(i * 11 + 5) * 150
-    px(g, x, y, `rgba(180,150,120,${(0.05 + hash(i * 13) * 0.08).toFixed(3)})`)
+  const topAt = (x: number): number => {
+    for (let y = TOP; y < 170; y++) {
+      if (x >= lefts[y - TOP] && x <= rights[y - TOP]) return y
+    }
+    return 170
   }
-  void t
-  vignette(g, 0.5, 200, 104)
+
+  // ---- 1) 轮廓外侧的雾：让剪影「从光里浮出来」----
+  // 左缘 0.06、右上与顶部 0.02–0.04：够读出轮廓，又不足以变成「描了一圈边」。
+  for (let y = TOP; y < CF_H; y++) {
+    const f = prof(HIS_RIM, y)
+    const xl = lefts[y - TOP]
+    const xr = rights[y - TOP]
+    // 左：暖雾，越往下越宽（越靠近光源）
+    const wl = 6 + Math.round(f * 5)
+    for (let k = 1; k <= wl; k++) {
+      const a = 0.075 * f * (1 - k / (wl + 1.5))
+      if (a <= 0.003) continue
+      px(g, xl - k, y, `rgba(206,108,50,${a.toFixed(3)})`)
+    }
+    // 右：只有很薄的一层（背光的那一侧）
+    const wr = 3 + Math.round(f * 2)
+    for (let k = 1; k <= wr; k++) {
+      const a = 0.032 * f * (1 - k / (wr + 1.5)) + 0.009
+      if (a <= 0.003) continue
+      px(g, xr + k, y, `rgba(198,112,56,${a.toFixed(3)})`)
+    }
+  }
+  // 顶弧的雾（4px）：颅顶离火最远，这里只剩背景里的一点余温 ——
+  // 但没有它，头顶就没有轮廓，「人」就只剩一副肩膀。
+  for (let x = 146; x <= 192; x++) {
+    const ty = topAt(x)
+    if (ty > 120) continue
+    for (let k = 1; k <= 4; k++) {
+      px(g, x, ty - k, `rgba(206,120,62,${(0.045 * (1 - k / 5)).toFixed(3)})`)
+    }
+  }
+
+  // ---- 2) 碎发：只在轮廓上做，画在内部就又是洋葱 ----
+  // 颅顶弧线上 3 处小凸起：2–3px 宽、都是 2px 高，间距 11px 与 12px。
+  // 三处，不是五处 —— 五处等距就是「一排尖角」，也就是一顶帽子的齿。
+  // 它们压在刚才那层顶弧的雾上：边界被切开几刀，但每一刀只有两三个像素。
+  const TUFTS: ReadonlyArray<readonly [number, number, number]> = [
+    // [x, 宽, 高]
+    [150, 3, 2],
+    [161, 2, 2],
+    [173, 2, 2],
+  ]
+  for (const [tx, tw, th] of TUFTS) {
+    for (let k = 0; k < tw; k++) {
+      const x = tx + k
+      const y0 = topAt(x)
+      if (y0 > 100) continue        // 只在颅顶那一段：掉到下颌上的就不是碎发了
+      // 最右那一列短一档：顶端是斜的，不是一排等高的角
+      const hgt = Math.max(1, th - (k === tw - 1 ? 1 : 0))
+      rect(g, x, y0 - hgt, 1, hgt, BODY)
+    }
+  }
+
+  // ---- 3) 剪影本体：头、颈、肩、背一次画完 ----
+  // 内部不给任何东西。一条发绺、一道衣褶、一点领口，都会立刻把它拉回「色块拼图」。
+  for (let y = TOP; y < CF_H; y++) {
+    const xl = lefts[y - TOP]
+    const xr = rights[y - TOP]
+    rect(g, xl, y, xr - xl + 1, 1, BODY)
+  }
+
+  // ---- 4) 唯一的边缘光：左缘的一道暖描边 ----
+  // 不是「给剪影描一圈边」，是「火从下面照上来的那一点」：
+  // 只贴左缘、只在轮廓内侧 1px，越往下越亮，到颅顶几乎归零。
+  for (let y = TOP; y < CF_H; y++) {
+    const f = prof(HIS_RIM, y)
+    if (f <= 0.01) continue
+    const xl = lefts[y - TOP]
+    const a = 0.92 * f + (f > 0.72 ? (f - 0.72) * 0.30 : 0)
+    px(g, xl, y, `rgba(206,108,50,${a.toFixed(3)})`)
+    // 下部再给内侧第二 px（火离得近，边缘有一点厚度）
+    if (f > 0.26) px(g, xl + 1, y, `rgba(206,108,50,${(0.50 * f).toFixed(3)})`)
+    // 最下面那一段：光的边缘溢出去一点，是一条光而不是一条描边
+    if (f > 0.62) px(g, xl + 2, y, `rgba(226,140,66,${(0.20 * f).toFixed(3)})`)
+  }
+
+  // ---- 5) 空气里的灰：几粒，火在远处 ----
+  for (let i = 0; i < 7; i++) {
+    const x = (hash(i * 7 + 3) * CF_W + u * (3 + i * 2)) % CF_W
+    const y = 42 + hash(i * 11 + 5) * 150 - u * (5 + i * 3)
+    px(g, x, y, `rgba(214,168,120,${(0.030 + hash(i * 13) * 0.045).toFixed(3)})`)
+  }
 }
 
 // ============================================================
