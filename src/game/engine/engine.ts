@@ -275,6 +275,9 @@ function solidAt(x: number, y: number): boolean {
 const WIDE: Record<string, number> = {
   portrait: 2, bigPainting: 2, bed: 2, fireplace: 2, table: 2,
   piano: 2, bookshelfWall: 2, graveRow: 2, gearBig: 2,
+  // 两格宽的装饰：推车 / 长椅 / 倒木是 48×16 的宽画（内容占 32px），旗是 32×40。
+  // 别按画布宽（48）算 —— 内容只占两格，碰撞盒与调查中心点都该是两格。
+  cart: 2, bench: 2, fallenTrunk: 2, banner: 2,
 }
 
 export function entTileW(sprite: string): number {

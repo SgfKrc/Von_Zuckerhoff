@@ -158,28 +158,28 @@ const station: GameMap = {
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
   ],
   entities: [
+      { id: 'stationPuddle', x: 5, y: 8, sprite: '', solid: false, interact: 'stationPuddle' },
     // ---- 主线：站牌 / 两盏煤气灯 / 艾玛 ----
     { id: 'sign', x: 13, y: 6, sprite: 'notice', solid: true, interact: 'stationSign' },
     // 两盏煤气灯：整张雨夜画面里唯一稳定的暖源（fore 层的暖光晕按这两个位置算，
     // 所以实体 id 改成 stationLamp* —— 别和别的房间那支烛台（id 也叫 lamp）混了）
-    { id: 'stationLampL', x: 3, y: 6, sprite: 'candelabra', solid: true, tall: true, interact: 'stationLamp' },
-    { id: 'stationLampR', x: 22, y: 6, sprite: 'candelabra', solid: true, tall: true },
+    { id: 'stationLampL', x: 3, y: 6, sprite: 'gasLamp', solid: true, tall: true, interact: 'stationLamp' },
+    { id: 'stationLampR', x: 22, y: 6, sprite: 'gasLamp', solid: true, tall: true },
     { id: 'emma2', x: 19, y: 6, sprite: 'emma_right', solid: true, interact: 'talkEmmaStation' },
 
     // ---- 精细化：月台上该有的东西 ----
     // 雨棚立柱：站在月台根上（y5 是虚空那一行，柱子立不住人，只立柱子）。
-    // 三根等距，中间那根能查；画见 art/tiles.ts 的 DECOR_SPRITES.stationCanopy。
-    { id: 'stationCanopyA', x: 5, y: 5, sprite: 'gateArch', tall: true },
-    { id: 'stationCanopy', x: 12, y: 5, sprite: 'gateArch', tall: true, interact: 'stationCanopy' },
-    { id: 'stationCanopyB', x: 19, y: 5, sprite: 'gateArch', tall: true },
-    // 行李推车：两格宽，车板歪着，三件行李没人取（sprite 只是占位 + 碰撞宽度）
-    { id: 'stationCart', x: 7, y: 7, sprite: 'table', solid: true, interact: 'stationCart' },
-    // 长椅：靠背朝月台根，坐面是湿的
-    { id: 'stationBench', x: 16, y: 8, sprite: 'table', solid: true, interact: 'stationBench' },
-    // 水洼：瓦片负责画（'u'），实体只负责"能按 E 看一眼"
-    { id: 'stationPuddle', x: 5, y: 8, sprite: 'notice', interact: 'stationPuddle' },
+    // 三根等距，中间那根能查；三根共用 sprites.ts 的 canopyPost（16×32，底对齐）。
+    { id: 'stationCanopyA', x: 5, y: 5, sprite: 'canopyPost', tall: true },
+    { id: 'stationCanopy', x: 12, y: 5, sprite: 'canopyPost', tall: true, interact: 'stationCanopy' },
+    { id: 'stationCanopyB', x: 19, y: 5, sprite: 'canopyPost', tall: true },
+    // 行李推车：两格宽（cart 是 48×16 的宽画，内容正好占两格），车板歪着，三件行李没人取
+    { id: 'stationCart', x: 7, y: 7, sprite: 'cart', solid: true, interact: 'stationCart' },
+    // 长椅：靠背朝月台根，坐面是湿的（bench 与 cart 同样两格宽）
+    { id: 'stationBench', x: 16, y: 8, sprite: 'bench', solid: true, interact: 'stationBench' },
+    // 水洼 (5,8)：纯瓦片装饰（'u'），瓦片自己就画完了，没有实体
     // 乌鸦：站在月台边缘的警示线里侧，雨里一动不动
-    { id: 'stationCrow', x: 10, y: 10, sprite: 'cat', interact: 'stationCrow' },
+    { id: 'stationCrow', x: 10, y: 10, sprite: 'crow', interact: 'stationCrow' },
 
     // ---- 图纸模式专属：告示牌（现实里看不见，是绘图员读出来的标注） ----
     { id: 'bpStationEdge', x: 20, y: 10, sprite: 'notice', blueprintOnly: true, interact: 'bpStationEdge' },
@@ -246,6 +246,7 @@ const road: GameMap = {
     'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
   ],
   entities: [
+      { id: 'roadChain', x: 23, y: 9, sprite: '', solid: false, interact: 'roadChain' },
     // ---- 主线：三处停下来（原样保留，只是从 y4/y5 挪进了路里） ----
     { id: 'roadStep1', x: 12, y: 6, sprite: 'notice', solid: false, interact: 'roadStop1' },
     { id: 'roadStep2', x: 26, y: 7, sprite: 'notice', solid: false, interact: 'roadStop2' },
@@ -253,15 +254,14 @@ const road: GameMap = {
 
     // ---- 精细化：一条修过的山路该有的东西 ----
     // 路标：木杆两块牌，上面那块削成箭头指向右（聚斯霍芬堡的方向）
-    { id: 'roadSign', x: 8, y: 5, sprite: 'notice', solid: true, interact: 'roadSign' },
-    // 倒塌的树干：横在路中间，两格宽（占 x18..19），人得从上下绕
-    { id: 'roadTrunk', x: 18, y: 7, sprite: 'table', solid: true, interact: 'roadTrunk' },
+    { id: 'roadSign', x: 8, y: 5, sprite: 'signpost', solid: true, interact: 'roadSign' },
+    // 倒塌的树干：横在路中间，两格宽（占 x18..19，fallenTrunk 是 48×16 的宽画），人得从上下绕
+    { id: 'roadTrunk', x: 18, y: 7, sprite: 'fallenTrunk', solid: true, interact: 'roadTrunk' },
     // 玛尼堆：路边三块石头码起来的记号，没人知道是谁码的
-    { id: 'roadCairn', x: 33, y: 5, sprite: 'notice', interact: 'roadCairn' },
+    { id: 'roadCairn', x: 33, y: 5, sprite: 'cairn', interact: 'roadCairn' },
     // 界碑：碑是旧的，底座是新凿的（碑面朝路，读得出笔画数）
-    { id: 'roadMilestone', x: 24, y: 6, sprite: 'notice', solid: true, interact: 'roadMilestone' },
-    // 护栏铁链：瓦片画链子（'y'），实体只要一个能调查的点
-    { id: 'roadChain', x: 23, y: 9, sprite: 'notice', interact: 'roadChain' },
+    { id: 'roadMilestone', x: 24, y: 6, sprite: 'milestone', solid: true, interact: 'roadMilestone' },
+    // 护栏铁链 (x20..27)：纯瓦片装饰（'y'），链子由瓦片画，没有实体
 
     // ---- 图纸模式专属：告示牌 ----
     // 两处都放在山路中段：站在 (20,5) 一按 Tab 就都看得见 —— 这个位置本身
@@ -335,25 +335,25 @@ const gate: GameMap = {
     'SSSSSSSSSSSSSSSSSSSSSSSSSS',
   ],
   entities: [
+      { id: 'gateDitch', x: 18, y: 15, sprite: '', solid: false, interact: 'gateDitch' },
+      { id: 'gateThreshold', x: 12, y: 13, sprite: '', solid: false, interact: 'gateThreshold' },
     // ---- 主线：门 / 旗 / 艾玛（门与旗挪到了新的墙面上） ----
     { id: 'gateDoor', x: 12, y: 12, sprite: 'gateArch', solid: false, interact: 'knockGate', tall: true },
     // 旗：挂在门右侧的墙面下端（原来挂在虚空里，现在那上面是远景）
-    { id: 'flag', x: 17, y: 13, sprite: 'bigPainting', solid: false, tall: true, interact: 'gateFlag' },
+    { id: 'flag', x: 17, y: 13, sprite: 'banner', solid: false, tall: true, interact: 'gateFlag' },
     { id: 'emma3', x: 14, y: 16, sprite: 'emma_up', solid: true, interact: 'talkEmmaGate' },
 
     // ---- 精细化：门前的五件东西 ----
-    // 石像鬼：门两侧各一尊，蹲在墙脚上（画见 DECOR_SPRITES，16×32 底对齐）
-    { id: 'gateGargoyleL', x: 9, y: 13, sprite: 'gateArch', tall: true, interact: 'gateGargoyle' },
-    { id: 'gateGargoyleR', x: 15, y: 13, sprite: 'gateArch', tall: true, interact: 'gateGargoyleR' },
+    // 石像鬼：门两侧各一尊，蹲在墙脚上（两尊共用 sprites.ts 的 gargoyle，16×32 底对齐）
+    { id: 'gateGargoyleL', x: 9, y: 13, sprite: 'gargoyle', tall: true, interact: 'gateGargoyle' },
+    { id: 'gateGargoyleR', x: 15, y: 13, sprite: 'gargoyle', tall: true, interact: 'gateGargoyleR' },
     // 吊闸的铁链：垂在门洞左侧的门槛上，钩子空着（原来放在右侧，被站在 (13,14) 的
     // 主角背影挡住了一半）
-    { id: 'gateChain', x: 11, y: 13, sprite: 'notice', tall: true, interact: 'gateChain' },
+    { id: 'gateChain', x: 11, y: 13, sprite: 'portcullisChain', tall: true, interact: 'gateChain' },
     // 枯树：院子右侧，一根没有叶子的黑树干
-    { id: 'gateTree', x: 19, y: 14, sprite: 'gateArch', solid: true, tall: true, interact: 'gateTree' },
-    // 水沟：瓦片画沟（s，y15 横贯），实体在院子里给一个调查点
-    { id: 'gateDitch', x: 18, y: 15, sprite: 'notice', interact: 'gateDitch' },
-    // 门槛上的刻痕：站在门洞下低头看
-    { id: 'gateThreshold', x: 13, y: 13, sprite: 'notice', interact: 'gateThreshold' },
+    { id: 'gateTree', x: 19, y: 14, sprite: 'deadTree', solid: true, tall: true, interact: 'gateTree' },
+    // 水沟 (y15 横贯)：纯瓦片装饰（'s'），沟由瓦片画，没有实体
+    // 门槛刻痕 (x11..13,y13)：纯瓦片装饰（'w'），刻痕由瓦片画，没有实体
 
     // ---- 图纸模式专属：告示牌 ----
     { id: 'bpGateArch', x: 12, y: 14, sprite: 'notice', blueprintOnly: true, interact: 'bpGateArch' },

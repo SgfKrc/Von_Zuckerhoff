@@ -4,6 +4,7 @@
 // 光源统一在左上；每块至少 暗 / 中 / 亮 三档。
 // ============================================================
 import { C } from './tiles'
+import { TILE } from './build'
 import type { Dir } from '../types'
 
 type Ctx = CanvasRenderingContext2D
@@ -3732,6 +3733,467 @@ export const PORTRAITS: Record<string, HTMLCanvasElement> = {
 
 
 // ============================================================
+// 装饰精灵：糖堡站 / 雾中山路 / 城堡正门
+// ============================================================
+//
+// 这批画原先注册在 tiles.ts 里的一张「按实体 id 取画」的装饰表里（上一轮为了不挡
+// sprites.ts 的改动线临时放在那儿），现在搬回这里，用真实的精灵名注册 ——
+// 实体、精灵、内容校验从此只有一套名字。
+// 画布内容一个字都没改，只是换了注册位置与名字。
+
+/** 装饰画布：w×h，直接画（与 tiles.ts 的 make() 等价，只是参数顺序换过来） */
+function decorSprite(w: number, h: number, draw: (g: Ctx) => void): Sprite {
+  const { c, g } = canvas(w, h)
+  draw(g)
+  return c
+}
+
+/** 32×16 的宽装饰：画布 48 宽，内容右移 16px —— 渲染器把宽精灵居中到格子上，
+ *  这样 48 宽的画布正好让画落在 x*TILE .. x*TILE+32（与两格宽的碰撞盒对齐） */
+function decorWide(draw32: (g: Ctx) => void): Sprite {
+  const { c, g } = canvas(48, 16)
+  g.save()
+  g.translate(16, 0)
+  draw32(g)
+  g.restore()
+  return c
+}
+
+/** 煤气灯：铁柱 + 带玻璃的灯头，夜里唯一稳定的暖源（与 fore 层的暖光晕配套） */
+function decorGasLamp(g: Ctx): void {
+  // 底座与灯柱
+  r(g, 5, 29, 6, 3, C.graphite)
+  r(g, 5, 29, 6, 1, C.cold)
+  r(g, 5, 31, 6, 1, C.shadow)
+  r(g, 7, 12, 2, 18, C.graphite)
+  r(g, 7, 12, 1, 18, C.cold)
+  // 灯头：铁框
+  r(g, 4, 4, 8, 9, C.graphite)
+  r(g, 4, 4, 8, 1, C.cold)
+  r(g, 4, 12, 8, 1, C.shadow)
+  // 玻璃与火：中心最亮，往外两档递减（暖色只在这几格里）
+  r(g, 5, 5, 6, 7, '#6a4a1e')
+  r(g, 6, 6, 4, 5, C.brass)
+  r(g, 6, 6, 4, 1, C.gold)
+  r(g, 7, 7, 2, 3, C.sugar)
+  // 窗棂（两道竖 + 一道横）：灯是"煤气灯"，读到格栅才不是一支蜡烛
+  r(g, 8, 5, 1, 7, 'rgba(35,40,48,0.85)')
+  r(g, 5, 8, 6, 1, 'rgba(35,40,48,0.85)')
+  // 灯顶：四坡小顶 + 顶尖
+  r(g, 5, 3, 6, 1, C.graphite)
+  r(g, 6, 2, 4, 1, C.graphite)
+  r(g, 5, 3, 6, 1, C.cold)
+  px(g, 8, 1, C.cold)
+  // 灯下的铁箍
+  r(g, 6, 13, 4, 1, C.graphite)
+}
+
+/** 行李推车：两只辐条轮 + 斜靠的木板车台 + 三件行李（皮箱 / 布包 / 礼帽） */
+function decorCart(g: Ctx): void {
+  // 地面阴影
+  r(g, 2, 14, 29, 1, 'rgba(5,6,11,0.45)')
+  // 车台：两块横板 + 一道铁边，右端略低（车是歪的，没人扶）
+  r(g, 3, 6, 25, 5, '#3f2f1c')
+  r(g, 3, 6, 25, 1, '#77603f')
+  r(g, 3, 10, 25, 1, '#241a10')
+  r(g, 3, 8, 25, 1, '#4a3822')
+  // 推把
+  r(g, 2, 3, 2, 4, C.graphite)
+  r(g, 4, 2, 3, 1, C.graphite)
+  px(g, 3, 2, C.cold)
+  // 两只轮：外圈铁、辐条木
+  for (const cx of [8, 24]) {
+    for (let dy = -4; dy <= 4; dy++) {
+      for (let dx = -4; dx <= 4; dx++) {
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d > 4.4) continue
+        px(g, cx + dx, 12 + dy, d > 3.2 ? C.graphite : (d > 1.5 ? '#4a3822' : C.shadow))
+      }
+    }
+    px(g, cx, 8, C.cold)
+    px(g, cx, 15, C.graphite)
+    px(g, cx - 4, 12, C.cold)
+    px(g, cx + 4, 12, C.graphite)
+  }
+  // 行李：皮箱（左，双皮带）+ 布包（中）+ 礼帽（右，檐朝上）
+  r(g, 5, 2, 9, 5, '#1a120a')      // 箱轮廓
+  r(g, 6, 2, 7, 4, '#3a2415')      // 箱身
+  r(g, 6, 2, 7, 1, '#4f3320')
+  r(g, 8, 2, 1, 4, '#241a10')      // 皮带
+  r(g, 7, 1, 5, 1, '#241a10')      // 提手
+  px(g, 6, 3, C.brass)
+  px(g, 11, 3, C.brass)
+  r(g, 16, 3, 7, 4, '#26331f')     // 布包
+  r(g, 16, 3, 7, 1, '#36452a')
+  r(g, 19, 2, 1, 1, '#4b5d38')     // 绳结
+  r(g, 16, 6, 7, 1, '#1b2416')
+  r(g, 25, 3, 5, 1, C.graphite)    // 帽檐
+  r(g, 26, 1, 3, 2, C.graphite)    // 帽顶
+  r(g, 26, 1, 3, 1, C.cold)
+}
+
+/** 站台长椅：靠背两道横板 + 坐面三块板 + 两只铁腿；坐面上有一道未干的雨痕 */
+function decorBench(g: Ctx): void {
+  r(g, 1, 13, 30, 2, 'rgba(5,6,11,0.45)')
+  // 靠背
+  r(g, 3, 3, 26, 2, '#3f2f1c')
+  r(g, 3, 3, 26, 1, '#77603f')
+  r(g, 3, 6, 26, 2, '#3f2f1c')
+  r(g, 3, 6, 26, 1, '#77603f')
+  // 坐面
+  r(g, 1, 9, 30, 4, '#3f2f1c')
+  r(g, 1, 9, 30, 1, '#77603f')
+  r(g, 1, 11, 30, 1, '#4a3822')
+  r(g, 1, 12, 30, 1, '#241a10')
+  // 铁腿与扶手
+  r(g, 2, 13, 3, 3, C.graphite)
+  r(g, 27, 13, 3, 3, C.graphite)
+  r(g, 1, 2, 2, 3, C.graphite)
+  r(g, 29, 2, 2, 3, C.graphite)
+  // 雨痕：坐面上一道冷色反光（长椅是湿的，没人坐）
+  r(g, 5, 10, 9, 1, 'rgba(154,166,184,0.20)')
+  r(g, 18, 10, 5, 1, 'rgba(154,166,184,0.14)')
+}
+
+/** 雨棚立柱：方铁柱、柱头斜撑、顶上一根往右伸的边梁（相邻立柱的梁接得上） */
+function decorCanopyPost(g: Ctx): void {
+  // 柱础
+  r(g, 5, 27, 7, 5, C.graphite)
+  r(g, 5, 27, 7, 1, C.cold)
+  r(g, 5, 31, 7, 1, C.shadow)
+  // 柱身
+  r(g, 7, 5, 3, 23, C.graphite)
+  r(g, 7, 5, 1, 23, C.cold)
+  r(g, 9, 5, 1, 23, C.shadow)
+  // 柱头：两侧斜撑
+  r(g, 4, 5, 3, 2, C.graphite)
+  r(g, 4, 5, 3, 1, C.cold)
+  r(g, 10, 5, 3, 2, C.graphite)
+  r(g, 10, 5, 3, 1, C.cold)
+  // 边梁：横贯整格，左右拼接成一条连续的檐梁
+  r(g, 0, 0, TILE, 3, C.shadow)
+  r(g, 0, 0, TILE, 1, C.graphite)
+  r(g, 0, 2, TILE, 1, C.night)
+  // 梁上的铆钉
+  px(g, 3, 1, C.cold)
+  px(g, 7, 1, C.cold)
+  px(g, 12, 1, C.cold)
+  // 柱脚的积水
+  r(g, 5, 26, 7, 1, 'rgba(77,86,101,0.22)')
+}
+
+/** 乌鸦：湿透的一团黑，站在站台边缘不动；只有一点暖黄的眼和湿羽的冷光 */
+function decorCrow(g: Ctx): void {
+  r(g, 3, 14, 10, 1, 'rgba(5,6,11,0.5)')
+  // 身体：比夜色亮一档才看得出轮廓
+  r(g, 4, 7, 8, 6, '#12161c')
+  r(g, 4, 7, 8, 1, '#232830')
+  r(g, 4, 12, 8, 1, '#0b0d10')
+  // 头
+  r(g, 5, 3, 5, 4, '#12161c')
+  r(g, 5, 3, 5, 1, '#232830')
+  // 喙（朝右）
+  px(g, 10, 5, '#4d5665')
+  px(g, 11, 5, '#333a45')
+  // 眼：一点暖黄
+  px(g, 8, 4, C.gold)
+  // 尾
+  r(g, 12, 9, 4, 2, '#0b0d10')
+  px(g, 15, 10, '#12161c')
+  // 爪
+  r(g, 5, 13, 1, 1, C.cold)
+  r(g, 10, 13, 1, 1, C.cold)
+  // 湿羽：两三道冷色细线
+  px(g, 6, 9, '#333a45')
+  px(g, 8, 10, '#232830')
+  px(g, 9, 8, '#333a45')
+}
+
+/** 路标：木杆上两块牌子，上面一块削成箭头指向右（聚斯霍芬堡的方向） */
+function decorRoadSign(g: Ctx): void {
+  r(g, 5, 22, 7, 2, 'rgba(5,6,11,0.45)')
+  // 立杆
+  r(g, 7, 6, 2, 17, '#3f2f1c')
+  r(g, 7, 6, 1, 17, '#5c4630')
+  r(g, 6, 22, 4, 2, '#241a10')
+  // 上牌：白底 + 右端箭头（三级削尖）
+  r(g, 1, 3, 12, 6, C.bone)
+  r(g, 1, 3, 12, 1, C.sugar)
+  r(g, 1, 8, 12, 1, C.pale)
+  r(g, 13, 4, 1, 4, C.bone)
+  r(g, 14, 5, 1, 2, C.bone)
+  px(g, 15, 5, C.bone)
+  px(g, 15, 6, C.bone)
+  // 字行（读不出字，只读出"有字"）
+  r(g, 3, 5, 6, 1, C.graphite)
+  r(g, 3, 7, 4, 1, C.graphite)
+  r(g, 10, 6, 2, 1, C.graphite)
+  // 下牌：小一号、背光的旧木牌
+  r(g, 4, 11, 11, 5, '#8a8272')
+  r(g, 4, 11, 11, 1, '#a8a08e')
+  r(g, 4, 15, 11, 1, C.graphite)
+  r(g, 6, 13, 6, 1, C.graphite)
+  // 钉子
+  px(g, 7, 4, C.brass)
+  px(g, 7, 12, C.brass)
+  // 杆上被雨泡出的裂纹
+  px(g, 8, 18, '#241a10')
+  px(g, 7, 19, '#241a10')
+}
+
+/** 倒下的树干（32×16，占两格）：横向圆木、断枝茬口、露出的年轮、一层苔 */
+function decorTrunk32(g: Ctx): void {
+  r(g, 1, 13, 31, 2, 'rgba(5,6,11,0.5)')
+  // 主干
+  r(g, 0, 6, 32, 7, '#2c2116')
+  r(g, 0, 6, 32, 2, '#463522')
+  r(g, 0, 11, 32, 2, '#170f09')
+  r(g, 0, 6, 32, 1, '#55402a')
+  // 树皮裂纹：短、断续
+  for (let i = 0; i < 9; i++) {
+    const x = 2 + Math.floor(rnd(980 + i * 4.3) * 26)
+    const y = 7 + Math.floor(rnd(990 + i * 6.7) * 4)
+    px(g, x, y, '#170f09')
+  }
+  // 右端断口：一圈浅色年轮
+  r(g, 28, 5, 4, 9, '#3a2c1c')
+  r(g, 28, 5, 4, 1, '#5c4630')
+  r(g, 30, 7, 2, 5, '#8a6f4a')
+  px(g, 30, 9, '#3a2c1c')
+  // 断枝茬口：两根朝上的短枝
+  r(g, 6, 2, 2, 5, '#2c2116')
+  r(g, 6, 2, 1, 5, '#463522')
+  r(g, 17, 1, 2, 6, '#2c2116')
+  r(g, 17, 1, 1, 6, '#463522')
+  px(g, 6, 1, '#8a6f4a')
+  px(g, 17, 0, '#8a6f4a')
+  // 苔与湿：上缘的绿点、下缘的冷光
+  for (let i = 0; i < 7; i++) {
+    const x = 2 + Math.floor(rnd(1000 + i * 3.7) * 26)
+    px(g, x, 6, i % 2 === 0 ? C.moss : '#36452a')
+  }
+  r(g, 2, 12, 26, 1, 'rgba(77,86,101,0.18)')
+}
+
+/** 玛尼堆 / 路边石堆：三块石头一层层码起来，顶上那块压得最小 */
+function decorCairn(g: Ctx): void {
+  r(g, 2, 13, 12, 2, 'rgba(5,6,11,0.45)')
+  // 底石（三块拼）
+  r(g, 2, 9, 5, 5, C.stone)
+  r(g, 7, 9, 4, 5, C.stone)
+  r(g, 11, 10, 3, 4, C.stone)
+  r(g, 2, 9, 5, 1, C.cold)
+  r(g, 7, 9, 4, 1, C.cold)
+  r(g, 11, 10, 3, 1, C.cold)
+  r(g, 2, 13, 12, 1, C.graphite)
+  // 中石
+  r(g, 4, 5, 7, 4, C.stone)
+  r(g, 4, 5, 7, 1, C.cold)
+  r(g, 4, 8, 7, 1, C.graphite)
+  // 顶石
+  r(g, 5, 2, 5, 3, C.cold)
+  r(g, 5, 2, 5, 1, C.pale)
+  r(g, 5, 4, 5, 1, C.stone)
+  // 石缝里的苔与雨
+  px(g, 6, 10, C.moss)
+  px(g, 9, 11, '#36452a')
+  px(g, 7, 6, C.moss)
+  px(g, 12, 12, 'rgba(77,86,101,0.4)')
+}
+
+/** 界碑（16×24）：碑身是旧的、底座是新的（刻字被雨磨浅了，笔画还数得出来） */
+function decorMilestone(g: Ctx): void {
+  r(g, 2, 21, 12, 2, 'rgba(5,6,11,0.5)')
+  // 碑座：新凿的方石，棱角清楚（与碑身的旧石不是一个色）
+  r(g, 1, 17, 14, 5, '#3a4048')
+  r(g, 1, 17, 14, 1, C.cold)
+  r(g, 1, 21, 14, 1, C.graphite)
+  r(g, 1, 17, 1, 5, C.cold)
+  r(g, 14, 17, 1, 5, C.graphite)
+  // 碑身：旧石，往里收半格、微微歪
+  r(g, 4, 2, 8, 15, '#2b3038')
+  r(g, 4, 2, 8, 1, C.stone)
+  r(g, 4, 2, 1, 15, C.stone)
+  r(g, 11, 2, 1, 15, C.graphite)
+  r(g, 4, 16, 8, 1, C.graphite)
+  // 刻字：三列竖排（界 / 石 / 年），只画出笔画
+  for (const [cx, n] of [[6, 3], [8, 4], [10, 3]] as [number, number][]) {
+    for (let i = 0; i < n; i++) {
+      r(g, cx, 5 + i * 3, 2, 1, C.pale)
+      px(g, cx, 6 + i * 3, C.graphite)
+    }
+  }
+  // 风化：碑顶缺一角、下缘有苔
+  px(g, 4, 2, C.graphite)
+  px(g, 5, 2, C.graphite)
+  px(g, 5, 12, C.moss)
+  px(g, 7, 14, C.moss)
+}
+
+/** 石像鬼（16×32）：蹲在墙沿上的一团石，收起翅膀、爪子扣着压顶；不排水，它在看 */
+function decorGargoyle(g: Ctx): void {
+  // 压顶石（墙沿）
+  r(g, 0, 27, 16, 5, C.stone)
+  r(g, 0, 27, 16, 1, C.cold)
+  r(g, 0, 31, 16, 1, C.graphite)
+  // 身体：蹲伏的一团，左上受光
+  r(g, 4, 13, 9, 14, C.stone)
+  r(g, 4, 13, 4, 14, C.cold)
+  r(g, 11, 13, 2, 14, C.graphite)
+  // 折叠的翅膀：两片斜压在背上
+  for (let i = 0; i < 8; i++) {
+    r(g, 2 + i, 12 + Math.floor(i * 0.8), 3, 1, i < 3 ? C.cold : C.stone)
+    r(g, 12 - i, 12 + Math.floor(i * 0.9), 3, 1, C.graphite)
+  }
+  // 头：压得低，朝前下方（它在看）
+  r(g, 5, 8, 7, 6, C.stone)
+  r(g, 5, 8, 7, 1, C.cold)
+  r(g, 5, 8, 1, 6, C.cold)
+  r(g, 11, 8, 1, 6, C.graphite)
+  // 角：两只短角
+  px(g, 6, 7, C.cold)
+  px(g, 10, 7, C.graphite)
+  // 眼睛：两个深洞（不画高光 —— 石头不该反光）
+  px(g, 7, 10, C.night)
+  px(g, 10, 10, C.night)
+  // 嘴：一道横缝 + 两颗獠牙
+  r(g, 7, 12, 4, 1, C.graphite)
+  px(g, 7, 13, C.bone)
+  px(g, 10, 13, C.bone)
+  // 前爪：扣在压顶石上（三道抓痕，爪子中间是实的 —— 没有排水槽）
+  r(g, 5, 24, 3, 4, C.cold)
+  r(g, 10, 24, 3, 4, C.stone)
+  px(g, 5, 28, C.graphite)
+  px(g, 7, 28, C.graphite)
+  px(g, 10, 28, C.graphite)
+  px(g, 12, 28, C.graphite)
+  // 石头上的雨痕与苔
+  r(g, 5, 15, 1, 6, 'rgba(77,86,101,0.25)')
+  px(g, 9, 20, C.moss)
+  px(g, 6, 22, C.moss)
+  px(g, 3, 29, C.graphite)
+}
+
+/** 吊闸的铁链（16×24）：从闸顶的铁环垂下两股，末端一个铁钩，链环一明一暗 */
+function decorGateChain(g: Ctx): void {
+  // 顶上的铁环：亮面用雾灰，压在石墙前面才看得见
+  r(g, 4, 0, 8, 3, C.graphite)
+  r(g, 4, 0, 8, 1, C.pale)
+  r(g, 4, 2, 8, 1, C.shadow)
+  r(g, 3, 2, 2, 2, C.graphite)
+  r(g, 11, 2, 2, 2, C.graphite)
+  // 两股链：每个环 3×3，上缘受光（骨白）下缘压暗 —— 石墙上的铁必须是亮暗跳动的，
+  // 全画成石墨色就成了一根灰棍子
+  for (const cx of [6, 10]) {
+    for (let y = 4; y < 20; y += 3) {
+      r(g, cx - 1, y, 3, 2, C.cold)
+      r(g, cx - 1, y, 3, 1, C.pale)
+      px(g, cx + 1, y + 1, C.graphite)
+      px(g, cx - 1, y + 1, C.shadow)
+      // 隔一个环点一点锈
+      if ((y - 4) % 6 === 0) px(g, cx, y, C.brass)
+    }
+  }
+  // 铁钩与吊挂的横销
+  r(g, 5, 20, 6, 2, C.cold)
+  r(g, 5, 20, 6, 1, C.pale)
+  r(g, 6, 22, 4, 1, C.graphite)
+  px(g, 6, 23, C.cold)
+  px(g, 9, 23, C.cold)
+}
+
+/** 枯树（16×32）：一根粗一些的黑树干，四根折角向上的枯枝；立在门的右侧 */
+function decorDeadTree(g: Ctx): void {
+  r(g, 3, 30, 10, 2, 'rgba(4,5,8,0.55)')
+  // 主干：下宽上窄（根 8px、梢 3px），左缘受光
+  for (let y = 2; y < 31; y++) {
+    const p = (y - 2) / 29 // 0 = 树梢，1 = 树根
+    const w = 3 + Math.round(p * 5)
+    const x = 8 - Math.floor(w / 2)
+    r(g, x, y, w, 1, '#2a1f14')
+    px(g, x, y, '#4a3722')
+    px(g, x + 1, y, '#3a2c1c')
+    if (w > 4) px(g, x + w - 1, y, '#140f09')
+    if (y % 5 === 0) px(g, x + 2, y, '#1a1209')
+  }
+  // 枯枝：折角的 1px 折线，根粗梢细
+  const limb = (
+    x0: number, y0: number, dx: number, dy: number, n: number,
+    dx2: number, dy2: number, n2: number,
+  ): void => {
+    let x = x0
+    let y = y0
+    for (let i = 0; i < n; i++) {
+      px(g, Math.round(x), Math.round(y), i < 2 ? '#3a2c1c' : '#2a1f14')
+      px(g, Math.round(x) + 1, Math.round(y), '#241a10')
+      x += dx
+      y += dy
+    }
+    for (let i = 0; i < n2; i++) {
+      px(g, Math.round(x), Math.round(y), '#2a1f14')
+      x += dx2
+      y += dy2
+    }
+  }
+  limb(6, 12, -0.85, -1.05, 6, -0.9, -0.35, 5)
+  limb(10, 9, 0.9, -0.95, 7, 0.95, -0.3, 5)
+  limb(7, 5, -0.55, -1.1, 5, -0.8, -0.2, 4)
+  limb(9, 18, 1, -0.55, 5, 1, 0.35, 4)
+  limb(6, 23, -1, -0.45, 4, -0.9, 0.4, 3)
+  // 树根：抓住地面
+  r(g, 3, 29, 10, 1, '#2a1f14')
+  px(g, 2, 30, '#2a1f14')
+  px(g, 13, 30, '#2a1f14')
+  // 湿与苔
+  px(g, 8, 24, C.moss)
+  px(g, 9, 27, '#1b2416')
+}
+
+/** 旗（32×40）：挂在墙上的横幅 —— 暗血底、冷铁十字、压在十字上的黑秃鹫 */
+function decorBanner(g: Ctx): void {
+  // 横杆与两端铜头
+  r(g, 1, 0, 30, 2, '#2a2f38')
+  r(g, 1, 0, 30, 1, C.cold)
+  px(g, 0, 0, C.brass)
+  px(g, 31, 0, C.brass)
+  // 布：上宽下窄，底边破成几片
+  const TOP = 2
+  const H = 35
+  for (let y = 0; y < H; y++) {
+    const p = y / H
+    const x0 = 3 + Math.round(p * 2)
+    const x1 = 29 - Math.round(p * 2)
+    // 底边：每 4px 缺一格，读作被风吹破的边
+    const tear = y > H - 4 && ((y + x0) % 5 === 0)
+    if (tear) continue
+    r(g, x0, TOP + y, x1 - x0, 1, y > H - 6 ? '#3d0e13' : '#4a1218')
+    px(g, x0, TOP + y, y > H - 6 ? '#57151c' : '#6b1b22')
+    px(g, x1 - 1, TOP + y, '#2c0a0e')
+    // 竖向褶：两道暗线
+    if (y % 7 === 0) {
+      r(g, x0 + 6, TOP + y, 1, 4, '#3a0c11')
+      r(g, x1 - 8, TOP + y, 1, 3, '#3a0c11')
+    }
+  }
+  // 铁十字：冷灰的竖一条、横一条 —— 压在暗红布上要有明度差，
+  // 用石墨色会糊成一团黑。横条压在竖条下方一截，秃鹫落在横条之上，三样才分得开。
+  r(g, 14, 17, 5, 16, C.cold)
+  r(g, 14, 17, 5, 1, C.pale)
+  r(g, 9, 23, 15, 5, C.cold)
+  r(g, 9, 23, 15, 1, C.pale)
+  r(g, 9, 27, 15, 1, C.stone)
+  // 黑秃鹫：两翼展開在横条上方，身子压住竖条，钩喙朝右
+  for (let i = 0; i < 8; i++) {
+    const dy = Math.round(i * 0.45)
+    r(g, 5 + i, 17 - dy, 3, 2, '#080b0e')
+    r(g, 25 - i, 17 - dy, 3, 2, '#080b0e')
+  }
+  r(g, 15, 14, 4, 6, '#080b0e')
+  r(g, 16, 11, 3, 3, '#080b0e')
+  px(g, 19, 12, C.mist)  // 钩喙
+}
+
+// ============================================================
 // 注册表
 // ============================================================
 
@@ -3782,6 +4244,23 @@ export const SPRITES: Record<string, Sprite | Sprite[]> = {
   cat: cat(),
   bone: bone(),
   easel: easel(),
+
+  // ---- 装饰：糖堡站（雨夜的月台） ----
+  gasLamp: decorSprite(16, 32, decorGasLamp), // 煤气灯：铁柱 + 玻璃灯头，顶上那盏暖光晕就落在灯头
+  cart: decorWide(decorCart), // 行李推车：两只辐条轮 + 三件没人取的行李，两格宽
+  bench: decorWide(decorBench), // 站台长椅：坐面是湿的，两格宽
+  canopyPost: decorSprite(16, 32, decorCanopyPost), // 雨棚立柱：柱础 + 顶上一根往右伸的边梁（三根共用）
+  crow: decorSprite(16, 16, decorCrow), // 乌鸦：湿透的一团黑，站在警示线里侧
+  // ---- 装饰：雾中山路 ----
+  signpost: decorSprite(16, 24, decorRoadSign), // 路标：木杆两块牌，上牌削成箭头指向右
+  fallenTrunk: decorWide(decorTrunk32), // 倒下的树干：横在路中间，两格宽
+  cairn: decorSprite(16, 16, decorCairn), // 玛尼堆 / 路边石堆：三块石头一层层码起来
+  milestone: decorSprite(16, 24, decorMilestone), // 界碑：旧碑身 + 新凿的碑座
+  // ---- 装饰：聚斯霍芬堡 · 正门 ----
+  banner: decorSprite(32, 40, decorBanner), // 旗：墙上的横幅，暗血底 + 冷铁十字 + 黑秃鹫
+  gargoyle: decorSprite(16, 32, decorGargoyle), // 石像鬼：蹲在墙沿上的一团石（门两侧两尊共用）
+  portcullisChain: decorSprite(16, 24, decorGateChain), // 吊闸的铁链：从闸顶铁环垂下，钩子空着
+  deadTree: decorSprite(16, 32, decorDeadTree), // 枯树：一根没有叶子的黑树干，立在门的右侧
 }
 
 /** 角色精灵名（供实体使用） */

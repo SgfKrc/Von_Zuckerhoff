@@ -3,7 +3,7 @@
 // ============================================================
 import { world, entTileW, visibleEntities } from '../engine/engine'
 import { VIEW_W, VIEW_H } from '../constants'
-import { TILES, SOLID_TILES, C, STRUCT_SYMBOL, DECOR_SPRITES } from '../art/tiles'
+import { TILES, SOLID_TILES, C, STRUCT_SYMBOL } from '../art/tiles'
 import { TILE } from '../art/build'
 import { useGame } from '../store'
 import { SPRITES } from '../art/sprites'
@@ -25,11 +25,12 @@ const lampPositions: LampPos[] = []
 /**
  * 糖堡站那两盏煤气灯的世界坐标（灯头，不是格子中心）。
  * 精灵是 16×32 底对齐，灯头在精灵顶端往下十来像素处 —— 暖光晕要落在那里。
+ * 站台上的灯用 gasLamp 精灵；别处的烛台（candelabra）不参与这层暖光。
  */
 function stationLamps(): LampPos[] {
   lampPositions.length = 0
   for (const e of world.map.entities) {
-    if (e.sprite !== 'candelabra') continue
+    if (e.sprite !== 'gasLamp') continue
     lampPositions.push({ x: e.x * TILE + TILE / 2, y: e.y * TILE + TILE - 24 })
   }
   return lampPositions
@@ -237,14 +238,10 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
   for (const e of list) {
     // 图纸模式下现实实体不显示；只显示 blueprintOnly 的结构标记与告示牌
     if (g.blueprint && !e.blueprintOnly) continue
-    // 装饰物：画在 art/tiles.ts 的 DECOR_SPRITES 里（按实体 id 取）。
-    // sprites.ts 里没有这些画，而那张表的键又过不了内容校验 —— 所以占位精灵
-    // 只用来标碰撞宽度，真正的样子在这里替换掉。
-    // null = 纯瓦片装饰（水沟 / 门槛 / 水洼 / 铁链护栏）：瓦片已经画出来了，
-    // 这里什么都不画，实体只负责"能按 E 调查"。
-    const decor = DECOR_SPRITES[e.id]
-    if (decor === null) continue
-    const img = decor ?? (e.facePlayer ? facePlayerSprite(e) : SPRITES[e.sprite])
+    // 纯瓦片装饰（水洼 'u' / 铁链护栏 'y' / 水沟 's' / 门槛 'w'）由瓦片本身画完，
+    // 但它们仍然需要能被按 E 观察 —— 这类实体 sprite 留空，只当交互锚点，不画任何东西。
+    if (!e.sprite) continue
+    const img = e.facePlayer ? facePlayerSprite(e) : SPRITES[e.sprite]
     if (!img) {
       // 没有精灵的实体画一个占位方块，便于关卡调试
       ctx.fillStyle = '#c0392b'
