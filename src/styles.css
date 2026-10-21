@@ -1059,3 +1059,337 @@ html, body, #root {
   .etq-page::after { left: 26px; right: 20px; }
   .etq-title-big { font-size: 15px; }
 }
+/* ==========================================================
+   场景 12：深夜书房 ·《黑格林童话：苍蓝革新的箱庭》
+   与礼仪课同一套书页语言（米色纸 / 横格纹 / 书脊暗边 / 页眉页脚），
+   但更旧：羊皮纸更黄、外面包一层黑色皮革、右下角有纸页的厚度。
+   ========================================================== */
+.grimm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 74;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(12, 11, 9, .82), rgba(3, 3, 4, .96) 72%);
+}
+
+/* ---- 黑色皮革封面 ---- */
+.grimm-book {
+  position: relative;
+  width: min(760px, 94vw);
+  padding: 7px 11px 12px;
+  border: 1px solid #2e271e;
+  border-radius: 3px 7px 7px 3px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, .018) 0 2px, transparent 2px 5px),
+    radial-gradient(ellipse at 50% 0%, rgba(96, 84, 66, .30), transparent 62%),
+    linear-gradient(162deg, #1c1815 0%, #0e0c0a 54%, #151210 100%);
+  box-shadow:
+    0 0 0 1px #000,
+    0 26px 76px rgba(0, 0, 0, .88),
+    inset 0 0 34px rgba(0, 0, 0, .92);
+}
+/* 书脊那一侧的暗边 */
+.grimm-book::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 12px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, .88), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+/* 封面上的烫金书名 */
+.grimm-gilt {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 10px 7px 14px;
+  font-size: 9.5px;
+  letter-spacing: 3px;
+  color: #8a6f34;
+  text-shadow: 0 0 9px rgba(200, 160, 64, .22);
+}
+.grimm-gilt-sub { color: #7d6636; letter-spacing: 2px; font-size: 9px; }
+
+/* ---- 页面容器：翻页时新页盖在旧页上 ---- */
+.grimm-open {
+  position: relative;
+  height: min(66vh, 540px);
+  perspective: 1800px;
+  /* 翻页时纸张别滑出封面外：只裁横向，底部那叠纸厚留给 ::after */
+  overflow-x: clip;
+}
+/* 页边一层层的纸厚（封面与内页之间） */
+.grimm-open::after {
+  content: '';
+  position: absolute;
+  left: 7px; right: 7px; bottom: -9px;
+  height: 9px;
+  border-radius: 0 0 2px 2px;
+  background: repeating-linear-gradient(180deg, #cdb98c 0 1px, #a8916a 1px 2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .62);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- 一张纸 ---- */
+.grimm-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  color: #332c22;
+  border: 1px solid #a4916a;
+  background:
+    radial-gradient(ellipse at 15% 9%, rgba(150, 116, 60, .14), transparent 44%),
+    radial-gradient(ellipse at 85% 84%, rgba(126, 92, 42, .16), transparent 48%),
+    radial-gradient(circle at 70% 26%, rgba(120, 84, 40, .10), transparent 32%),
+    repeating-linear-gradient(0deg, rgba(96, 78, 48, .055) 0 1px, transparent 1px 29px),
+    linear-gradient(104deg, #ecdcb2 0%, #e4d0a2 46%, #d6bf8c 100%);
+  box-shadow:
+    inset 0 0 52px rgba(112, 84, 40, .30),
+    inset -16px 0 26px rgba(104, 78, 38, .14),
+    0 6px 20px rgba(0, 0, 0, .5);
+}
+/* 书脊那一侧的暗边（纸在装订处陷下去） */
+.grimm-sheet::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 18px;
+  background: linear-gradient(90deg, rgba(88, 70, 40, .34), rgba(88, 70, 40, 0));
+  pointer-events: none;
+  z-index: 2;
+}
+.grimm-sheet.under {
+  z-index: 0;
+  filter: brightness(.94);
+}
+
+/* 翻页：新页从右向左覆盖（0.35s），铰链在书脊那一侧 */
+.grimm-sheet.turn-fwd {
+  transform-origin: 0% 50%;
+  animation: grimm-in-fwd .35s cubic-bezier(.2, .72, .2, 1) both;
+}
+.grimm-sheet.turn-back {
+  transform-origin: 100% 50%;
+  animation: grimm-in-back .35s cubic-bezier(.2, .72, .2, 1) both;
+}
+@keyframes grimm-in-fwd {
+  0% {
+    transform: translateX(96%) rotateY(-11deg);
+    box-shadow: -46px 0 54px rgba(0, 0, 0, .6);
+  }
+  100% {
+    transform: translateX(0) rotateY(0);
+    box-shadow:
+      inset 0 0 52px rgba(112, 84, 40, .30),
+      inset -16px 0 26px rgba(104, 78, 38, .14),
+      0 6px 20px rgba(0, 0, 0, .5);
+  }
+}
+@keyframes grimm-in-back {
+  0% {
+    transform: translateX(-56%) rotateY(13deg);
+    box-shadow: 46px 0 54px rgba(0, 0, 0, .6);
+  }
+  100% {
+    transform: translateX(0) rotateY(0);
+  }
+}
+
+/* ---- 版心 ---- */
+.grimm-leaf {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 46px 12px;
+}
+
+/* 页眉：书名（繁体 / 日文汉字，排版古怪） */
+.grimm-runhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(112, 88, 48, .34);
+  color: #5e4a28;
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+.grimm-runhead-folio {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  letter-spacing: 2px;
+  color: #6d5836;
+}
+
+/* 正文：短页在版心内垂直居中，长页从顶上开始滚动 */
+.grimm-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 2px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(122, 100, 60, .45) transparent;
+}
+.grimm-body::-webkit-scrollbar { width: 6px; }
+.grimm-body::-webkit-scrollbar-thumb { background: rgba(122, 100, 60, .4); }
+
+/* 版心的内容块：margin:auto 让短页居中；内容超过一页时自动退化成从顶部排 */
+.grimm-flow {
+  width: 100%;
+  margin: auto 0;
+}
+
+.grimm-line {
+  margin: 0 0 12px;
+  font-size: 15.5px;
+  line-height: 2;
+  letter-spacing: .3px;
+  text-indent: 2em;
+  color: #241c14;
+  text-align: justify;
+  word-break: break-word;
+}
+
+/* 第 5 页：这不是书里的字，是他脑子里的字 */
+.aside-page { padding-top: 0; }
+.aside-page .grimm-line {
+  margin: 0 0 16px;
+  padding-left: 2.2em;
+  text-indent: 0;
+  border-left: 2px solid rgba(88, 106, 130, .34);
+  color: #485a72;
+  font-style: italic;
+  letter-spacing: 1.7px;
+  line-height: 2.2;
+}
+
+/* 【】：全书最重要的符号，用 1px 金色描边框单独框起来 */
+.grimm-rune {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 0 3px;
+  line-height: 1.55;
+  color: #6d4f10;
+  border: 1px solid var(--gold);
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(200, 160, 64, .16),
+    0 0 12px rgba(200, 160, 64, .26);
+}
+
+/* 页脚：小节 / 页码 / 秃鹫纹章 */
+.grimm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(112, 88, 48, .30);
+  color: #6d5836;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.grimm-mark { min-width: 58px; color: #6d5836; }
+.grimm-page-no { color: #544323; letter-spacing: 3px; }
+.grimm-vulture { display: block; color: #5e4a26; }
+
+/* ---- 左右页边：点一下就翻页 ---- */
+.grimm-edge {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: clamp(26px, 7%, 42px);
+  z-index: 3;
+  border: 0;
+  background: transparent;
+  color: rgba(110, 88, 50, 0);
+  font-family: inherit;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background .16s, color .16s;
+}
+.grimm-edge.left { left: 0; }
+.grimm-edge.right { right: 0; }
+.grimm-edge.left:hover {
+  color: #6d5326;
+  background: linear-gradient(90deg, rgba(120, 92, 44, .18), rgba(120, 92, 44, 0));
+}
+.grimm-edge.right:hover {
+  color: #6d5326;
+  background: linear-gradient(270deg, rgba(120, 92, 44, .18), rgba(120, 92, 44, 0));
+}
+.grimm-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: pointer;
+}
+
+/* ---- 木刻插图页 ---- */
+.grimm-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+.grimm-plate-frame {
+  padding: 6px;
+  border: 1px solid rgba(90, 72, 40, .35);
+  background: rgba(232, 217, 180, .5);
+  box-shadow: inset 0 0 18px rgba(96, 72, 34, .22);
+}
+.grimm-woodcut {
+  display: block;
+  width: min(324px, 52vh, 100%);
+  height: auto;
+  image-rendering: pixelated;
+}
+.grimm-caption {
+  min-height: 26px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(112, 88, 48, .22);
+  font-size: 12px;
+  letter-spacing: 2.4px;
+  color: #4a4032;
+  text-align: center;
+}
+
+/* ---- 书本下方的提示 ---- */
+.grimm-foot {
+  padding: 8px 4px 0;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  color: #8a7b5e;
+}
+.grimm-foot.ready {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(200, 160, 64, .4);
+  animation: grimm-pulse 1.8s ease-in-out infinite;
+}
+@keyframes grimm-pulse {
+  0%, 100% { opacity: .68; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 620px) {
+  .grimm-leaf { padding: 16px 34px 10px; }
+  .grimm-line { font-size: 14px; line-height: 2; }
+  .grimm-runhead { font-size: 9.5px; letter-spacing: 1.6px; }
+  .grimm-gilt { font-size: 8.5px; letter-spacing: 2px; }
+  .grimm-gilt-sub { display: none; }
+  .grimm-open { height: min(70vh, 520px); }
+}

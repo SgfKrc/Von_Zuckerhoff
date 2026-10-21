@@ -144,6 +144,12 @@ export interface Effect {
    */
   quiz?: string
   /**
+   * 翻开一本可翻页的书（深夜的《黑格林童话》）。
+   * 与 quiz 同一条路：只负责把 flag 立起来，书本组件自己接管画面。
+   * 目前只有 'grimm'。
+   */
+  book?: string
+  /**
    * 礼仪分：累加到 flags.etiquetteScore。
    * 第六章千面之月的宴会上用得到（分数低会被当成糖贩子的后代）。
    * 小游戏是运行时算的分，所以除了剧本，EtiquetteQuiz 也直接调这个入口。

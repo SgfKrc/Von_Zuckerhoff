@@ -266,6 +266,25 @@ export function startQuiz(kind: string): void {
   setFlag(flag, true)
 }
 
+// ---------------- 可翻页的书 ----------------
+
+/** 书本接管的 flag：与 quiz 同一条路，画面由 GrimmBook 自己认领 */
+const BOOK_FLAGS: Record<string, string> = {
+  grimm: 'grimmBookActive',
+}
+
+/**
+ * 从剧本里翻开一本书（Effect.book）。
+ * 顺手把 modal 立起来：GM 在这一帧就冻结，不会出现「书开着玩家还能走」的一瞬。
+ * 合书由组件自己负责（清 flag、清 modal、接 grimmAfter）。
+ */
+export function startBook(kind: string): void {
+  const flag = BOOK_FLAGS[kind]
+  if (!flag) return
+  setFlag(flag, true)
+  setModal('book')
+}
+
 /**
  * 礼仪课答完：写分、给成就、把画面交还给剧本。
  * 调用顺序：finishEtiquette(分数) → startScript('etiquetteAfter')。
@@ -418,6 +437,8 @@ function applyEffects(effects: Effect[]): string | null {
     // 礼仪课：打开问答小游戏 / 往礼仪分里加数
     if (e.quiz) startQuiz(e.quiz)
     if (typeof e.etiquette === 'number') addEtiquette(e.etiquette)
+    // 可翻页的书（深夜的《黑格林童话》）
+    if (e.book) startBook(e.book)
   }
   return jump
 }

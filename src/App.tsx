@@ -18,6 +18,7 @@ import { Inventory } from './ui/Inventory'
 import { BlueprintRepair } from './ui/BlueprintRepair'
 import { TowerMeasure } from './ui/TowerMeasure'
 import { EtiquetteQuiz } from './ui/EtiquetteQuiz'
+import { GrimmBook } from './ui/GrimmBook'
 import { Toasts } from './ui/Toasts'
 import { Snd } from './game/audio'
 import './styles.css'
@@ -41,6 +42,8 @@ export default function App() {
       // 单独调小游戏（?ui=quiz）：不进游戏，直接把那本礼仪书铺在标题画面上。
       // 不写开场剧本：验收 1 关心的是「三题可答、答完出总分」。
       if (q.get('ui') === 'quiz') setFlag('etiquetteQuizActive', true)
+      // 单独调书（?ui=book）：十页书直接摊在标题画面上，翻完为止。
+      if (q.get('ui') === 'book') setFlag('grimmBookActive', true)
       return
     }
     newGame()
@@ -80,6 +83,7 @@ export default function App() {
         if (ui === 'ach') setShowAch(true)
         if (ui === 'tower') setFlag('towerMeasureActive', true)
         if (ui === 'quiz') setFlag('etiquetteQuizActive', true)
+        if (ui === 'book') setFlag('grimmBookActive', true)
         // 调试：?item=letter,brooch,sugar 直接发放物品；?ui=inv 打开背包
         const items = q.get('item')
         if (items) {
@@ -196,6 +200,7 @@ export default function App() {
       <BlueprintRepair />
       <TowerMeasure />
       <EtiquetteQuiz />
+      <GrimmBook />
       <Toasts />
     </div>
   )
