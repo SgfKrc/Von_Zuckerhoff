@@ -150,6 +150,13 @@ export interface Effect {
    */
   book?: string
   /**
+   * 放一段木刻蒙太奇（法兰克福的前半生）。
+   * 与 quiz / book 同一条路：store 立起 montage，播放器组件自己接管画面；
+   * 播完由 finishMontage() 收尾并接 wakeAfterMontage。
+   * 目前只有 'frankfurt'。
+   */
+  montage?: string
+  /**
    * 礼仪分：累加到 flags.etiquetteScore。
    * 第六章千面之月的宴会上用得到（分数低会被当成糖贩子的后代）。
    * 小游戏是运行时算的分，所以除了剧本，EtiquetteQuiz 也直接调这个入口。

@@ -11,6 +11,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'firstItem', name: '收进背包', desc: '第一次把东西收进背包。', group: 'explore' },
   { id: 'etiquettePerfect', name: '像样的继承人', desc: '礼仪课三道题全对。座位、封地、血缘，一个都没错。', group: 'explore' },
   { id: 'grimmRead', name: '黑格林童话', desc: '读完了那本没有作者名字的书。最后一页是一幅木刻。', group: 'explore' },
+  { id: 'frankfurtDream', name: '纱锭与煤气灯', desc: '在梦里重走了一遍法兰克福的前半生。醒来时手上还有墨迹。', group: 'chapter' },
   { id: 'portraitBreath', name: '她在笑', desc: '在图纸模式下看过维多利亚的画像。', group: 'secret', secret: true },
   { id: 'cameo', name: '不是这个世界的蓝', desc: '在车厢尽头和一个不该在那里的女仆说过话。', group: 'secret', secret: true },
 ]

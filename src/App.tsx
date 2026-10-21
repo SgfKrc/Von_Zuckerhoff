@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem } from './game/store'
+import { useGame, advance, choose, toTitle, newGame, beginExplore, loadAuto, setFlag, setBlueprint, startScript, toggleInventory, openInventory, addItem, finishMontage } from './game/store'
 import { isItemId } from './game/data/items'
 import { bridge } from './game/bridge'
 import type { MapId } from './game/types'
@@ -19,6 +19,7 @@ import { BlueprintRepair } from './ui/BlueprintRepair'
 import { TowerMeasure } from './ui/TowerMeasure'
 import { EtiquetteQuiz } from './ui/EtiquetteQuiz'
 import { GrimmBook } from './ui/GrimmBook'
+import { Montage } from './ui/Montage'
 import { Toasts } from './ui/Toasts'
 import { Snd } from './game/audio'
 import './styles.css'
@@ -26,6 +27,10 @@ import './styles.css'
 export default function App() {
   const mode = useGame(s => s.mode)
   const inventoryOpen = useGame(s => s.inventoryOpen)
+  /** 正在播放的木刻蒙太奇（游戏里由 store.startMontage 起播） */
+  const montage = useGame(s => s.montage)
+  /** 调试入口 ?ui=montage：不进游戏，直接把七张木刻铺在标题画面上 */
+  const [montageDemo, setMontageDemo] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [showAch, setShowAch] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -44,6 +49,9 @@ export default function App() {
       if (q.get('ui') === 'quiz') setFlag('etiquetteQuizActive', true)
       // 单独调书（?ui=book）：十页书直接摊在标题画面上，翻完为止。
       if (q.get('ui') === 'book') setFlag('grimmBookActive', true)
+      // 单独调蒙太奇（?ui=montage）：七张木刻直接铺在标题画面上，放完为止。
+      // 配 &montage=<秒> 可以定帧（静音），截图就用那个。
+      if (q.get('ui') === 'montage') setMontageDemo(true)
       return
     }
     newGame()
@@ -84,6 +92,8 @@ export default function App() {
         if (ui === 'tower') setFlag('towerMeasureActive', true)
         if (ui === 'quiz') setFlag('etiquetteQuizActive', true)
         if (ui === 'book') setFlag('grimmBookActive', true)
+        // 调试：?ui=montage 在游戏里直接看这段蒙太奇（不走睡下那条路）
+        if (ui === 'montage') setMontageDemo(true)
         // 调试：?item=letter,brooch,sugar 直接发放物品；?ui=inv 打开背包
         const items = q.get('item')
         if (items) {
@@ -201,6 +211,13 @@ export default function App() {
       <TowerMeasure />
       <EtiquetteQuiz />
       <GrimmBook />
+      {/* 木刻蒙太奇：法兰克福的前半生。游戏里由 store.startMontage 挂起；
+          ?ui=montage 走 demo（播完只关掉自己，不写 sawFrankfurt）。 */}
+      {montage
+        ? <Montage key="montage" onFinish={finishMontage} />
+        : montageDemo
+          ? <Montage key="montage-demo" demo onFinish={() => setMontageDemo(false)} />
+          : null}
       <Toasts />
     </div>
   )

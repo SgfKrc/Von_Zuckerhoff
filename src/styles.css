@@ -1393,3 +1393,45 @@ html, body, #root {
   .grimm-gilt-sub { display: none; }
   .grimm-open { height: min(70vh, 520px); }
 }
+
+/* ---------- 木刻蒙太奇（法兰克福的前半生） ----------
+   画布本身只有墨黑 #171310 与纸白 #e8d9b4 两色；
+   外面这一层用比墨黑更冷的黑，让版画的纸边自己亮起来。 */
+.montage-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #06050a;
+  cursor: pointer;
+  animation: fadein .5s ease;
+}
+
+.montage-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: 100vh;
+  background: #171310;
+}
+
+/* 「任意键跳过」：只在前三秒给一次，之后退场，别压着版画 */
+.montage-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: #6b6350;
+  pointer-events: none;
+  animation: montage-hint 3.6s ease forwards;
+}
+@keyframes montage-hint {
+  0%, 62% { opacity: .62; }
+  100% { opacity: 0; }
+}

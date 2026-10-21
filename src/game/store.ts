@@ -55,6 +55,12 @@ export interface GameState {
   repairErrors: number
   /** 非对话的全屏模态（补图等），非空时冻结世界 */
   modal: string | null
+  /**
+   * 正在播放的木刻蒙太奇（值即种类，目前只有 'frankfurt'）。
+   * 与 modal 分开存：蒙太奇自己要看这个值决定挂不挂载，
+   * modal 只负责让 engine 冻结世界。
+   */
+  montage: string | null
   /** 背包内容（去重、按取得顺序） */
   inventory: ItemId[]
   /** 背包界面是否打开（打开时同时把 modal 设成 'inventory' 冻结世界） */
@@ -101,6 +107,7 @@ export const useGame = create<GameState>((set, get) => ({
   repairsDone: 0,
   repairErrors: 0,
   modal: null,
+  montage: null,
   inventory: [],
   inventoryOpen: false,
   inventoryPick: null,
@@ -300,6 +307,39 @@ export function finishEtiquette(score: number): void {
   addToast(`礼仪课 · 记录 ${n} / 3`, 'info')
 }
 
+// ---------------- 木刻蒙太奇（法兰克福的前半生） ----------------
+
+/**
+ * 放一段木刻蒙太奇。与 startBook 同一条路：
+ * store 只立旗 + 立 modal（这一帧就冻结世界），画面由 Montage.tsx 接管，
+ * 播完由播放器自己调 finishMontage()。
+ *
+ * 目前只有 'frankfurt'：第一夜在卧室睡下之后，那段倒叙。
+ */
+export function startMontage(kind: string): void {
+  const g = useGame.getState()
+  if (g.montage) return
+  useGame.setState({ montage: kind, modal: 'montage', dialog: null })
+}
+
+/**
+ * 蒙太奇播完：清旗、交还画面、记账、接 wakeAfterMontage。
+ *
+ * flags.sawFrankfurt 是往后的埋线 —— 第三章陵园里希尔德加德的铜牌
+ * 会因为这段记忆解锁一句额外台词（那时读 hasFlag('sawFrankfurt')）。
+ * 它同时是「这段蒙太奇只播一次」的判据。
+ */
+export function finishMontage(): void {
+  const s = useGame.getState()
+  if (!s.montage) return
+  useGame.setState({ montage: null, modal: s.modal === 'montage' ? null : s.modal })
+  setFlag('sawFrankfurt', true)
+  unlockAch('frankfurtDream')
+  Snd.setBgm('interior')
+  // 只在探索模式里接「醒来」那一段：调试入口（?ui=montage）不该写进任何状态
+  if (useGame.getState().mode === 'explore') startScript('wakeAfterMontage')
+}
+
 // ---------------- 成就 ----------------
 
 function loadAchievements(): string[] {
@@ -439,6 +479,8 @@ function applyEffects(effects: Effect[]): string | null {
     if (typeof e.etiquette === 'number') addEtiquette(e.etiquette)
     // 可翻页的书（深夜的《黑格林童话》）
     if (e.book) startBook(e.book)
+    // 木刻蒙太奇（法兰克福的前半生）
+    if (e.montage) startMontage(e.montage)
   }
   return jump
 }
@@ -469,6 +511,13 @@ export function beginExplore(): void {
     unlockAch('ch0')
   }
   useGame.setState({ mode: 'explore', chapterCard: null })
+  // 第一夜在卧室睡下 → 章节卡 → 这里：那段法兰克福的蒙太奇紧接着起播。
+  // （蒙太奇放在章节卡之后是刻意的：标题先亮出来，再倒叙前半生，最后在
+  //   卧室里醒来，接 wakeAfterMontage。）
+  if (g.flags.montagePending && !g.flags.sawFrankfurt) {
+    setFlag('montagePending', false)
+    startMontage('frankfurt')
+  }
 }
 
 export function finishChapter(no: ChapterId): void {
@@ -544,6 +593,7 @@ function applySaveData(d: SaveData): void {
     inventoryOpen: false,
     inventoryPick: null,
     modal: null,
+    montage: null,
   })
   bridge.teleport(d.map, d.x, d.y, d.dir)
 }
@@ -674,6 +724,7 @@ export function newGame(): void {
     repairsDone: 0,
     repairErrors: 0,
     modal: null,
+    montage: null,
     inventory: [...STARTING_ITEMS],
     inventoryOpen: false,
     inventoryPick: null,
@@ -697,6 +748,7 @@ export function toTitle(): void {
     inventoryOpen: false,
     inventoryPick: null,
     modal: s.modal === 'inventory' ? null : s.modal,
+    montage: null,
   })
 }
 

@@ -1681,3 +1681,33 @@ const GRIMM_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, GRIMM_SCRIPTS)
+
+// ============================================================
+// 追加区 7：场景 4 · 法兰克福的前半生（木刻蒙太奇之后的那个早上）
+// 依据 docs/_research/novel-01.md 场景 4（L250–L332）
+// ------------------------------------------------------------
+// 流程：
+//   第一夜 lookBed 睡下 → endPrologue → 章节卡 → beginExplore()
+//     └ startMontage('frankfurt')：七张木刻，31.6s
+//        孤儿院门口 / 工厂车间 / 夜校阁楼 / 考场 / 放榜 / 船厂 / 回到古堡
+//        Montage.tsx 播完自己调 finishMontage()（立 flags.sawFrankfurt）
+//   醒来  wakeAfterMontage：他以为是梦，但手指上有干掉的墨迹 —— 这不是梦
+//
+// 墨迹这个细节是全段的支点：它把「前半生」从回忆钉成了经历。
+// 口吻照 NARRATIVE_DESIGN §7：主角独白全角括号；本区一个感叹号都没有。
+// 本区只在文件末尾追加，上面的字一个都不动。
+// ============================================================
+
+const FRANKFURT_SCRIPTS: Record<string, Step[]> = {
+  wakeAfterMontage: [
+    { t: 'line', sp: 'none', text: '他睁开眼。窗帘缝里已经有一线亮光，落在床脚。' },
+    { t: 'line', sp: 'ftz', text: '（法兰克福。孤儿院。工厂。我梦见了一整段前半生。）' },
+    { t: 'line', sp: 'none', text: '他坐起来，掀被子。手在床单上停住了。' },
+    { t: 'line', sp: 'ftz', text: '（右手的食指和中指上，有一小片黑。）' },
+    { t: 'line', sp: 'none', text: '他用拇指去搓。搓不开。墨已经吃进了指甲缝里。' },
+    { t: 'line', sp: 'ftz', text: '（那就不是梦。我在梦里抄了一夜的书。）' },
+    { t: 'do', do: [{ flag: ['inkOnHand', true] }] },
+  ],
+}
+
+Object.assign(SCRIPTS, FRANKFURT_SCRIPTS)

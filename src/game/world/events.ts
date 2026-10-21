@@ -87,6 +87,10 @@ const SPECIAL: Record<string, () => void> = {
     // 例外：睡觉是推进章节的开关，第二次调查也必须能推进，
     // 所以这里不走 speak()（否则会被 endPrologue_again 之类吃掉）。
     const g = useGame.getState()
+    // 第一夜睡下之后要接那段法兰克福的蒙太奇（「纱锭与煤气灯」）。
+    // endPrologue 的收尾是切到章节卡，所以这里只排一个待办：
+    // 章节卡按任意键 → beginExplore() → 那里紧接着起播（见 store.startMontage）。
+    if (g.chapter === 0 && !hasFlag('sawFrankfurt')) setFlag('montagePending', true)
     startScript(g.chapter === 1 ? 'endChapter1' : 'endPrologue')
   },
 }
