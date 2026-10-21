@@ -1,7 +1,10 @@
 // ============================================================
 // 场景渲染：瓦片 / 实体 / 角色 / 光照 / 雾 / 图纸层
 // ============================================================
-import { world, entTileW, visibleEntities } from '../engine/engine'
+import {
+  world, entTileW, visibleEntities,
+  BROADCAST_FADE_SEC, TITLE_FADE_IN_SEC, TITLE_FADE_OUT_SEC,
+} from '../engine/engine'
 import { VIEW_W, VIEW_H } from '../constants'
 import { TILES, SOLID_TILES, C, STRUCT_SYMBOL } from '../art/tiles'
 import { TILE } from '../art/build'
@@ -90,6 +93,7 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
     drawInteractHint(ctx, camX, camY)
     drawVignette(ctx)
     drawFade(ctx)
+    drawChapterTitle(ctx)
     drawBroadcast(ctx)
     return
   }
@@ -117,6 +121,8 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
   // 淡出层在最后：全黑时连暗角一起吃掉。
   // 广播字幕压在淡出层之上 —— 车停稳前那一句要在黑里也能读到。
   drawFade(ctx)
+  // 章标题卡压在淡出层之上：到站演出的收尾段，画面已经是全黑，只剩它在淡
+  drawChapterTitle(ctx)
   drawBroadcast(ctx)
 }
 
@@ -131,6 +137,9 @@ function drawFade(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H)
 }
 
+/** 字幕字体：画在画布上的中文一律走这一条衬线（canvas 里没有 DOM 的 font-family 继承） */
+const SERIF_FONT = '"Songti SC", "SimSun", "Noto Serif SC", serif'
+
 // ---------------- 列车广播字幕 ----------------
 
 /**
@@ -143,12 +152,12 @@ function drawBroadcast(ctx: CanvasRenderingContext2D): void {
   if (remain <= 0 || !world.broadcastText) return
   const dur = Math.max(0.2, world.broadcastDur)
   const age = dur - remain
-  // 0.15s 淡入、0.55s 淡出
-  const alpha = Math.max(0, Math.min(1, age / 0.15, remain / 0.55))
+  // 0.15s 淡入、BROADCAST_FADE_SEC 淡出（和 engine 推的广播时长是同一组数）
+  const alpha = Math.max(0, Math.min(1, age / 0.15, remain / BROADCAST_FADE_SEC))
   if (alpha <= 0) return
 
   const label = `[ ${world.broadcastText} ]`
-  const FONT = '"Songti SC", "SimSun", "Noto Serif SC", serif'
+  const FONT = SERIF_FONT
 
   ctx.save()
   ctx.textAlign = 'center'
@@ -183,6 +192,90 @@ function drawBroadcast(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = '#f2ece0'
   ctx.font = `10px ${FONT}`
   ctx.fillText(label, VIEW_W / 2, dy + 1)
+  ctx.restore()
+}
+
+// ---------------- 章标题卡 ----------------
+
+/**
+ * 章标题卡：列车停稳、广播收掉之后，在黑底上淡入淡出的一张小卡。
+ *
+ * 这一章（游戏序章）对应原作的序章 + 第一章 —— 糖堡站 + 糖庄。
+ * 「霜」是六月里车窗上结了六个小时的那层霜、也是碑上的霜，开头与结尾都在；
+ * 「糖」是糖庄的甜。两个意象并成四个字的章名。
+ *
+ * 和广播牌一样画在 384×216 的逻辑画布上（不是 DOM）：
+ * 因此它天然跟着淡出层一起走，也不需要额外压暗 —— 这一段舞台本来就是全黑的。
+ */
+const CHAPTER_LABEL = '序章'
+const CHAPTER_TITLE = '霜与糖'
+const CHAPTER_NOTE = 'PROLOGUE · FROST AND SUGAR'
+
+/** 一行文案：中心 y / 字号 / 字距 / 颜色（canvas 没有 letter-spacing，字距要自己撑） */
+interface ChapterLine {
+  y: number
+  size: number
+  gap: number
+  color: string
+}
+
+/** 三行的垂直节奏：序章（小、宽字距、偏暗）→ 空 8px → 霜与糖（大、衬线、骨白）→ 英文注脚 */
+const CH_LABEL_LINE: ChapterLine = { y: 90, size: 14, gap: 6, color: '#8a94a6' }
+const CH_TITLE_LINE: ChapterLine = { y: 116, size: 22, gap: 4, color: '#e8e0d0' }
+const CH_NOTE_LINE: ChapterLine = { y: 141, size: 10, gap: 1, color: '#6a7280' }
+
+/**
+ * 逐字撑开一行，整行以 cx 为轴居中。
+ * 逐字落笔而不是用 textAlign='center'：只有自己排版才带得上字距，
+ * 宽字距的「序 章」才不会读成一个词。
+ */
+function paintCenteredSpaced(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  y: number,
+  gap: number,
+): void {
+  const chars = Array.from(text)
+  if (chars.length === 0) return
+  let w = 0
+  for (const ch of chars) w += ctx.measureText(ch).width + gap
+  w = Math.max(0, w - gap)
+  let pen = cx - w / 2
+  for (const ch of chars) {
+    ctx.fillText(ch, Math.round(pen), y)
+    pen += ctx.measureText(ch).width + gap
+  }
+}
+
+/**
+ * 章标题卡。不透明度由 engine 的 world.titleCardT / titleCardDur 算出来：
+ * 淡入 0.7s / 停留 1.8s / 淡出 0.7s，与 TITLE_FADE_IN_SEC / TITLE_FADE_OUT_SEC 同一来源。
+ * 底色不用管 —— 调用点在 drawFade 之后，此时画面已经被到站演出压成全黑。
+ */
+function drawChapterTitle(ctx: CanvasRenderingContext2D): void {
+  const remain = world.titleCardT
+  if (remain <= 0) return
+  const dur = Math.max(0.2, world.titleCardDur)
+  const age = dur - remain
+  const alpha = Math.max(0, Math.min(1, age / TITLE_FADE_IN_SEC, remain / TITLE_FADE_OUT_SEC))
+  if (alpha <= 0.004) return
+
+  const lines: [string, ChapterLine][] = [
+    [CHAPTER_LABEL, CH_LABEL_LINE],
+    [CHAPTER_TITLE, CH_TITLE_LINE],
+    [CHAPTER_NOTE, CH_NOTE_LINE],
+  ]
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.textAlign = 'left' // 居中靠 paintCenteredSpaced 自己算，才能带上字距
+  ctx.textBaseline = 'middle'
+  for (const [text, line] of lines) {
+    ctx.font = `${line.size}px ${SERIF_FONT}`
+    ctx.fillStyle = line.color
+    paintCenteredSpaced(ctx, text, VIEW_W / 2, line.y, line.gap)
+  }
   ctx.restore()
 }
 

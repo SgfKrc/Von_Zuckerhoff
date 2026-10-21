@@ -173,8 +173,8 @@ const RUMBLE_STOP_SEC = 0.6
 const FADE_IN_SEC = 0.9
 /** 广播字幕在屏幕上满亮的秒数（够读完这一句）；末尾另有一道淡出 */
 const BROADCAST_SEC = 5.5
-/** 广播字幕的淡出秒数：念完先收掉这条铁牌，再让章标题卡落下来 */
-const BROADCAST_FADE_SEC = 0.6
+/** 广播字幕的淡出秒数：念完先收掉这条铁牌，再让章标题卡落下来（renderer 用它算包络） */
+export const BROADCAST_FADE_SEC = 0.6
 /**
  * 章标题卡：淡入 0.7 / 停留 1.8 / 淡出 0.7 = 3.2s，全程压在黑底上。
  * 广播牌收掉之后才起，起的那一刻敲一记很轻的钟（「章」的标点）。
