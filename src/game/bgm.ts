@@ -17,9 +17,17 @@
 //    清空事件表与活跃表。反复切换后活跃节点数归零。
 // ============================================================
 
-export type BgmName = 'title' | 'train' | 'hall'
+export type BgmName =
+  | 'title'      // 标题「宝石」
+  | 'opening'    // 开场分镜「群山」
+  | 'train'      // 南下黑森林的列车
+  | 'station'    // 糖堡站
+  | 'road'       // 山路
+  | 'gate'       // 城堡正门（与桥共用）
+  | 'interior'   // 聚斯霍芬堡内部（门厅 / 走廊 / 图书室 / 接待厅 / 卧室 / 餐厅）
+  | 'hall'       // interior 的旧名，保留为别名
 
-type Inst = 'organ' | 'strings' | 'pedal' | 'pulse'
+type Inst = 'organ' | 'strings' | 'pedal' | 'pulse' | 'pizz'
 
 /** 时间单位一律是四分音符（beat）：t = 起点，d = 长度 */
 interface Note { t: number; d: number; n: number; v: number }
@@ -27,16 +35,25 @@ interface Note { t: number; d: number; n: number; v: number }
 /** 和弦 / 低音铺底：notes 是同时发声的 MIDI 音高 */
 interface Span { at: number; d: number; notes: number[]; inst: Inst; v: number }
 
+/**
+ * 显式落点事件：拨弦、脚步这类需要精确控制在第几拍、哪一下重哪一下轻的声部。
+ * spans 只能整块铺底，做不到「轻重交替」的节奏感，所以单独留一条通道。
+ */
+interface Hit { inst: Inst; t: number; n: number; v: number; d?: number }
+
 interface Track {
   bpm: number
   beatsPerBar: number
   bars: number
   spans: Span[]
   organ?: Note[]
+  hits?: Hit[]
   /** 每小节一个低音脉冲根音（列车轮子） */
   pulseRoots?: number[]
   /** 弦乐加 6.2Hz 颤音，模仿铁轨的金属抖动 */
   trem?: boolean
+  /** 整曲电平（相对 BGM 总线）。开场最克制，给得最低 */
+  level?: number
 }
 
 interface Ev { inst: Inst; n: number; t: number; d: number; v: number }
@@ -66,6 +83,9 @@ const SCHED_INTERVAL_MS = 120
 const LOOKAHEAD = 0.5
 /** 同时存活的音符组上限：宁可少一个音，也不让节点堆积 */
 const MAX_VOICES = 24
+/** 地图间切曲的默认交叉淡变；开场那一刀由 audio.ts 传 2.0 / 2.0（借黑场） */
+const DEFAULT_FADE_OUT = 1.2
+const DEFAULT_FADE_IN = 2.4
 
 const hz = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12)
 
@@ -73,6 +93,29 @@ const hz = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12)
 // 曲目数据
 // 旋律刻意稀疏（每分钟 8–14 个音）：留白才是黑暗感的来源。
 // ------------------------------------------------------------
+
+/**
+ * 「聚斯霍芬堡」：D 小调，44 BPM，4/4，8 小节 ≈ 43.6s
+ * 和弦：Dm – E♭ –（留白）– C♯dim。减和弦 + 大段留白，管风琴只出现在长音上。
+ *
+ * 这首原名叫 hall，现在作为整个城堡内部的共用曲：门厅、东西走廊、图书室、
+ * 接待厅、卧室、餐厅都用它。曲子本身一个字没改，只是把 key 正名为 interior；
+ * hall 仍作为别名保留，两把 key 指向同一个对象，不会重复造一份数据。
+ */
+const INTERIOR: Track = {
+  bpm: 44,
+  beatsPerBar: 4,
+  bars: 8,
+  spans: [
+    { at: 0, d: 8, notes: [50, 53, 57], inst: 'organ', v: 0.13 },    // Dm
+    { at: 8, d: 8, notes: [51, 55, 58], inst: 'organ', v: 0.12 },    // E♭
+    { at: 24, d: 8, notes: [49, 52, 55], inst: 'organ', v: 0.14 },   // C♯dim
+    { at: 0, d: 8, notes: [38], inst: 'pedal', v: 0.20 },            // D2
+    { at: 8, d: 8, notes: [39], inst: 'pedal', v: 0.20 },            // E♭2
+    { at: 16, d: 8, notes: [38], inst: 'pedal', v: 0.18 },           // D2（这两小节只有地板）
+    { at: 24, d: 8, notes: [37], inst: 'pedal', v: 0.17 },           // C♯2
+  ],
+}
 
 const TRACKS: Record<BgmName, Track> = {
   // 「宝石」：D 小调，52 BPM，4/4，8 小节 ≈ 36.9s
@@ -135,30 +178,197 @@ const TRACKS: Record<BgmName, Track> = {
     ],
   },
 
-  // 「城堡」：D 小调，44 BPM，4/4，8 小节 ≈ 43.6s
-  // 和弦：Dm – E♭ –（留白）– C♯dim。减和弦 + 大段留白，管风琴只出现在长音上。
-  hall: {
-    bpm: 44,
+  // 「群山」：D 小调，60 BPM，4/4，8 小节 = 32.0s（开场分镜 31.6s，正好对齐）
+  // 全曲只有两样东西：地板（pedal）与三组弦乐长音，没有旋律。
+  // 结构就是「从静到紧」：前 16 秒只有 D2 / A1 两个低音，第 16 秒（画面切进车头）
+  // 弦乐才从远处浮上来；最后两小节把 B♭ 换成 C♯ —— 半音导音，在切进车厢之前留一根绷紧的弦。
+  opening: {
+    bpm: 60,
     beatsPerBar: 4,
     bars: 8,
+    level: 0.86,
     spans: [
-      { at: 0, d: 8, notes: [50, 53, 57], inst: 'organ', v: 0.13 },    // Dm
-      { at: 8, d: 8, notes: [51, 55, 58], inst: 'organ', v: 0.12 },    // E♭
-      { at: 24, d: 8, notes: [49, 52, 55], inst: 'organ', v: 0.14 },   // C♯dim
-      { at: 0, d: 8, notes: [38], inst: 'pedal', v: 0.20 },            // D2
-      { at: 8, d: 8, notes: [39], inst: 'pedal', v: 0.20 },            // E♭2
-      { at: 16, d: 8, notes: [38], inst: 'pedal', v: 0.18 },           // D2（这两小节只有地板）
-      { at: 24, d: 8, notes: [37], inst: 'pedal', v: 0.17 },           // C♯2
+      { at: 0, d: 8, notes: [38], inst: 'pedal', v: 0.20 },           // D2  前两小节只有地板
+      { at: 8, d: 8, notes: [33], inst: 'pedal', v: 0.17 },           // A1  空五度
+      { at: 16, d: 8, notes: [38], inst: 'pedal', v: 0.19 },          // D2
+      { at: 24, d: 4, notes: [34], inst: 'pedal', v: 0.17 },          // B♭1
+      { at: 28, d: 4, notes: [37], inst: 'pedal', v: 0.18 },          // C♯2 收紧
+      { at: 16, d: 8, notes: [50, 57], inst: 'strings', v: 0.045 },   // D3+A3 空五度
+      { at: 24, d: 4, notes: [46, 53], inst: 'strings', v: 0.055 },   // B♭2+F3
+      { at: 28, d: 4, notes: [49, 52], inst: 'strings', v: 0.065 },   // C♯3+E3 小三度
     ],
   },
+
+  // 「糖堡站」：A 小调，80 BPM，4/4，8 小节 = 24.0s
+  // 和弦：Am – F – Dm – E（第 7 小节提前露 G♯ —— 属和弦的导音 =「不祥的期待」）
+  // 雨夜站台的三层：pedal 低音地板、极弱的弦乐雾、pizz 拨弦像雨滴落在雨棚上，
+  // 管风琴只在句尾冒四次头，每次都很短。
+  station: {
+    bpm: 80,
+    beatsPerBar: 4,
+    bars: 8,
+    level: 0.92,
+    spans: [
+      { at: 0, d: 8, notes: [45], inst: 'pedal', v: 0.12 },   // A2
+      { at: 8, d: 8, notes: [41], inst: 'pedal', v: 0.12 },   // F2
+      { at: 16, d: 8, notes: [38], inst: 'pedal', v: 0.12 },  // D2
+      { at: 24, d: 8, notes: [40], inst: 'pedal', v: 0.13 },  // E2
+      { at: 0, d: 8, notes: [57, 60, 64], inst: 'strings', v: 0.032 },   // Am
+      { at: 8, d: 8, notes: [53, 57, 60], inst: 'strings', v: 0.034 },   // F
+      { at: 16, d: 8, notes: [50, 53, 57], inst: 'strings', v: 0.036 },  // Dm
+      { at: 24, d: 8, notes: [52, 56, 59], inst: 'strings', v: 0.038 },  // E
+    ],
+    organ: [
+      { t: 7, d: 1.5, n: 59, v: 0.17 },   // bar2 末 B3
+      { t: 15, d: 2, n: 56, v: 0.17 },    // bar4 末 G♯3（E 的导音，提前露出来）
+      { t: 21, d: 2, n: 62, v: 0.18 },    // bar6 末 D4
+      { t: 29, d: 3, n: 64, v: 0.20 },    // bar8  E4，停在属音上
+    ],
+    // 拨弦动机：每小节 2–3 记，落点故意不齐（1.75 / 2.5 之类的反拍），像雨滴
+    hits: [
+      { inst: 'pizz', t: 0, n: 57, v: 0.10 },
+      { inst: 'pizz', t: 1.75, n: 60, v: 0.07 },
+      { inst: 'pizz', t: 2.5, n: 64, v: 0.085 },
+      { inst: 'pizz', t: 4, n: 64, v: 0.075 },
+      { inst: 'pizz', t: 6, n: 57, v: 0.065 },
+      { inst: 'pizz', t: 8, n: 53, v: 0.10 },
+      { inst: 'pizz', t: 9.75, n: 57, v: 0.075 },
+      { inst: 'pizz', t: 11, n: 60, v: 0.07 },
+      { inst: 'pizz', t: 12, n: 60, v: 0.075 },
+      { inst: 'pizz', t: 14, n: 53, v: 0.065 },
+      { inst: 'pizz', t: 16, n: 62, v: 0.10 },
+      { inst: 'pizz', t: 17.75, n: 65, v: 0.075 },
+      { inst: 'pizz', t: 19, n: 57, v: 0.07 },
+      { inst: 'pizz', t: 20, n: 57, v: 0.075 },
+      { inst: 'pizz', t: 22, n: 62, v: 0.065 },
+      { inst: 'pizz', t: 24, n: 64, v: 0.10 },
+      { inst: 'pizz', t: 25.75, n: 68, v: 0.085 },   // G♯4
+      { inst: 'pizz', t: 27, n: 59, v: 0.07 },
+      { inst: 'pizz', t: 28, n: 59, v: 0.08 },
+      { inst: 'pizz', t: 30, n: 64, v: 0.07 },
+    ],
+  },
+
+  // 「山路」：D 小调，76 BPM，4/4，8 小节 ≈ 25.3s
+  // 和弦：Dm – C – B♭ – A（自然小调的七级、六级，走起来的感觉）
+  // 节奏感全在脚下：pulse 每小节三记 —— 0 拍落地（重）、2 拍换脚（次重）、
+  // 2.75 拍拖一下（轻）。不是轮子那种均匀脉冲，是「一重两轻」的脚步。
+  // 弦乐只做长音铺底，管风琴偶尔喘一口气。
+  road: {
+    bpm: 76,
+    beatsPerBar: 4,
+    bars: 8,
+    level: 0.95,
+    spans: [
+      { at: 0, d: 8, notes: [50, 53, 57], inst: 'strings', v: 0.065 },   // Dm
+      { at: 8, d: 8, notes: [48, 52, 55], inst: 'strings', v: 0.065 },   // C
+      { at: 16, d: 8, notes: [46, 50, 53], inst: 'strings', v: 0.07 },   // B♭
+      { at: 24, d: 8, notes: [45, 49, 52], inst: 'strings', v: 0.075 },  // A
+      { at: 0, d: 8, notes: [38], inst: 'pedal', v: 0.14 },   // D2
+      { at: 8, d: 8, notes: [36], inst: 'pedal', v: 0.14 },   // C2
+      { at: 16, d: 8, notes: [34], inst: 'pedal', v: 0.14 },  // B♭1
+      { at: 24, d: 8, notes: [33], inst: 'pedal', v: 0.15 },  // A1
+    ],
+    organ: [
+      { t: 10, d: 1.5, n: 64, v: 0.17 },   // bar3  E4
+      { t: 22, d: 1.5, n: 65, v: 0.17 },   // bar6  F4
+      { t: 30.5, d: 1.5, n: 57, v: 0.19 }, // bar8  A3（回到 Dm 之前的属音）
+    ],
+    hits: [
+      // bar1 Dm
+      { inst: 'pulse', t: 0, n: 38, v: 0.17 },
+      { inst: 'pulse', t: 2, n: 38, v: 0.10 },
+      { inst: 'pulse', t: 2.75, n: 38, v: 0.055 },
+      // bar2 Dm
+      { inst: 'pulse', t: 4, n: 38, v: 0.17 },
+      { inst: 'pulse', t: 6, n: 38, v: 0.10 },
+      { inst: 'pulse', t: 6.75, n: 38, v: 0.055 },
+      // bar3 C
+      { inst: 'pulse', t: 8, n: 36, v: 0.17 },
+      { inst: 'pulse', t: 10, n: 36, v: 0.10 },
+      { inst: 'pulse', t: 10.75, n: 36, v: 0.055 },
+      // bar4 C
+      { inst: 'pulse', t: 12, n: 36, v: 0.17 },
+      { inst: 'pulse', t: 14, n: 36, v: 0.10 },
+      { inst: 'pulse', t: 14.75, n: 36, v: 0.055 },
+      // bar5 B♭
+      { inst: 'pulse', t: 16, n: 34, v: 0.17 },
+      { inst: 'pulse', t: 18, n: 34, v: 0.10 },
+      { inst: 'pulse', t: 18.75, n: 34, v: 0.055 },
+      // bar6 B♭
+      { inst: 'pulse', t: 20, n: 34, v: 0.17 },
+      { inst: 'pulse', t: 22, n: 34, v: 0.10 },
+      { inst: 'pulse', t: 22.75, n: 34, v: 0.055 },
+      // bar7 A
+      { inst: 'pulse', t: 24, n: 33, v: 0.18 },
+      { inst: 'pulse', t: 26, n: 33, v: 0.105 },
+      { inst: 'pulse', t: 26.75, n: 33, v: 0.06 },
+      // bar8 A
+      { inst: 'pulse', t: 28, n: 33, v: 0.18 },
+      { inst: 'pulse', t: 30, n: 33, v: 0.105 },
+      { inst: 'pulse', t: 30.75, n: 33, v: 0.06 },
+    ],
+  },
+
+  // 「大门」：D 小调，50 BPM，4/4，8 小节 = 38.4s
+  // 和弦：Dm – B♭ – Gm – A（和 title 同一套骨架，但管风琴电平提上去、低音压下去：
+  // interior 是「空的」，gate 是「压下来的」。）
+  // 动机只有一条：每小节一个音的极慢上行音阶 D4 → D5（D 和声小调，带 C♯），
+  // 最后一小节落在高八度的 D 上，循环回 Dm 不会断。
+  gate: {
+    bpm: 50,
+    beatsPerBar: 4,
+    bars: 8,
+    level: 1,
+    spans: [
+      { at: 0, d: 8, notes: [50, 53, 57], inst: 'organ', v: 0.185 },   // Dm
+      { at: 8, d: 8, notes: [46, 50, 53], inst: 'organ', v: 0.18 },    // B♭
+      { at: 16, d: 8, notes: [43, 46, 50], inst: 'organ', v: 0.175 },  // Gm
+      { at: 24, d: 8, notes: [45, 49, 52], inst: 'organ', v: 0.19 },   // A
+      { at: 0, d: 8, notes: [38], inst: 'pedal', v: 0.23 },   // D2
+      { at: 8, d: 8, notes: [34], inst: 'pedal', v: 0.22 },   // B♭1
+      { at: 16, d: 8, notes: [43], inst: 'pedal', v: 0.20 },  // G2
+      { at: 24, d: 8, notes: [33], inst: 'pedal', v: 0.21 },  // A1
+      { at: 0, d: 4, notes: [62], inst: 'organ', v: 0.20 },   // D4
+      { at: 4, d: 4, notes: [64], inst: 'organ', v: 0.19 },   // E4
+      { at: 8, d: 4, notes: [65], inst: 'organ', v: 0.20 },   // F4
+      { at: 12, d: 4, notes: [67], inst: 'organ', v: 0.19 },  // G4
+      { at: 16, d: 4, notes: [69], inst: 'organ', v: 0.20 },  // A4
+      { at: 20, d: 4, notes: [70], inst: 'organ', v: 0.19 },  // B♭4
+      { at: 24, d: 4, notes: [73], inst: 'organ', v: 0.21 },  // C♯5 导音
+      { at: 28, d: 4, notes: [74], inst: 'organ', v: 0.23 },  // D5 落定
+    ],
+  },
+
+  // 「城堡」：见文件上方的 INTERIOR 常量
+  interior: INTERIOR,
+  hall: INTERIOR,
 }
+
+/**
+ * 别名 → 正名：hall 是 interior 的旧名。
+ * 切歌前先归一化，这样『hall → interior』不会被当成换曲而重来一遍。
+ */
+const CANONICAL: Record<BgmName, BgmName> = {
+  title: 'title',
+  opening: 'opening',
+  train: 'train',
+  station: 'station',
+  road: 'road',
+  gate: 'gate',
+  interior: 'interior',
+  hall: 'interior',
+}
+
+/** 交叉淡变时长（秒）：audio.ts 在开场那一刀传 2.0 / 2.0，地图之间用默认值 */
+export interface BgmFade { out: number; in: number }
 
 // ------------------------------------------------------------
 // 混响：代码生成的指数衰减噪声 + 几个早期反射（教堂 / 大厅）
-// 只在 attach 时生成一次。
+// 只在 attach 时生成一次；音效（汽笛）也借这一份 IR，不另建第二个 Convolver。
 // ------------------------------------------------------------
 
-function makeImpulse(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
+export function makeImpulse(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
   const rate = ctx.sampleRate
   const len = Math.max(1, Math.floor(rate * seconds))
   const ir = ctx.createBuffer(2, len, rate)
@@ -205,6 +415,8 @@ class Player {
   private nextTime = 0
   private started = false
   private disposed = false
+  /** 整曲电平：淡入淡出的目标值（开场最克制，给得比别的曲子低） */
+  private readonly level: number
   /** 切曲淡出：到点后由引擎自动 dispose */
   retireAt = Number.POSITIVE_INFINITY
 
@@ -212,6 +424,7 @@ class Player {
     this.ctx = ctx
     this.budget = budget
     this.trem = track.trem === true
+    this.level = track.level ?? 1
     this.events = compile(track)
     this.totalSteps = track.bars * track.beatsPerBar * STEPS_PER_BEAT
     this.beatDur = 60 / track.bpm
@@ -221,13 +434,13 @@ class Player {
     this.gain.connect(dest)
   }
 
-  play(): void {
+  play(fadeIn = DEFAULT_FADE_IN): void {
     if (this.started) return
     this.started = true
     const now = this.ctx.currentTime
     this.nextTime = now + 0.15
     this.gain.gain.setValueAtTime(0, now)
-    this.gain.gain.linearRampToValueAtTime(1, now + 2.4)
+    this.gain.gain.linearRampToValueAtTime(this.level, now + Math.max(0.05, fadeIn))
   }
 
   /** 淡出到 0，到点由引擎回收（不再由本实例排定时器） */
@@ -328,6 +541,7 @@ class Player {
       case 'strings': this.strings(ev.n, t, dur, ev.v); return
       case 'pedal': this.pedal(ev.n, t, dur, ev.v); return
       case 'pulse': this.pulse(ev.n, t, ev.v); return
+      case 'pizz': this.pizz(ev.n, t, ev.v); return
     }
   }
 
@@ -543,6 +757,51 @@ class Player {
     sine.start(t); tri.start(t)
     sine.stop(t + 0.32); tri.stop(t + 0.32)
   }
+
+  /**
+   * 拨弦（pizzicato）：6ms 起音 + 指数衰减，低通从 3.2kHz 一路收到 900Hz ——
+   * 起音瞬间是弓毛离开琴弦的「嗒」，尾巴是琴箱的木头共鸣。
+   * 时长固定 0.45s，与 BPM 无关：拨弦本来就该在下一拍之前散掉。
+   */
+  private pizz(midi: number, t: number, v: number): void {
+    const voice = this.beginVoice()
+    if (!voice) return
+    const ctx = this.ctx
+    const f = hz(midi)
+    const body = 0.45
+    const end = t + body
+
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(3200, t)
+    lp.frequency.exponentialRampToValueAtTime(900, end)
+    lp.Q.value = 0.8
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(0.0001, t)
+    env.gain.linearRampToValueAtTime(v, t + 0.006)
+    env.gain.exponentialRampToValueAtTime(0.0001, end)
+
+    const saw = ctx.createOscillator()
+    saw.type = 'sawtooth'
+    saw.frequency.value = f
+    const tri = ctx.createOscillator()
+    tri.type = 'triangle'
+    tri.frequency.value = f * 2
+    const gS = ctx.createGain(); gS.gain.value = 0.42
+    const gT = ctx.createGain(); gT.gain.value = 0.22
+
+    saw.connect(gS); tri.connect(gT)
+    gS.connect(lp); gT.connect(lp)
+    lp.connect(env)
+    env.connect(this.gain)
+
+    this.register(voice, saw, [saw, tri], [gS, gT, lp, env])
+
+    const stopAt = end + 0.04
+    saw.start(t); tri.start(t)
+    saw.stop(stopAt); tri.stop(stopAt)
+  }
 }
 
 function compile(track: Track): Map<number, Ev[]> {
@@ -561,6 +820,9 @@ function compile(track: Track): Map<number, Ev[]> {
     }
   }
   for (const note of track.organ ?? []) add({ inst: 'organ', n: note.n, t: note.t, d: note.d, v: note.v })
+  for (const hit of track.hits ?? []) {
+    add({ inst: hit.inst, n: hit.n, t: hit.t, d: hit.d ?? 0.25, v: hit.v })
+  }
   if (track.pulseRoots) {
     for (let bar = 0; bar < track.pulseRoots.length; bar++) {
       const root = track.pulseRoots[bar]
@@ -641,18 +903,23 @@ export class BgmEngine {
     if (this.enabled && this.current) this.startTrack(this.current)
   }
 
-  /** 切换曲目（null = 只留环境音） */
-  setTrack(name: BgmName | null): void {
-    if (name === this.current) {
+  /**
+   * 切换曲目（null = 只留环境音）。
+   * fade 不传就用默认交叉淡变；开场那一刀由 audio.ts 传 2.0 / 2.0（借最后的黑场）。
+   */
+  setTrack(name: BgmName | null, fade?: BgmFade): void {
+    // ?? null：场景表里出现未知 key 时宁可静音，也不要把 current 写成 undefined
+    const next = name === null ? null : (CANONICAL[name] ?? null)
+    if (next === this.current) {
       this.ensurePlaying()
       return
     }
-    this.current = name
+    this.current = next
     if (!this.ctx || !this.bus || !this.enabled) {
-      this.stopPlayers()
+      this.stopPlayers(fade)
       return
     }
-    this.startTrack(name)
+    this.startTrack(next, fade)
   }
 
   getTrack(): BgmName | null { return this.current }
@@ -683,19 +950,20 @@ export class BgmEngine {
     }
   }
 
-  private startTrack(name: BgmName | null): void {
+  private startTrack(name: BgmName | null, fade?: BgmFade): void {
     if (!this.ctx || !this.bus) return
-    this.stopPlayers()
+    this.stopPlayers(fade)
     if (!name) return
     const player = new Player(this.ctx, this.bus, TRACKS[name], this.budget)
     this.players.push(player)
-    player.play()
+    player.play(fade?.in ?? DEFAULT_FADE_IN)
     this.startLoop()
   }
 
-  private stopPlayers(): void {
+  private stopPlayers(fade?: BgmFade): void {
     // 先淡出，等 retireAt 到点由 pumpAll 统一销毁（不留定时器）
-    for (const player of this.players) player.retire(1.2)
+    const out = fade?.out ?? DEFAULT_FADE_OUT
+    for (const player of this.players) player.retire(out)
     this.startLoop()
   }
 

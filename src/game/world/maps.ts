@@ -106,94 +106,190 @@ const station: GameMap = {
   id: 'station',
   name: '糖堡站',
   ambient: 'fog',
-  dark: 0.58,
+  // 站台几乎全在雨里。原来的 0.58 会把三层森林远景连同煤气灯的暖光一起吃掉，
+  // 压到 0.36 —— 暗角仍然在（边缘是黑的），但画面中央那盏灯亮得出来。
+  dark: 0.36,
+  // 26×18。地图改成"横向一条站台"，远景才有地方露出来：
+  //   y0..5    虚空 —— 远景窗口（96px）：远山脊 / 冷杉林 / 雾带从这 6 行透出来
+  //   y6..10   木站台（z）：月台本身，只铺木板，装饰全是实体
+  //   y11      站台边缘（k）：石压条 + 骨白警示线，往外就下不去了
+  //   y12      铁轨（r）：一道夜里的钢轨，锈在轨面上
+  //   y13..17  虚空 —— 远景的暗部：站台边缘外的那片黑
+  // 站在 y6 这一头（从车厢下来）时，画面正好是：
+  // 上 96px 森林远景，中间 80px 月台，底下十几像素的站台边与铁轨。
   tiles: [
-    '##########################',
-    '#........................#',
-    '#..^^^^^^^^^^^^^^^^^^^^..#',
-    '#..^^^^^^^^^^^^^^^^^^^^..#',
-    '#........................#',
-    '#..q..................q..#',
-    '#..L.........D.......L...#',
-    '#........................#',
-    '#rrrrrrrrrrrrrrrrrrrrrrrr#',
-    '#........................#',
-    '#..q..................q..#',
-    '##########################',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    'zzzzzzzzzzzzzzzzzzzzzzzzzz',
+    'zzzzzzzzzzzzzzzzzzzzzzzzzz',
+    'zzzzzuzzzzzzzzzzzzzzzzzzzz',
+    'zzzzzzzzzzzzzzzzzzzzzuzzzz',
+    'zzzzzzzzzzzzzzzzzzzzzzzzzz',
+    'kkkkkkkkkkkkkkkkkkkkkkkkkk',
+    'rrrrrrrrrrrrrrrrrrrrrrrrrr',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
   ],
   struct: [
-    'SSSSSSSSSSSSSSSSSSSSSSSSSS',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVMVVVVVVMVVVVVVMVVVVVV',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SSSSSSSSSSSSSSSSSSSSSSSSSS',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'RRRRRRRRRRRRRRRRRRRRRRRRRR',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
   ],
   entities: [
+    // ---- 主线：站牌 / 两盏煤气灯 / 艾玛 ----
     { id: 'sign', x: 13, y: 6, sprite: 'notice', solid: true, interact: 'stationSign' },
-    { id: 'lamp', x: 3, y: 6, sprite: 'candelabra', solid: true, tall: true, interact: 'stationLamp' },
+    // 两盏煤气灯：整张雨夜画面里唯一稳定的暖源（fore 层的暖光晕按这两个位置算，
+    // 所以实体 id 改成 stationLamp* —— 别和别的房间那支烛台（id 也叫 lamp）混了）
+    { id: 'stationLampL', x: 3, y: 6, sprite: 'candelabra', solid: true, tall: true, interact: 'stationLamp' },
+    { id: 'stationLampR', x: 22, y: 6, sprite: 'candelabra', solid: true, tall: true },
     { id: 'emma2', x: 19, y: 6, sprite: 'emma_right', solid: true, interact: 'talkEmmaStation' },
-    { id: 'lampR', x: 22, y: 6, sprite: 'candelabra', solid: true, tall: true },
+
+    // ---- 精细化：月台上该有的东西 ----
+    // 雨棚立柱：站在月台根上（y5 是虚空那一行，柱子立不住人，只立柱子）。
+    // 三根等距，中间那根能查；画见 art/tiles.ts 的 DECOR_SPRITES.stationCanopy。
+    { id: 'stationCanopyA', x: 5, y: 5, sprite: 'gateArch', tall: true },
+    { id: 'stationCanopy', x: 12, y: 5, sprite: 'gateArch', tall: true, interact: 'stationCanopy' },
+    { id: 'stationCanopyB', x: 19, y: 5, sprite: 'gateArch', tall: true },
+    // 行李推车：两格宽，车板歪着，三件行李没人取（sprite 只是占位 + 碰撞宽度）
+    { id: 'stationCart', x: 7, y: 7, sprite: 'table', solid: true, interact: 'stationCart' },
+    // 长椅：靠背朝月台根，坐面是湿的
+    { id: 'stationBench', x: 16, y: 8, sprite: 'table', solid: true, interact: 'stationBench' },
+    // 水洼：瓦片负责画（'u'），实体只负责"能按 E 看一眼"
+    { id: 'stationPuddle', x: 5, y: 8, sprite: 'notice', interact: 'stationPuddle' },
+    // 乌鸦：站在月台边缘的警示线里侧，雨里一动不动
+    { id: 'stationCrow', x: 10, y: 10, sprite: 'cat', interact: 'stationCrow' },
+
+    // ---- 图纸模式专属：告示牌（现实里看不见，是绘图员读出来的标注） ----
+    { id: 'bpStationEdge', x: 20, y: 10, sprite: 'notice', blueprintOnly: true, interact: 'bpStationEdge' },
+    { id: 'bpStationPost', x: 12, y: 7, sprite: 'notice', blueprintOnly: true, interact: 'bpStationPost' },
   ],
   portals: [
     // 回到列车：落点改到车厢右端过道（x34），正好在车门内侧，不再是旧图的中段
     { x: 1, y: 6, to: 'train', tx: 34, ty: 4, dir: 'left' },
-    { x: 24, y: 6, to: 'road', tx: 1, ty: 5, dir: 'right' },
+    // 去山路：落点挪到 (2,6) —— 原来正落在山路自己的回程传送门上，站住不动就会被弹回来
+    { x: 24, y: 6, to: 'road', tx: 2, ty: 6, dir: 'right' },
   ],
 }
 const road: GameMap = {
   id: 'road',
   name: '雾中的山路',
   ambient: 'fog',
-  dark: 0.72,
+  // 原来 0.72 的暗角是为"夜里的石地"设的；现在这条路的两侧就是林子，
+  // 远景本身已经压得很黑，暗角只留 0.44 —— 再重，四层视差就只剩一层。
+  dark: 0.44,
+  // 48×18。把路从"一条走廊"改成"一条山道"：
+  //   y0..4    虚空 —— 远景窗口（80px）：远山 / 更密的树线（中间一条缝）/ 斜插的近景树干
+  //   y5..8    山道（x）：夯土与碎石，两道浅车辙。x33 那两格是塌下来的林子，
+  //                      路在这里收窄成一个拐角（图上的路在别处是直的）
+  //   y9       路的下一步就是林子（^）：下坡那一侧，x20..27 是一段铁链护栏（y，阻挡）
+  //   y10..17  冷杉林（^）：树封到画面下缘，走不进去
   tiles: [
-    '################################################',
-    '#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#',
-    '#..............................................#',
-    '#..q........q.........q..........q..........q..#',
-    '#..............................................#',
-    '#..............................................#',
-    '#..q.........q..........q..........q.......q...#',
-    '#..............................................#',
-    '#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#',
-    '################################################',
+    '                                                ',
+    '                                                ',
+    '                                                ',
+    '                                                ',
+    '                                                ',
+    'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'xxxxxxxxxxxxxxxxxxxxxxxxxxxx^^xxxxxxxxxxxxxxxxxx',
+    'xxxxxxxxxxxxxxxxxxxxxxxxxxxx^^xxxxxxxxxxxxxxxxxx',
+    'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    '^^^^^^^^^^^^^^^^^^^^yyyyyyyy^^^^^^^^^^^^^^^^^^^^',
+    'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
+    '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^',
   ],
   struct: [
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFIIFFFFFFFFFFFFFFFFFF',
+    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFIIFFFFFFFFFFFFFFFFFF',
+    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
     'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFS',
-    'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV',
   ],
   entities: [
-    { id: 'roadStep1', x: 12, y: 4, sprite: 'notice', solid: false, interact: 'roadStop1' },
-    { id: 'roadStep2', x: 26, y: 5, sprite: 'notice', solid: false, interact: 'roadStop2' },
-    { id: 'roadStep3', x: 38, y: 4, sprite: 'notice', solid: false, interact: 'roadStop3' },
+    // ---- 主线：三处停下来（原样保留，只是从 y4/y5 挪进了路里） ----
+    { id: 'roadStep1', x: 12, y: 6, sprite: 'notice', solid: false, interact: 'roadStop1' },
+    { id: 'roadStep2', x: 26, y: 7, sprite: 'notice', solid: false, interact: 'roadStop2' },
+    { id: 'roadStep3', x: 38, y: 6, sprite: 'notice', solid: false, interact: 'roadStop3' },
+
+    // ---- 精细化：一条修过的山路该有的东西 ----
+    // 路标：木杆两块牌，上面那块削成箭头指向右（聚斯霍芬堡的方向）
+    { id: 'roadSign', x: 8, y: 5, sprite: 'notice', solid: true, interact: 'roadSign' },
+    // 倒塌的树干：横在路中间，两格宽（占 x18..19），人得从上下绕
+    { id: 'roadTrunk', x: 18, y: 7, sprite: 'table', solid: true, interact: 'roadTrunk' },
+    // 玛尼堆：路边三块石头码起来的记号，没人知道是谁码的
+    { id: 'roadCairn', x: 33, y: 5, sprite: 'notice', interact: 'roadCairn' },
+    // 界碑：碑是旧的，底座是新凿的（碑面朝路，读得出笔画数）
+    { id: 'roadMilestone', x: 24, y: 6, sprite: 'notice', solid: true, interact: 'roadMilestone' },
+    // 护栏铁链：瓦片画链子（'y'），实体只要一个能调查的点
+    { id: 'roadChain', x: 23, y: 9, sprite: 'notice', interact: 'roadChain' },
+
+    // ---- 图纸模式专属：告示牌 ----
+    // 两处都放在山路中段：站在 (20,5) 一按 Tab 就都看得见 —— 这个位置本身
+    // 也在说：它们不是"路边的牌子"，是图纸上的标注。
+    { id: 'bpRoadStone', x: 25, y: 5, sprite: 'notice', blueprintOnly: true, interact: 'bpRoadStone' },
+    { id: 'bpRoadBend', x: 27, y: 6, sprite: 'notice', blueprintOnly: true, interact: 'bpRoadBend' },
   ],
   portals: [
-    { x: 1, y: 5, to: 'station', tx: 24, ty: 6, dir: 'left' },
-    { x: 46, y: 5, to: 'gate', tx: 12, ty: 11, dir: 'up' },
+    { x: 1, y: 5, to: 'station', tx: 23, ty: 6, dir: 'left' },
+    { x: 46, y: 5, to: 'gate', tx: 11, ty: 16, dir: 'up' },
   ],
 }
 const gate: GameMap = {
   id: 'gate',
   name: '聚斯霍芬堡 · 正门',
   ambient: 'night',
-  dark: 0.50,
+  // 远景（gate-castle.webp）压到 0.30，这层暗角就不能再重：0.40 时
+  // 画面上缘的钟楼还认得出窗棂，石阶与门洞仍然沉在暗里。
+  dark: 0.40,
   camBiasY: -72,
-  // 顶部 7 行是夜空（虚空），用来露出 gothic 远景；
-  // 下面是城墙与门洞，玩家从下方的山脊走上来。
+  // 26×20。城墙压到三行，远景那 120px 才空得出来：
+  //   y0..9    虚空 —— 远景窗口：城堡正面（钟楼在右上、石像鬼在两侧）
+  //   y10      城垛（# 一格隔一格）：墙顶的齿，衬在远景上
+  //   y11..13  城墙与门洞：x11..13 是门洞，y13 是门槛（w）
+  //   y14..17  门前院子：石阶、水沟（s，横贯 y15）、从山路走上来的那一头
+  //   y18..19  山脊上的冷杉与外墙
+  // 门前的空地上站着人（13,14），抬头就是城堡正面 —— 相机 bias 让这一段
+  // 正好落在画面上方：y11 的墙顶停在屏幕 120px 处，上面全是远景。
   tiles: [
     '                          ',
     '                          ',
@@ -202,15 +298,15 @@ const gate: GameMap = {
     '                          ',
     '                          ',
     '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '##..##..##..##..##..##..##',
     '##########################',
-    '#......########..........#',
-    '#......########..........#',
-    '#......##....##..........#',
-    '#......##....##..........#',
-    '#......##....##..........#',
-    '#......##....##..........#',
-    '#......########..........#',
+    '###########...############',
+    '###########www############',
     '#........................#',
+    '#ssssssssssssssssssssssss#',
     '#........................#',
     '#........................#',
     '#^^^^^^^^^^^^^^^^^^^^^^^^#',
@@ -224,28 +320,48 @@ const gate: GameMap = {
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
     'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVV',
+    'SS..SS..SS..SS..SS..SS..SS',
     'SSSSSSSSSSSSSSSSSSSSSSSSSS',
-    'SFFFFFFSSSSSSSSFFFFFFFFFFS',
-    'SFFFFFFSSSSSSSSFFFFFFFFFFS',
-    'SFFFFFFSSFFSSSSFFFFFFFFFFS',
-    'SFFFFFFSSFFSSSSFFFFFFFFFFS',
-    'SFFFFFFSSFFSSSSFFFFFFFFFFS',
-    'SFFFFFFSSFFSSSSFFFFFFFFFFS',
-    'SFFFFFFSSSSSSSSFFFFFFFFFFS',
+    'SSSSSSSSSSSFFFSSSSSSSSSSSS',
+    'SSSSSSSSSSSFFFSSSSSSSSSSSS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
     'SFFFFFFFFFFFFFFFFFFFFFFFFS',
+    'SVVVVVVVVVVVVVVVVVVVVVVVVS',
     'SSSSSSSSSSSSSSSSSSSSSSSSSS',
   ],
   entities: [
-    { id: 'gateDoor', x: 10, y: 12, sprite: 'gateArch', solid: false, interact: 'knockGate', tall: true },
-    { id: 'flag', x: 16, y: 8, sprite: 'bigPainting', solid: false, tall: true, interact: 'gateFlag' },
-    { id: 'emma3', x: 14, y: 17, sprite: 'emma_up', solid: true, interact: 'talkEmmaGate' },
+    // ---- 主线：门 / 旗 / 艾玛（门与旗挪到了新的墙面上） ----
+    { id: 'gateDoor', x: 12, y: 12, sprite: 'gateArch', solid: false, interact: 'knockGate', tall: true },
+    // 旗：挂在门右侧的墙面下端（原来挂在虚空里，现在那上面是远景）
+    { id: 'flag', x: 17, y: 13, sprite: 'bigPainting', solid: false, tall: true, interact: 'gateFlag' },
+    { id: 'emma3', x: 14, y: 16, sprite: 'emma_up', solid: true, interact: 'talkEmmaGate' },
+
+    // ---- 精细化：门前的五件东西 ----
+    // 石像鬼：门两侧各一尊，蹲在墙脚上（画见 DECOR_SPRITES，16×32 底对齐）
+    { id: 'gateGargoyleL', x: 9, y: 13, sprite: 'gateArch', tall: true, interact: 'gateGargoyle' },
+    { id: 'gateGargoyleR', x: 15, y: 13, sprite: 'gateArch', tall: true, interact: 'gateGargoyleR' },
+    // 吊闸的铁链：垂在门洞左侧的门槛上，钩子空着（原来放在右侧，被站在 (13,14) 的
+    // 主角背影挡住了一半）
+    { id: 'gateChain', x: 11, y: 13, sprite: 'notice', tall: true, interact: 'gateChain' },
+    // 枯树：院子右侧，一根没有叶子的黑树干
+    { id: 'gateTree', x: 19, y: 14, sprite: 'gateArch', solid: true, tall: true, interact: 'gateTree' },
+    // 水沟：瓦片画沟（s，y15 横贯），实体在院子里给一个调查点
+    { id: 'gateDitch', x: 18, y: 15, sprite: 'notice', interact: 'gateDitch' },
+    // 门槛上的刻痕：站在门洞下低头看
+    { id: 'gateThreshold', x: 13, y: 13, sprite: 'notice', interact: 'gateThreshold' },
+
+    // ---- 图纸模式专属：告示牌 ----
+    { id: 'bpGateArch', x: 12, y: 14, sprite: 'notice', blueprintOnly: true, interact: 'bpGateArch' },
+    { id: 'bpGateGargoyle', x: 9, y: 14, sprite: 'notice', blueprintOnly: true, interact: 'bpGateGargoyle' },
   ],
   portals: [
     { x: 12, y: 17, to: 'road', tx: 45, ty: 5, dir: 'down' },
-    { x: 9, y: 11, to: 'hall', tx: 12, ty: 14, dir: 'up', lockFlag: 'gateOpen', lockMsg: '门闩沉重。' },
+    { x: 12, y: 13, to: 'hall', tx: 12, ty: 14, dir: 'up', lockFlag: 'gateOpen', lockMsg: '门闩沉重。' },
   ],
 }
 const hall: GameMap = {

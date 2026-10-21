@@ -3,22 +3,44 @@
 // 场景氛围（drone + 钟 + 雨）+ BGM（见 bgm.ts）+ 简易音效
 // ============================================================
 
-import { BgmEngine, type BgmName } from './bgm'
+import { BgmEngine, makeImpulse, type BgmFade, type BgmName } from './bgm'
 
 export type SceneAudio =
-  | 'silent' | 'title' | 'train' | 'fog' | 'indoor' | 'night' | 'cellar' | 'garden'
+  | 'silent'    // 纯静音（开场分镜的旧入口，保留兼容）
+  | 'title'     // 标题
+  | 'railway'   // 开场分镜：轮轨 + 机体震动 + 「群山」
+  | 'train'     // 车厢
+  | 'station'   // 糖堡站
+  | 'road'      // 山路
+  | 'gate'      // 城堡正门 / 桥（同属城堡外围，风大）
+  | 'interior'  // 聚斯霍芬堡内部（门厅 / 走廊 / 图书室 / 接待厅 / 卧室 / 餐厅）
+  | 'fog'
+  | 'night'
+  | 'cellar'
+  | 'garden'
 
-/** 场景 → BGM 曲目：只有标题、列车、古堡室内挂曲；其余场景只留环境音 */
+/**
+ * 场景 → BGM 曲目。
+ * 每个地图一首；聚斯霍芬堡内部（含酒窖、花园）共用 interior，
+ * 城堡外围（正门与桥）共用 gate —— 「同一类地图同一首」是刻意设计的。
+ */
 const BGM_FOR_SCENE: Record<SceneAudio, BgmName | null> = {
   title: 'title',
+  railway: 'opening',
   train: 'train',
-  indoor: 'hall',
+  station: 'station',
+  road: 'road',
+  gate: 'gate',
+  interior: 'interior',
+  cellar: 'interior',
+  garden: 'interior',
   fog: null,
   night: null,
-  cellar: null,
-  garden: null,
   silent: null,
 }
+
+/** 开场分镜那一刀：借最后的黑场，2s 淡出 / 2s 淡入 */
+const OPENING_FADE: BgmFade = { out: 2.0, in: 2.0 }
 
 interface Layer {
   stop: () => void
@@ -32,6 +54,8 @@ class SoundEngine {
   private started = false
   private muted = false
   private readonly bgm = new BgmEngine()
+  /** 音效专用混响：只建一次，播放时不新增常驻节点 */
+  private sfxConv: ConvolverNode | null = null
 
   ensure(): AudioContext | null {
     try {
@@ -115,12 +139,23 @@ class SoundEngine {
   isMuted(): boolean { return this.muted }
 
   setScene(scene: SceneAudio): void {
+    // 开场分镜：Opening.tsx 调 'railway'，一次拿到「轮轨环境音 + 群山」。
+    // 旧写法调的是 'silent'；只要这一步是从标题过来的，同样按开场处理 ——
+    // 这段绝不能再是静音（标题与列车之间没有 BGM 是本次要修的 bug）。
+    const openingEntry = scene === 'railway' || (scene === 'silent' && this.scene === 'title')
+
     if (scene === this.scene && this.layers.length) return
     this.scene = scene
     const ctx = this.ensure()
     if (!ctx) return
     this.clearLayers()
-    this.bgm.setTrack(BGM_FOR_SCENE[scene])
+
+    const next = openingEntry ? 'opening' : BGM_FOR_SCENE[scene]
+    const prev = this.bgm.getTrack()
+    // 只要切换涉及开场曲，就借黑场做 2s/2s 的长淡变；地图之间保持 1.2s/2.4s
+    const opening = next === 'opening' || prev === 'opening'
+    this.bgm.setTrack(next, opening ? OPENING_FADE : undefined)
+
     if (scene === 'silent') return
 
     switch (scene) {
@@ -129,18 +164,39 @@ class SoundEngine {
         this.layers.push(this.drone(82.5, 0.03, 'sine'))
         this.layers.push(this.bellPattern(0.09, [1, 0, 0, 0, 0, 1, 0, 0]))
         break
+      case 'railway':
+        // 开场分镜的车厢：远处滚动的轮轨 + 极低频的机体震动
+        this.layers.push(this.drone(48, 0.06, 'sawtooth', 260))
+        this.layers.push(this.railway(0.035))
+        break
       case 'train':
         // 48Hz 锯齿不压高频会一直"嗡嗡"带毛刺，低通到 260Hz 只留轮轨的隆隆
         this.layers.push(this.drone(48, 0.06, 'sawtooth', 260))
         this.layers.push(this.railway(0.035))
         break
+      case 'station':
+        // 雨夜站台：雨点打在铁皮雨棚上（高频噪声）+ 远处的一股电流嗡鸣 + 站台的钟
+        this.layers.push(this.noise(0.052, 1700))
+        this.layers.push(this.drone(52, 0.028, 'sine'))
+        this.layers.push(this.bellPattern(0.045, [1, 0, 0, 0, 0, 0, 1, 0]))
+        break
+      case 'road':
+        // 山路：风穿过树林，低音只留一点点
+        this.layers.push(this.noise(0.045, 760))
+        this.layers.push(this.drone(46, 0.03, 'sine'))
+        break
+      case 'gate':
+        // 城堡正门：风更硬，压得更低
+        this.layers.push(this.noise(0.036, 520))
+        this.layers.push(this.drone(38, 0.045, 'sine'))
+        break
+      case 'interior':
+        this.layers.push(this.drone(58, 0.035, 'sine'))
+        this.layers.push(this.bellPattern(0.05, [1, 0, 0, 1, 0, 0, 1, 0]))
+        break
       case 'fog':
         this.layers.push(this.noise(0.035, 900))
         this.layers.push(this.drone(62, 0.022, 'sine'))
-        break
-      case 'indoor':
-        this.layers.push(this.drone(58, 0.035, 'sine'))
-        this.layers.push(this.bellPattern(0.05, [1, 0, 0, 1, 0, 0, 1, 0]))
         break
       case 'night':
         this.layers.push(this.drone(44, 0.05, 'sine'))
@@ -350,6 +406,8 @@ class SoundEngine {
     const ctx = this.ensure()
     if (!ctx || this.muted) return
     const t = ctx.currentTime
+    // 汽笛是多节点图（失谐双振荡 + 带通 + 混响），走自己的构造函数
+    if (name === 'whistle') { this.whistle(ctx, t); return }
     const g = ctx.createGain()
     g.connect(this.master!)
     const o = ctx.createOscillator()
@@ -400,6 +458,82 @@ class SoundEngine {
         o.start(t); o.stop(t + 0.21)
     }
   }
+
+  /** 音效混响：沿用 bgm.ts 的脉冲响应算法，整个生命周期只建一个 Convolver */
+  private sfxReverb(ctx: AudioContext): ConvolverNode {
+    if (!this.sfxConv) {
+      const conv = ctx.createConvolver()
+      conv.buffer = makeImpulse(ctx, 2.6, 2.4)
+      conv.connect(this.master!)
+      this.sfxConv = conv
+    }
+    return this.sfxConv
+  }
+
+  /**
+   * 蒸汽机车汽笛（whistle）：两个失谐振荡（220Hz 锯齿 + 277Hz 方波，故意错开成
+   * 不协和的双音）→ 带通 900Hz → 低通 2400Hz → 包络：
+   * 慢起音 0.15s、持续 1.2s、释放 1.8s。
+   * 带通把 220/277 的基频削掉、只留 4–5 次谐波，再给偏高的混响湿声（0.85），
+   * 听上去就像隔着山谷传过来的一列蒸汽机车。
+   *
+   * 回收沿用 disposeGraphOnEnded 模式：主振荡器 ended 时整组 disconnect，
+   * 效果每响一次都不留下节点。
+   */
+  private whistle(ctx: AudioContext, t: number): void {
+    const atk = 0.15
+    const hold = 1.2
+    const rel = 1.8
+    const peak = 0.45
+    const end = t + atk + hold + rel
+
+    const mix = ctx.createGain(); mix.gain.value = 0.5
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.setValueAtTime(900, t)
+    bp.Q.value = 1.4
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(2400, t)
+    lp.Q.value = 0.6
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(0.0001, t)
+    env.gain.linearRampToValueAtTime(peak, t + atk)
+    env.gain.setValueAtTime(peak, t + atk + hold)
+    env.gain.linearRampToValueAtTime(0.0001, end)
+
+    const dry = ctx.createGain(); dry.gain.value = 0.42
+    const wet = ctx.createGain(); wet.gain.value = 0.85
+
+    const a = ctx.createOscillator()
+    a.type = 'sawtooth'
+    a.frequency.value = 220
+    const b = ctx.createOscillator()
+    b.type = 'square'
+    b.frequency.value = 277
+    b.detune.value = 9   // 两管之间再错开一点拍频，才不像电子音
+
+    a.connect(mix); b.connect(mix)
+    mix.connect(bp)
+    bp.connect(lp)
+    lp.connect(env)
+    env.connect(dry)
+    env.connect(wet)
+    dry.connect(this.master!)
+    wet.connect(this.sfxReverb(ctx))
+
+    const oscs = [a, b]
+    const nodes: AudioNode[] = [mix, bp, lp, env, dry, wet]
+    a.addEventListener('ended', () => {
+      for (const osc of oscs) { try { osc.disconnect() } catch { /* ignore */ } }
+      for (const node of nodes) { try { node.disconnect() } catch { /* ignore */ } }
+    }, { once: true })
+
+    const stopAt = end + 0.06
+    a.start(t); b.start(t)
+    a.stop(stopAt); b.stop(stopAt)
+  }
 }
 
 export const Snd = new SoundEngine()
@@ -407,10 +541,14 @@ export const Snd = new SoundEngine()
 /** 地图 → 场景音频 */
 export function sceneForMap(map: string, ambient: string): SceneAudio {
   if (map === 'train') return 'train'
-  if (map === 'station' || map === 'road' || map === 'gate') return 'fog'
+  if (map === 'station') return 'station'
+  if (map === 'road') return 'road'
+  // 城堡外围：正门与桥同一类（风大、都是压下来的），共用 gate 曲
+  if (map === 'gate' || map === 'bridge') return 'gate'
   if (map === 'cellar') return 'cellar'
-  if (map === 'garden' || map === 'bridge') return 'garden'
+  if (map === 'garden') return 'garden'
+  // 聚斯霍芬堡内部：门厅 / 东西走廊 / 图书室 / 接待厅 / 卧室 / 餐厅
+  if (ambient === 'indoor') return 'interior'
   if (ambient === 'night') return 'night'
-  if (ambient === 'indoor') return 'indoor'
   return 'fog'
 }

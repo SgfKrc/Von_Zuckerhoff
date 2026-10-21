@@ -25,6 +25,14 @@
 //   28.4–30.4 回到弗里德里希，他说：「我去一趟盥洗室。」
 //   30.4–31.6 淡出到黑 → finishOpening()
 //
+//  声音（整条分镜只有一个连续的现场，不切歌）：
+//   0.0–6.4   没有行车声 —— 列车还在群山后面（从标题过来时开场 BGM 已经起了）
+//   6.4       setScene('railway')：远处行车声渐起，车头越来越近越来越响
+//   10.4      汽笛 ①：车头把画面填满的那一下
+//   11.9      汽笛 ②：黑场结束、侧视第一帧（列车横穿）
+//   16.4      车厢内：一声轻碰撞；行车声交给 engine 在进车厢时接手的 train 场景
+//   跳过时    不补放错过的汽笛；先把开场自己的行车声收干净，再交给 engine
+//
 // 任意键 / 点击可跳过（落到 30.4s：他说完那句话的那一帧）
 // ============================================================
 import { useEffect, useRef } from 'react'
@@ -55,9 +63,19 @@ import {
 const TOTAL = 31.6
 /** 跳过时落到的时刻：他说完那句台词的那一帧（台词刚好开始淡出，仍是满亮） */
 const SKIP_AT = 30.4
-/** 车头占满画面 / 擦过镜头时敲一声：当作汽笛 / 站钟（镜头 B 里车一直在跑） */
-const BELL_AT = 10.4
-/** 16.4s 进车厢内：车厢连接处很轻的一记碰撞（不是刹车，车一直在跑） */
+/**
+ * 6.4s 车头开始沿纵向铁轨迎面驶来（farback.ts 的 T_FRONT）：
+ * 远处的行车声从这一刻起来 —— 0–6.4s 列车还在群山后面，行车声不该响。
+ */
+const T_RAIL = 6.4
+/** 10.4s 车头把画面填满的那一下：第一声汽笛（原来这里的站钟 bell 换掉了 —— 车在行驶中，不敲站钟） */
+const WHISTLE_A_AT = 10.4
+/** 11.9s 黑场结束、侧视第一帧：第二声汽笛（像列车经过道口） */
+const WHISTLE_B_AT = 11.9
+/**
+ * 16.4s 进车厢内（= T_CABIN）：车厢连接处很轻的一记碰撞（不是刹车，车一直在跑）。
+ * 行车声的「隔着一层车厢壁」不在这里切场景 —— 那一步交给 engine 在进车厢时接手。
+ */
 const DOOR_AT = 16.4
 /** 跳过时把落点那一帧留一下再进车厢 */
 const SKIP_HOLD_MS = 160
@@ -317,6 +335,8 @@ export function Opening() {
 
     // 验收 / 调试：?start=1&opening=17.5 把画面定在任意一帧（不播放、不进车厢）。
     // 正是靠 renderFrame(g, t) 的纯函数性：给任意 t 都能画出那一帧。
+    // 这里不碰任何音频接口 —— 不进播放循环就没有 Snd.start() / setScene，也没有汽笛，
+    // 所以逐帧调试入口是彻底静音的（跳帧不会让音效错乱，因为它根本不发声）。
     const frozen = freezeAt()
     if (frozen != null) {
       let raf2 = 0
@@ -329,11 +349,16 @@ export function Opening() {
     }
 
     Snd.start()          // 用户已按键 / 点击过，允许发声
+    // 0–6.4s：群山 + 镜头下移，列车还在远处的山后 —— 这里不要行车层。
+    // audio.ts 对「从标题过来的 silent」有特判（openingEntry）：BGM 会在这一步就切成
+    // opening 曲，所以这段不是真空，只是没有轮轨声。行车声留到 6.4s 车头驶来时再加。
     Snd.setScene('silent')
 
     const start = performance.now()
     let raf = 0
-    let bellFired = false
+    let railFired = false
+    let whistleAFired = false
+    let whistleBFired = false
     let doorFired = false
     let stopped = false
     let holdTimer = 0
@@ -351,12 +376,16 @@ export function Opening() {
       finishOpening()
     }
 
-    // 跳过：直接落到 30.4s（他说完那句话的那一帧），停一下再进车厢
+    // 跳过：直接落到 30.4s（他说完那句话的那一帧），停一下再进车厢。
+    // 错过的汽笛不补放（错过就错过），但开场自己起的行车声不能留成孤儿：
+    // 先静音收干净，160ms 后 finishOpening() 进车厢，engine 第一帧 setScene('train')
+    // 会重新起 BGM 与「隔着车厢壁」的行车声 —— 那 160ms 的空档就是交接本身。
     const skip = (): void => {
       if (stopped) return
       stopped = true
       cancelAnimationFrame(raf)
       removeListeners()
+      Snd.setScene('silent')
       renderFrame(g, SKIP_AT)
       holdTimer = window.setTimeout(finishOpening, SKIP_HOLD_MS)
     }
@@ -371,13 +400,39 @@ export function Opening() {
     const loop = (): void => {
       if (stopped) return
       const t = (performance.now() - start) / 1000
-      if (!bellFired && t >= BELL_AT) {
-        bellFired = true
-        Snd.sfx('bell')
+
+      // 6.4s：车头开始迎面驶来 —— 远处的行车声从这一刻起来。
+      // BGM 在挂载那一步就已经是 opening 曲了，这里 setTrack 同名是空操作：
+      // 换进来的只有轮轨 / 机体震动这一层，而且它自己有 2s 渐入，
+      // 正好对上「车头从远处一点点变大」。
+      if (!railFired && t >= T_RAIL) {
+        railFired = true
+        Snd.setScene('railway')
       }
+      // 10.4s：车头把画面填满的那一下 —— 第一声汽笛
+      if (!whistleAFired && t >= WHISTLE_A_AT) {
+        whistleAFired = true
+        // 掉帧一次跨过两个汽笛锚点时，只留更近的那一声，别叠在一起响
+        if (t < WHISTLE_B_AT) Snd.sfx('whistle')
+      }
+      // 11.9s：黑场结束、侧视第一帧 —— 第二声汽笛（列车横穿 / 经过道口）
+      if (!whistleBFired && t >= WHISTLE_B_AT) {
+        whistleBFired = true
+        Snd.sfx('whistle')
+      }
+      // 16.4s：切进车厢内部 —— 车厢连接处很轻的一记碰撞（不是刹车，车一直在跑）。
+      // 行车声这里**不切场景**，两个原因：
+      //   · audio.ts 的 railway 与 train 是同一组音层（48Hz 锯齿 + railway(0.035)），
+      //     切过去也听不出「变轻」，只会把音层推倒重建一遍；
+      //   · setScene 会把 BGM 一起换掉 —— opening 曲是 32s、按 31.6s 编好的（第 28 小节
+      //     的 C♯ 一直悬到曲尾，进车厢那一刻才解决），16.4s 切 train 会把它砍掉一半。
+      // 所以「隔着车厢壁」的那一层交给 engine：finishOpening() 之后 engine 第一帧
+      // setScene('train') 接手，音层重建 + 2s/2s 交叉淡变，正是进车厢的那一下。
+      // 若 audio 侧日后给出只缩环境音、不动 BGM 的接口（如 setAmbientVolume），
+      // 这里就是该做 1 → 0.45 淡出的地方，届时不必再切场景。
       if (!doorFired && t >= DOOR_AT) {
         doorFired = true
-        Snd.sfx('door') // 车厢连接处很轻的一记碰撞
+        Snd.sfx('door')
       }
       renderFrame(g, Math.min(t, TOTAL))
       if (t >= TOTAL) {

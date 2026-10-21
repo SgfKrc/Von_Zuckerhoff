@@ -136,7 +136,14 @@ for (const b of bounds) {
       errors++
       continue
     }
-    const land = walkable(to, +tx, +ty)
+        // 落点不能正好压在目标地图的某个传送门上 —— 否则站住不动就被弹回去
+    const targetPortals = target.portals ?? []
+    const clash = targetPortals.find(q => q.x === +tx && q.y === +ty && q.to !== from)
+    if (clash) {
+      console.log(`[ERR] ${from}→${to}: 落点 (${tx},${ty}) 压在 ${to}→${clash.to} 的传送门上 → 站住不动会被弹回`)
+      errors++
+    }
+const land = walkable(to, +tx, +ty)
     if (!land.ok) {
       console.log(`[ERR] ${from}→${to}: 落点 (${tx},${ty}) ${land.why} → 玩家会卡进墙里`)
       errors++

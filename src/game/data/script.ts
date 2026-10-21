@@ -1365,3 +1365,137 @@ const ARRIVAL_SCRIPTS: Record<string, Step[]> = {
 }
 
 Object.assign(SCRIPTS, ARRIVAL_SCRIPTS)
+
+// ============================================================
+// 追加区 3：糖堡站 / 山路 / 正门 —— 精细化与"告示牌"
+// ============================================================
+// 三张地图原来太空：只有主线那几件东西，走一圈没有可看的。
+// 这一段给每张地图补上"世界里本来就该有的东西"的台词。
+//
+// 两条规矩：
+//   1. 不给物品、不给 flag（没有 conviction / sweetness 变动）—— 纯世界感。
+//      主线与线索不靠它们推进，玩家漏看也不吃亏。
+//   2. 每条 2–4 句，照 NARRATIVE_DESIGN §7：短句、带数字、工程比喻；
+//      主角的独白一律全角括号。
+//
+// 告示牌（bp*）是另一回事：它们是图纸模式才看得见的标注，
+// 写的是"图纸与实际对不上"的地方。克制 —— 只报数，不解释。
+// ============================================================
+
+const SUGARHOFEN_SCRIPTS: Record<string, Step[]> = {
+  // ================= 糖堡站 =================
+  stationCanopy: [
+    { t: 'line', sp: 'none', text: '雨棚只剩三根立柱，顶上的铁皮早没了。' },
+    { t: 'line', sp: 'none', text: '柱脚泡在一小片水里，水面上浮着铁锈。' },
+    { t: 'line', sp: 'ftz', text: '（柱距四格。中间那根被拔走了，坑还在。）' },
+  ],
+  stationCart: [
+    { t: 'line', sp: 'none', text: '一辆行李推车歪在月台根上，车板上摞着两只箱子。' },
+    { t: 'line', sp: 'none', text: '箱角包着铜皮，铜皮上的字磨平了。' },
+    { t: 'line', sp: 'ftz', text: '（箱子是空的。抬一头，另一头就翘起来。这车没有货。）' },
+  ],
+  stationBench: [
+    { t: 'line', sp: 'none', text: '月台上有一条长椅，靠背的木板断了一根。' },
+    { t: 'line', sp: 'none', text: '坐面上有一片水痕，形状像一个坐着的人。' },
+    { t: 'line', sp: 'ftz', text: '（水痕是干的。四边一圈水印。坐了多久才会这样。）' },
+  ],
+  stationPuddle: [
+    { t: 'line', sp: 'none', text: '站台的木板凹下去一块，积了一洼水。' },
+    { t: 'line', sp: 'none', text: '水里有一盏灯。' },
+    { t: 'line', sp: 'ftz', text: '（灯在上面，倒影在下面。我数了两遍：倒影里的灯比灯本身亮。）' },
+  ],
+  stationCrow: [
+    { t: 'line', sp: 'none', text: '一只乌鸦站在警示线的里侧，羽毛贴在身上。' },
+    { t: 'line', sp: 'none', text: '它不动，也不看我。' },
+    { t: 'line', sp: 'ftz', text: '（雨下了半个钟头。它的羽毛还是干的。）' },
+  ],
+
+  // ================= 雾中的山路 =================
+  roadSign: [
+    { t: 'line', sp: 'none', text: '一根木杆上钉着两块牌子。上面那块削成箭头，指着路的前方。' },
+    { t: 'line', sp: 'none', text: '字被雨泡过，只剩笔画的槽。' },
+    { t: 'line', sp: 'ftz', text: '（箭头朝前。这一条路上只有一座房子，不需要指。）' },
+  ],
+  roadTrunk: [
+    { t: 'line', sp: 'none', text: '一棵冷杉倒在山道中间，根翻在外面，土还是新的。' },
+    { t: 'line', sp: 'none', text: '树干断成两截，断口发白。' },
+    { t: 'line', sp: 'ftz', text: '（根是干的。这一棵倒下不超过一个钟头。）' },
+  ],
+  roadCairn: [
+    { t: 'line', sp: 'none', text: '路边码着一小堆石头，最上面那块压得最正。' },
+    { t: 'line', sp: 'none', text: '石头被人摸得发亮，边角都圆了。' },
+    { t: 'line', sp: 'ftz', text: '（七块。每块都比下面那块小一圈。有人常来加一块。）' },
+  ],
+  roadMilestone: [
+    { t: 'line', sp: 'none', text: '一块齐膝高的石碑立在路边，碑面朝着路。' },
+    { t: 'line', sp: 'none', text: '碑上刻着三列字，被雨磨浅了，笔画还数得出来。' },
+    { t: 'line', sp: 'ftz', text: '（碑是旧的。底座是新凿的方石，棱角还割手。谁把一块两百年的石头重新立了起来。）' },
+  ],
+  roadChain: [
+    { t: 'line', sp: 'none', text: '下坡那一侧拉了一道铁链，两根立柱之间垂下去半格。' },
+    { t: 'line', sp: 'none', text: '链环上挂着水珠，一颗一颗。' },
+    { t: 'line', sp: 'ftz', text: '（链子拉得比柱子低。它不拦人。它量高度。）' },
+  ],
+
+  // ================= 聚斯霍芬堡 · 正门 =================
+  gateGargoyle: [
+    { t: 'line', sp: 'none', text: '门左侧的墙脚蹲着一只石像鬼，翅膀收着，头压得很低。' },
+    { t: 'line', sp: 'none', text: '它的爪子扣在压顶石上，指节一块一块分得清。' },
+    { t: 'line', sp: 'ftz', text: '（它的嘴是空的。雨水顺着脸直接落下去，一滴也没有留下来。）' },
+  ],
+  gateGargoyleR: [
+    { t: 'line', sp: 'none', text: '门右侧也有一尊。这一尊抬着头，朝着山下来的那条路。' },
+    { t: 'line', sp: 'none', text: '它的角断了一根，断面很白。' },
+    { t: 'line', sp: 'ftz', text: '（石头断了两百年，断面不该是白的。）' },
+  ],
+  gateChain: [
+    { t: 'line', sp: 'none', text: '门洞里垂下来两股铁链，末端是一个空钩子。' },
+    { t: 'line', sp: 'none', text: '链子正下方的门槛被磨出一道浅槽。' },
+    { t: 'line', sp: 'ftz', text: '（钩子空着。吊闸不在这道门后面。它吊在别的地方。）' },
+  ],
+  gateTree: [
+    { t: 'line', sp: 'none', text: '院子右侧立着一棵枯树，枝桠全朝着一个方向。' },
+    { t: 'line', sp: 'none', text: '树皮上有一圈绳痕，勒进去一指深。' },
+    { t: 'line', sp: 'ftz', text: '（绳痕的高度是四格。有一头牲口在这棵树上拴过很久。）' },
+  ],
+  gateDitch: [
+    { t: 'line', sp: 'none', text: '门前横着一道石砌的水沟，沟底有一层水。' },
+    { t: 'line', sp: 'none', text: '水不动，也没有味道。' },
+    { t: 'line', sp: 'ftz', text: '（沟是通的，水是死的。雨下了三天，这条沟没有涨。）' },
+  ],
+  gateThreshold: [
+    { t: 'line', sp: 'none', text: '门槛的条石被踩出一道凹，凹里有五道刻痕。' },
+    { t: 'line', sp: 'none', text: '刻痕的间距不匀，最后一道比前面深。' },
+    { t: 'line', sp: 'ftz', text: '（不是尺子刻的。是有人蹲在这儿，一道一道划的。）' },
+  ],
+
+  // ================= 图纸模式专属：告示牌 =================
+  // 每一处只报"图上"和"眼前"的差，不说破。这是里线的缝：
+  // 图纸在骗人，或者世界在改，读者自己选一个。
+  bpStationEdge: [
+    { t: 'line', sp: 'none', text: '图纸上，月台的边缘是一道直线。' },
+    { t: 'line', sp: 'ftz', text: '（月台的边缘比图纸上多了三格。图纸是旧的。）' },
+  ],
+  bpStationPost: [
+    { t: 'line', sp: 'none', text: '雨棚的柱子按四格一根排开，图上画了四根。' },
+    { t: 'line', sp: 'ftz', text: '（柱子的间距不对。中间少了一根。）' },
+  ],
+  bpRoadStone: [
+    { t: 'line', sp: 'none', text: '界碑在图上只是一个墨点，没有画底座。' },
+    { t: 'line', sp: 'ftz', text: '（界碑的底座是新的。碑是旧的。）' },
+  ],
+  bpRoadBend: [
+    { t: 'line', sp: 'none', text: '这一段路在图上是一根压直的线。' },
+    { t: 'line', sp: 'ftz', text: '（这条路在图纸上不弯。是后来弯的。）' },
+  ],
+  bpGateArch: [
+    { t: 'line', sp: 'none', text: '门楼的斗拱画得很细，每一跳都标了尺寸。' },
+    { t: 'line', sp: 'ftz', text: '（门楼的斗拱结构不承重。它是装饰。）' },
+  ],
+  bpGateGargoyle: [
+    { t: 'line', sp: 'none', text: '石像鬼在图上只有一个侧影，爪子的位置空着。' },
+    { t: 'line', sp: 'ftz', text: '（石像鬼的爪子里没有排水槽。它不排水，它在看。）' },
+  ],
+}
+
+Object.assign(SCRIPTS, SUGARHOFEN_SCRIPTS)

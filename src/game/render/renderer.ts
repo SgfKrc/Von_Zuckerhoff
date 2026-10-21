@@ -3,17 +3,37 @@
 // ============================================================
 import { world, entTileW, visibleEntities } from '../engine/engine'
 import { VIEW_W, VIEW_H } from '../constants'
-import { TILES, SOLID_TILES, C, STRUCT_SYMBOL } from '../art/tiles'
+import { TILES, SOLID_TILES, C, STRUCT_SYMBOL, DECOR_SPRITES } from '../art/tiles'
 import { TILE } from '../art/build'
 import { useGame } from '../store'
 import { SPRITES } from '../art/sprites'
 import { drawBackdrop } from './backdrop'
 import { drawBridgeBackdrop } from './bridgeBackdrop'
+import {
+  drawStationBackdrop, drawStationFore, drawRoadBackdrop, drawRoadFore,
+  type LampPos,
+} from './forestBackdrop'
 import type { Dir, EntityDef } from '../types'
 
 const paper = document.createElement('canvas')
 paper.width = VIEW_W
 paper.height = VIEW_H
+
+/** 煤气灯的位置（每帧复用同一个数组，别在渲染循环里造垃圾） */
+const lampPositions: LampPos[] = []
+
+/**
+ * 糖堡站那两盏煤气灯的世界坐标（灯头，不是格子中心）。
+ * 精灵是 16×32 底对齐，灯头在精灵顶端往下十来像素处 —— 暖光晕要落在那里。
+ */
+function stationLamps(): LampPos[] {
+  lampPositions.length = 0
+  for (const e of world.map.entities) {
+    if (e.sprite !== 'candelabra') continue
+    lampPositions.push({ x: e.x * TILE + TILE / 2, y: e.y * TILE + TILE - 24 })
+  }
+  return lampPositions
+}
 
 export function drawScene(ctx: CanvasRenderingContext2D): void {
   const g = useGame.getState()
@@ -46,12 +66,32 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
 
   const camX = Math.round(world.camX + ox)
   const camY = Math.round(world.camY + oy)
+  const mapId = world.map.id
 
   // 远景放在 translate 之前：用屏幕坐标绘制，自己处理视差，
   // 且必须早于 drawTiles —— 它要垫在瓦片下面。
-  drawBackdrop(ctx, world.map.id, camX, camY)
-  // 石桥：四层程序化视差远景（远山 / 雾 / 对岸崖壁 / 谷底），垫在瓦片下面。
-  if (world.map.id === 'bridge') drawBridgeBackdrop(ctx, camX, camY, world.t)
+  // gate 用一张写实图（render/backdrop.ts），bridge 与 station / road 用程序化的多层视差。
+  drawBackdrop(ctx, mapId, camX, camY)
+  if (mapId === 'bridge') drawBridgeBackdrop(ctx, camX, camY, world.t)
+  if (mapId === 'station') drawStationBackdrop(ctx, camX, camY, world.t)
+  if (mapId === 'road') drawRoadBackdrop(ctx, camX, camY, world.t)
+
+  // ---------------- 图纸模式 ----------------
+  // 一张纸盖掉整个现实层，结构符号与「告示牌」都画在纸上。
+  // 顺序是有讲究的：纸必须先铺，图纸专属实体（blueprintOnly）才能压在纸上面被看见；
+  // 夜里那套光照 / 雾 / 天光在这里整套跳过 —— 图纸是一张白天的图，不吃暗角。
+  if (g.blueprint) {
+    drawBlueprint(ctx, camX, camY)
+    ctx.save()
+    ctx.translate(-camX, -camY)
+    drawEntities(ctx, camX, camY)
+    ctx.restore()
+    drawInteractHint(ctx, camX, camY)
+    drawVignette(ctx)
+    drawFade(ctx)
+    drawBroadcast(ctx)
+    return
+  }
 
   ctx.save()
   ctx.translate(-camX, -camY)
@@ -64,10 +104,13 @@ export function drawScene(ctx: CanvasRenderingContext2D): void {
 
   drawLighting(ctx)
   // gate：镜头朝上的夜空不能被径向暗角压成纯黑，补一层月光天光，
-  // 让瓦片下的远景（城堡剪影）透出来。
-  if (world.map.id === 'gate') drawSkyLight(ctx)
+  // 让瓦片下的远景（城堡正面）透出来。
+  if (mapId === 'gate') drawSkyLight(ctx)
   drawFog(ctx)
-  if (g.blueprint) drawBlueprint(ctx, camX, camY)
+  // 站台 / 山路的天气层：必须压在瓦片之上 —— 雨要落在站台上、灯光要摊在木板上、
+  // 雾要在山道上走；画在瓦片下面会被整片地面盖掉。
+  if (mapId === 'station') drawStationFore(ctx, camX, camY, world.t, stationLamps())
+  if (mapId === 'road') drawRoadFore(ctx, camX, camY, world.t)
   drawInteractHint(ctx, camX, camY)
   drawVignette(ctx)
   // 淡出层在最后：全黑时连暗角一起吃掉。
@@ -192,9 +235,16 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
   const g = useGame.getState()
   const list = visibleEntities()
   for (const e of list) {
-    // 图纸模式下现实实体不显示；只显示 blueprintOnly 的结构标记
+    // 图纸模式下现实实体不显示；只显示 blueprintOnly 的结构标记与告示牌
     if (g.blueprint && !e.blueprintOnly) continue
-    const img = e.facePlayer ? facePlayerSprite(e) : SPRITES[e.sprite]
+    // 装饰物：画在 art/tiles.ts 的 DECOR_SPRITES 里（按实体 id 取）。
+    // sprites.ts 里没有这些画，而那张表的键又过不了内容校验 —— 所以占位精灵
+    // 只用来标碰撞宽度，真正的样子在这里替换掉。
+    // null = 纯瓦片装饰（水沟 / 门槛 / 水洼 / 铁链护栏）：瓦片已经画出来了，
+    // 这里什么都不画，实体只负责"能按 E 调查"。
+    const decor = DECOR_SPRITES[e.id]
+    if (decor === null) continue
+    const img = decor ?? (e.facePlayer ? facePlayerSprite(e) : SPRITES[e.sprite])
     if (!img) {
       // 没有精灵的实体画一个占位方块，便于关卡调试
       ctx.fillStyle = '#c0392b'
@@ -212,6 +262,8 @@ function drawEntities(ctx: CanvasRenderingContext2D, camX: number, camY: number)
     // 24×24 的彩蛋角色照样底对齐：她比主角矮 8px，脚落在同一基线。
     // 注意：不能用 Math.max(0, 24 - h) —— h = 32 时那恒为 0，分支永远不生效。
     // 角色一并在这里处理，地图实体就不需要各自写 tall 了。
+    // 装饰画布同理：16×32 的石像鬼 / 枯树 / 煤气灯靠 tall 底对齐，
+    // 32×16 的推车 / 长椅 / 倒木是 48 宽的画布（内容居中偏右），与两格宽的碰撞盒对齐。
     const isChar = /^(hero|emma|hermann|marta|ds|npc)_/.test(e.sprite)
     const dy = e.tall || isChar ? e.y * TILE + TILE - h : e.y * TILE
     if (dx + w < camX - 32 || dx > camX + VIEW_W + 32) continue
