@@ -42,6 +42,10 @@ export interface World {
   broadcastDur: number
   /** 列车广播字幕文本 */
   broadcastText: string
+  /** 章标题卡：剩余秒数（<=0 不显示），和广播牌一样由 renderer 画在画布上 */
+  titleCardT: number
+  /** 章标题卡：总时长（用来算淡入 / 停留 / 淡出） */
+  titleCardDur: number
   fog: FogP[]
   t: number
   /** 累计秒，用于确信/甜度节流 */
@@ -66,6 +70,8 @@ export const world: World = {
   broadcastT: 0,
   broadcastDur: 0,
   broadcastText: '',
+  titleCardT: 0,
+  titleCardDur: 0,
   fog: [],
   t: 0,
   clock: 0,
@@ -124,6 +130,7 @@ bridge.teleport = (map: MapId, x: number, y: number, dir?: Dir) => {
   world.fade = 0
   world.rumbleAmp = 0
   world.broadcastT = 0
+  world.titleCardT = 0
   trainPhase = 'idle'
   trainPhaseT = 0
   Input.flush()
@@ -164,12 +171,22 @@ const SEAT_Y = 2
 const FADE_OUT_SEC = 0.9
 const RUMBLE_STOP_SEC = 0.6
 const FADE_IN_SEC = 0.9
-/** 广播字幕在屏幕上停留的秒数（横跨淡入，够读完这一句） */
+/** 广播字幕在屏幕上满亮的秒数（够读完这一句）；末尾另有一道淡出 */
 const BROADCAST_SEC = 5.5
+/** 广播字幕的淡出秒数：念完先收掉这条铁牌，再让章标题卡落下来 */
+const BROADCAST_FADE_SEC = 0.6
+/**
+ * 章标题卡：淡入 0.7 / 停留 1.8 / 淡出 0.7 = 3.2s，全程压在黑底上。
+ * 广播牌收掉之后才起，起的那一刻敲一记很轻的钟（「章」的标点）。
+ */
+export const TITLE_FADE_IN_SEC = 0.7
+export const TITLE_FADE_OUT_SEC = 0.7
+const TITLE_HOLD_SEC = 1.8
+const TITLE_SEC = TITLE_FADE_IN_SEC + TITLE_HOLD_SEC + TITLE_FADE_OUT_SEC
 /** 到站广播词（单条 ≤64 字） */
 const STATION_BROADCAST = '本次列车即将到达——糖堡站。'
 
-type TrainPhase = 'idle' | 'fadeOut' | 'settle' | 'fadeIn'
+type TrainPhase = 'idle' | 'fadeOut' | 'settle' | 'title' | 'fadeIn'
 let trainPhase: TrainPhase = 'idle'
 let trainPhaseT = 0
 
@@ -177,15 +194,19 @@ let trainPhaseT = 0
  * 到站序列。4 件主线交互全部做完（见 events.ts 的 TRAIN_TASKS）之后自动开演：
  *
  *   淡出 0.9s → 全黑时把玩家搬到艾玛对面的座位、放广播字幕 →
- *   抖动 0.6s 内衰减到 0（车停稳）→ 淡入 0.9s → 艾玛自动开口（trainArrivalEmma）。
+ *   抖动 0.6s 内衰减到 0（车停稳）→ 广播念完再淡出 0.6s →
+ *   章标题卡 3.2s（黑底上淡入 / 停留 / 淡出，一记轻钟）→
+ *   淡入 0.9s → 艾玛自动开口（trainArrivalEmma）。
  *
+ * 标题卡是这一段的落点：广播只说「到哪儿了」，章标题说的是「这是第几章」。
  * 只演一次：flag `trainArrived` 守卫，读档重进列车不会再演一遍。
  * 玩家正在对话 / 图纸 / 背包 / 章节卡里时不动，等它们关掉再开演。
  * 返回 true 表示本帧由演出接管，玩家操作被冻结（只冻结输入，不动相机坐标）。
  */
 function updateTrainSequence(dt: number): boolean {
-  // 广播字幕计时与 UI 无关：对话里也在走。
+  // 广播牌与章标题卡的计时与 UI 无关：对话里也在走。
   if (world.broadcastT > 0) world.broadcastT = Math.max(0, world.broadcastT - dt)
+  if (world.titleCardT > 0) world.titleCardT = Math.max(0, world.titleCardT - dt)
 
   if (trainPhase === 'idle') {
     const riding = world.map.id === 'train' && !hasFlag('trainArrived')
@@ -227,8 +248,8 @@ function updateTrainSequence(dt: number): boolean {
       syncCamera()
       // 广播
       world.broadcastText = STATION_BROADCAST
-      world.broadcastDur = BROADCAST_SEC
-      world.broadcastT = BROADCAST_SEC
+      world.broadcastDur = BROADCAST_SEC + BROADCAST_FADE_SEC
+      world.broadcastT = BROADCAST_SEC + BROADCAST_FADE_SEC
       Snd.sfx('bell')
       trainPhase = 'settle'
       trainPhaseT = 0
@@ -240,8 +261,24 @@ function updateTrainSequence(dt: number): boolean {
     // 全黑里衰减：0.6 秒从满幅减到 0，不硬切
     world.rumbleT += dt
     world.rumbleAmp = Math.max(0, 1 - trainPhaseT / RUMBLE_STOP_SEC)
-    if (trainPhaseT >= RUMBLE_STOP_SEC) {
-      world.rumbleAmp = 0
+    if (trainPhaseT >= RUMBLE_STOP_SEC) world.rumbleAmp = 0
+    // 车早就停稳了，这里等的是「广播念完 + 收掉」：黑场一直撑到牌子淡出为止
+    if (world.broadcastT <= 0) {
+      world.broadcastT = 0
+      world.titleCardDur = TITLE_SEC
+      world.titleCardT = TITLE_SEC
+      Snd.sfx('bell')            // 「章」的标点：很轻的一记钟，压在黑底上
+      trainPhase = 'title'
+      trainPhaseT = 0
+    }
+    return true
+  }
+
+  if (trainPhase === 'title') {
+    // 章标题卡整段都在黑底上淡入淡出，画面不做任何别的变化 ——
+    // 连淡出层都不用动：world.fade 还停在 1。
+    world.rumbleAmp = 0
+    if (trainPhaseT >= TITLE_SEC) {
       trainPhase = 'fadeIn'
       trainPhaseT = 0
     }

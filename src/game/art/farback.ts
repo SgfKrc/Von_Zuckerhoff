@@ -1422,26 +1422,35 @@ export function drawSpokenLine(g: Ctx, text: string, alpha: number): void {
 //   镜头 C2「对面的艾玛」26.2–28.4
 //     · 弗里德里希淡出，艾玛从左下方升入；木色车厢压暗；这一镜没有任何字
 //
-//   立绘直接用项目已有的 256×256 透明 PNG（./portraits/*.png），
+//   立绘直接用项目已有的 256×256 透明素材（./portraits/*.webp），
 //   不程序化重画；图像没加载完时画深色剪影兜底，绝不留白。
 //   所有条带的时机 / 宽度 / 明暗都由固定 seed 的 hash 生成：
 //   同一个 t 每次画出来都一样，renderFrame(g, t) 仍是纯函数。
 // ============================================================
 
-/** 立绘在屏上的边长：256 原生 → 200，NEAREST 放大 */
-const PORTRAIT_W = 200
+/**
+ * 立绘在屏上的边长：256 原生 → 160（NEAREST 缩放）。
+ * 200 时脸占掉半屏，读起来是「一张大脸」；160 才留得出头 + 肩 + 一点胸的取景。
+ * 立绘 / 条带两块离屏缓冲、以及下面所有离屏坐标都以它为准。
+ */
+const PORTRAIT_W = 160
 
 const PORTRAIT_SRC = {
   ftz: './portraits/ftz.webp',
   emma: './portraits/emma.webp',
 } as const
 
-/** 弗里德里希：水平翻转后头中心落在画面右 1/3（x≈256），下半身出画 */
-const FTZ_PX = 156
-const FTZ_PY = 32
-/** 艾玛：坐在对面，居中偏左，同样只入半身 */
-const EMMA_PX = 88
-const EMMA_PY = 26
+/**
+ * 弗里德里希：水平翻转后头中心落在画面右 1/3（256 + 80 = 336 处是右缘，脸心在 x≈256），
+ * 立绘底边压到画面下缘 —— 头 + 肩 + 一点胸，下半身出画。
+ * （256 素材里脸心在 0.50W / 0.49W，所以 dx + PORTRAIT_W/2 就是脸心，
+ *   dy 与原来 200 那版挑的是同一个屏幕高度，脸没有被缩小动作挪位。）
+ */
+const FTZ_PX = 176
+const FTZ_PY = 56
+/** 艾玛：坐在对面，居中偏左，同样只入半身（脸心 x≈188、y≈129） */
+const EMMA_PX = 108
+const EMMA_PY = 48
 
 interface Portrait {
   img: HTMLImageElement
@@ -1481,7 +1490,7 @@ function portraitReady(p: Portrait): boolean {
   return !p.failed && p.img.complete && p.img.naturalWidth > 0
 }
 
-/** 立绘合成缓冲：先在 200×200 离屏画好「立绘 + 脸部条带」，再整块贴到主画布 */
+/** 立绘合成缓冲：先在 160×160 离屏画好「立绘 + 脸部条带」，再整块贴到主画布 */
 let portraitBuf: HTMLCanvasElement | null = null
 
 function portraitBuffer(): { c: HTMLCanvasElement; g: Ctx } {
@@ -1511,22 +1520,27 @@ function fillEllipse(g: Ctx, cx: number, cy: number, rx: number, ry: number, col
  * 剪影兜底：立绘还没解码完时也要读出「一个人坐在窗边」，
  * 形状和立绘入画的位置对齐（头在上半、肩压到下缘），不留白。
  */
+/** 剪影兜底：立绘还没解码完时也要读出「一个人坐在窗边」，
+ *  形状和立绘入画的位置对齐（头在上半、肩压到下缘），不留白。
+ *  坐标按 PORTRAIT_W=160 的画布描的（200 那版是它的 1.25 倍）。 */
 function drawPortraitSilhouette(g: Ctx): void {
-  const cx = 128
-  fillEllipse(g, cx, 206, 96, 74, '#0b0e13')   // 肩
+  const cx = 102
+  fillEllipse(g, cx, 165, 77, 59, '#0b0e13')   // 肩
   g.fillStyle = '#0b0e13'
-  g.fillRect(cx - 17, 116, 34, 46)             // 脖子
-  fillEllipse(g, cx, 76, 44, 50, '#0d1116')    // 头
+  g.fillRect(cx - 14, 93, 27, 37)              // 脖子
+  fillEllipse(g, cx, 61, 35, 40, '#0d1116')    // 头
   // 一线冷光把轮廓从暗背景里拉出来（与远景月光同色）
   g.fillStyle = 'rgba(154,166,184,0.22)'
-  g.fillRect(cx - 43, 62, 1, 40)
-  g.fillRect(cx - 30, 34, 1, 22)
-  g.fillRect(cx + 20, 38, 1, 16)
+  g.fillRect(cx - 34, 50, 1, 32)
+  g.fillRect(cx - 24, 27, 1, 18)
+  g.fillRect(cx + 16, 30, 1, 13)
 }
 
 // ---- 脸上的光影条带 ----------------------------------------------------
-// 眼睛与脸颊在离屏坐标里的范围（翻转后）：x 44–164、y 40–110。
-// 条带从右（190）扫到左（22），竖直宽度 3–8px，正好整张脸都掠过。
+// 新的 256 素材里，脸（颧骨到下颌之间那块肤色）在 160 画布上的范围是
+// x 61–103、y 58–104 —— 脸心正好在画布中心 (80, 81)。
+// 条带从右（外缘）扫到左（外缘），竖直跨 y 36–106：上端压进头发、
+// 下端压到下巴，中段整块盖住脸颊，所以任何一帧扫到脸心时都落在脸上。
 
 interface FaceStripe {
   /** 离屏坐标：条带左缘 */
@@ -1539,12 +1553,16 @@ interface FaceStripe {
   tilt: number
 }
 
-const STRIPE_TOP = 32
-const STRIPE_BOT = 132
-const STRIPE_X0 = 190
-const STRIPE_X1 = 22
-/** 第一条条带出现的时刻（16.4s 进车厢之后；相位选在验收帧都能扫在脸上） */
-const STRIPE_T0 = 16.53
+const STRIPE_TOP = 36
+const STRIPE_BOT = 106
+const STRIPE_X0 = 152
+const STRIPE_X1 = 18
+/**
+ * 第一条条带出现的时刻（16.4s 进车厢之后）。
+ * 相位是算过的：17.5s（验收帧）时这一组正好扫过脸心 x≈79 —— 脸的范围是 61–103，
+ * 亮暗两条都落在这段里，所以那一帧的截图上脸是「正在被树影扫过」的。
+ */
+const STRIPE_T0 = 16.48
 /** 固定 seed：同一时刻的条带永远一样 */
 const STRIPE_SEED = 9271
 
@@ -1829,9 +1847,9 @@ export function drawWatchShot(g: Ctx, t: number, alpha: number): void {
   g.fillStyle = lamp
   g.fillRect(0, 0, VIEW_W, VIEW_H)
 
-  // 从右下方升起：只入画半身，头落在画面右 1/3
+  // 从右下方升起：只入画半身，头落在画面右 1/3（升起距离随立绘一起缩过）
   const rise = smoothstep(16.55, 17.55, t)
-  const dy = Math.round(FTZ_PY + (1 - rise) * 62)
+  const dy = Math.round(FTZ_PY + (1 - rise) * 50)
   drawPortrait(g, portraits().ftz, FTZ_PX, dy, true, faceStripes(t))
 
   // 画面其余部分压暗
@@ -1871,8 +1889,8 @@ export function drawEmmaShot(g: Ctx, t: number, alpha: number): void {
 
   // 从左下方升起，朝向右侧
   const rise = smoothstep(26.35, 27.15, t)
-  const dx = Math.round(EMMA_PX - (1 - rise) * 34)
-  const dy = Math.round(EMMA_PY + (1 - rise) * 70)
+  const dx = Math.round(EMMA_PX - (1 - rise) * 27)
+  const dy = Math.round(EMMA_PY + (1 - rise) * 56)
   drawPortrait(g, portraits().emma, dx, dy, false, null)
 
   // 只让她的脸亮着：整幅再压一档

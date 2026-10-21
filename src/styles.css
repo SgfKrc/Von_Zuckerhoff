@@ -114,10 +114,13 @@ html, body, #root {
   width: min(760px, 92vw);
 }
 
+/* 立绘 160×160（256 原生素材按 160 显示）：192 时是「贴脸」，
+   160 才留得出一段距离，也才不会把对话框压得太矮。
+   对话框与立绘仍然底边对齐 —— .dialog-row 的 align-items 管这件事。 */
 .portrait-slot {
   flex: 0 0 auto;
-  width: 192px;
-  height: 192px;
+  width: 160px;
+  height: 160px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -125,9 +128,9 @@ html, body, #root {
 }
 .portrait-slot.empty { display: none; }
 .portrait-canvas {
-  /* 96×96 的方形立绘（1:1，只到头与肩），2 倍放大成 192×192 */
-  width: 192px;
-  height: 192px;
+  /* 程序化兜底立绘（96×96 方形画布，只到头与肩），按 160×160 显示 */
+  width: 160px;
+  height: 160px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 14px rgba(0,0,0,.85));
@@ -790,8 +793,8 @@ html, body, #root {
 /* 素材型立绘：以"相片"形式呈现（白底 + 细框 + 轻微内阴影）。
    素材已裁成 1:1（384×384），object-fit: cover 再兜一层非方形的裁切。 */
 .portrait-photo {
-  width: 192px;
-  height: 192px;
+  width: 160px;
+  height: 160px;
   object-fit: cover;
   display: block;
   background: #f2ece0;
@@ -803,10 +806,10 @@ html, body, #root {
   image-rendering: auto;
   filter: saturate(.92) contrast(1.03);
 }
-/* 素材立绘（96×96 透明 PNG，2 倍放大）：不加边框，与程序化立绘并列 */
+/* 素材立绘（256×256 透明 webp，NEAREST 缩到 160）：不加边框，与程序化立绘并列 */
 .portrait-image {
-  width: 192px;
-  height: 192px;
+  width: 160px;
+  height: 160px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 16px rgba(0, 0, 0, .9));
